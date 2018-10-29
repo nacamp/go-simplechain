@@ -1,0 +1,2 @@
+# go-simplechain
+simplechain dpos
