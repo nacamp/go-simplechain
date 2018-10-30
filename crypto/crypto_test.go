@@ -9,5 +9,5 @@ import (
 )
 
 func TestHash(t *testing.T) {
-	assert.Equal(t, hex.EncodeToString(crypto.Sha3b256([]byte("testetesttesttest"))), "d30e2f276e0cfa51d5bef64753e82138c60e0e1deb1b27f3e39dc9aab4c4a2f3", "test sha3-256")
+	assert.Equal(t, hex.EncodeToString(crypto.Sha3b256([]byte("dummy test"))), "6151d993d53d37941297e3f3e31a26a7cdc1d5fb3efc4a5a25132cdd38e05b15", "test sha3-256")
 }
