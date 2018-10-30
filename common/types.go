@@ -29,3 +29,4 @@ func (h *Hash) SetBytes(b []byte) {
 
 	copy(h[HashLength-len(b):], b)
 }
+func HexToHash(s string) Hash { return BytesToHash(FromHex(s)) }
