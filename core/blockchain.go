@@ -54,40 +54,6 @@ func GetGenesisBlock() (*Block, error) {
 	return block, nil
 }
 
-/*
-
-// Simple Header
-type Header struct {
-	ParentHash common.Hash
-	Coinbase   common.Address
-	Height     uint64
-	Time       *big.Int
-	Hash       common.Hash
-}
-
-// Simple Block
-type Block struct {
-	Header *Header
-	//next
-	//transactions Transactions
-}
-
-func (b *Block) Hash() common.Hash {
-	return b.Header.Hash
-}
-
-func (b *Block) MakeHash() {
-	hasher := sha3.New256()
-	rlp.Encode(hasher, []interface{}{
-		b.Header.ParentHash,
-		b.Header.Coinbase,
-		b.Header.Height,
-		b.Header.Time,
-	})
-	hasher.Sum(b.Header.Hash[:0])
-}
-*/
-
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
 	encodedBytes, err := bc.storage.Get(hash[:])
 	if err != nil {
@@ -114,6 +80,17 @@ func (bc *BlockChain) PutBlock(block Block) {
 	//TODO: change height , hash
 	bc.storage.Put(block.Header.Hash[:], encodedBytes)
 	bc.storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
+}
+
+func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
+	//TODO: check  block.Header.ParentHash[:] != nil
+	if block.Header.ParentHash[:] != nil {
+		b, _ := bc.GetBlockByHash(block.Header.ParentHash)
+		if b != nil {
+			return true
+		}
+	}
+	return false
 }
 
 func encodeBlockHeight(number uint64) []byte {

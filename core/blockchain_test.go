@@ -42,4 +42,14 @@ func TestStorage(t *testing.T) {
 	assert.Equal(t, uint64(11), b2.Header.Height, "")
 	assert.Equal(t, block.Hash(), b2.Hash(), "")
 
+	b3, err := chain.GetBlockByHash(common.Hash{0x01})
+	assert.Nil(t, b3, "")
+
+	h = core.Header{}
+	h.ParentHash = b1.Hash()
+	block = core.Block{&h}
+	assert.Equal(t, true, chain.HasParentInBlockChain(&block), "")
+	h.ParentHash.SetBytes([]byte{0x01})
+	assert.Equal(t, false, chain.HasParentInBlockChain(&block), "")
+
 }
