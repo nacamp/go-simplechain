@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/rlp"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/storage"
 )
@@ -16,8 +17,13 @@ search the height or the hash
 add block
 ignore block validity
 */
+const (
+	maxFutureBlocks = 256
+)
+
 type BlockChain struct {
 	GenesisBlock *Block
+	futureBlocks *lru.Cache
 	storage      storage.Storage
 }
 
@@ -26,12 +32,15 @@ func NewBlockChain() (*BlockChain, error) {
 	if err != nil {
 		return nil, err
 	}
-	blockChain, err := BlockChain{
-		storage: storage,
+	futureBlocks, _ := lru.New(maxFutureBlocks)
+	bc, err := BlockChain{
+		storage:      storage,
+		futureBlocks: futureBlocks,
 	}, nil
-	blockChain.GenesisBlock, err = GetGenesisBlock()
+	bc.GenesisBlock, err = GetGenesisBlock()
+	bc.PutBlock(bc.GenesisBlock)
 
-	return &blockChain, err
+	return &bc, err
 }
 
 func GetGenesisBlock() (*Block, error) {
@@ -75,7 +84,7 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 	return &block, nil
 }
 
-func (bc *BlockChain) PutBlock(block Block) {
+func (bc *BlockChain) PutBlock(block *Block) {
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
 	bc.storage.Put(block.Header.Hash[:], encodedBytes)
@@ -91,6 +100,28 @@ func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
 		}
 	}
 	return false
+}
+
+func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
+	if bc.futureBlocks.Contains(block.Hash()) {
+		block, _ := bc.futureBlocks.Get(block.Hash())
+		bc.PutBlock(block.(*Block))
+		bc.putBlockIfParentExistInFutureBlocks(block.(*Block))
+	}
+}
+
+func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
+	if bc.HasParentInBlockChain(block) {
+		bc.PutBlock(block)
+		bc.putBlockIfParentExistInFutureBlocks(block)
+		// if bc.futureBlocks.Contains(block.Hash()) {
+		// 	block, _ := bc.futureBlocks.Get(block.Hash())
+		// 	bc.PutBlock(block.(*Block))
+		// 	bc.PutBlockIfParentExist(block.(*Block))
+		// }
+	} else {
+		bc.futureBlocks.Add(block.Header.ParentHash, block)
+	}
 }
 
 func encodeBlockHeight(number uint64) []byte {

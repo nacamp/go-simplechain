@@ -2,6 +2,7 @@ package core_test
 
 import (
 	"encoding/hex"
+	"math/big"
 	"testing"
 
 	// "github.com/najimmy/go-simplechain/core"
@@ -30,7 +31,7 @@ func TestStorage(t *testing.T) {
 	if err != nil {
 		return
 	}
-	chain.PutBlock(block)
+	chain.PutBlock(&block)
 
 	b1, err := chain.GetBlockByHeight(h.Height)
 	assert.Equal(t, "6151d993d53d37941297e3f3e31a26a7cdc1d5fb3efc4a5a25132cdd38e05b15", hex.EncodeToString(b1.Header.ParentHash[:]), "")
@@ -52,4 +53,48 @@ func TestStorage(t *testing.T) {
 	h.ParentHash.SetBytes([]byte{0x01})
 	assert.Equal(t, false, chain.HasParentInBlockChain(&block), "")
 
+}
+
+func makeBlock(height uint64, parentHash common.Hash) *core.Block {
+	//1
+	h := &core.Header{}
+	h.ParentHash = parentHash
+	h.Time = new(big.Int).SetUint64(1541112770 + height)
+	h.Height = height
+	block := &core.Block{h}
+	block.MakeHash()
+	return block
+}
+
+func TestPutBlockIfParentExist(t *testing.T) {
+	bc, _ := core.NewBlockChain()
+	block, _ := core.GetGenesisBlock()
+	parentHash := block.Hash()
+
+	block1 := makeBlock(1, parentHash)
+	block2 := makeBlock(2, block1.Hash())
+	block3 := makeBlock(3, block2.Hash())
+	block4 := makeBlock(4, block3.Hash())
+
+	bc.PutBlockIfParentExist(block1)
+	b, _ := bc.GetBlockByHash(block1.Hash())
+	assert.Equal(t, block1.Hash(), b.Hash(), "")
+
+	bc.PutBlockIfParentExist(block4)
+	b, _ = bc.GetBlockByHash(block4.Hash())
+	assert.Nil(t, b, "")
+
+	bc.PutBlockIfParentExist(block3)
+	b, _ = bc.GetBlockByHash(block3.Hash())
+	assert.Nil(t, b, "")
+
+	bc.PutBlockIfParentExist(block2)
+	b, _ = bc.GetBlockByHash(block2.Hash())
+	assert.NotNil(t, b, "")
+
+	b, _ = bc.GetBlockByHash(block3.Hash())
+	assert.NotNil(t, b, "")
+
+	b, _ = bc.GetBlockByHash(block4.Hash())
+	assert.NotNil(t, b, "")
 }
