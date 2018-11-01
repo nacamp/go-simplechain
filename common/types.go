@@ -3,7 +3,7 @@ package common
 //first naive publickey
 const (
 	HashLength    = 32
-	AddressLength = 66
+	AddressLength = 33
 )
 
 // Address
@@ -29,4 +29,13 @@ func (h *Hash) SetBytes(b []byte) {
 
 	copy(h[HashLength-len(b):], b)
 }
-func HexToHash(s string) Hash { return BytesToHash(FromHex(s)) }
+
+func HexToHash(s string) Hash {
+	return BytesToHash(FromHex(s))
+}
+
+func BytesToAddress(b []byte) Address {
+	var a Address
+	copy(a[0:], b)
+	return a
+}
