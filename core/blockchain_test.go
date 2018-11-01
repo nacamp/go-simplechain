@@ -5,11 +5,19 @@ import (
 	"testing"
 
 	// "github.com/najimmy/go-simplechain/core"
-
+	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
 	"github.com/najimmy/go-simplechain/crypto"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestGenesisBlock(t *testing.T) {
+	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
+	block, err := core.GetGenesisBlock()
+	if err != nil {
+	}
+	assert.Equal(t, coinbaseAddress, common.Bytes2Hex(block.Header.Coinbase[:]), "")
+}
 
 func TestStorage(t *testing.T) {
 	h := core.Header{}
