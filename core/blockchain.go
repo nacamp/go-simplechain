@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -25,6 +26,7 @@ type BlockChain struct {
 	GenesisBlock *Block
 	futureBlocks *lru.Cache
 	storage      storage.Storage
+	AccountState *AccountState
 }
 
 func NewBlockChain() (*BlockChain, error) {
@@ -37,8 +39,9 @@ func NewBlockChain() (*BlockChain, error) {
 		storage:      storage,
 		futureBlocks: futureBlocks,
 	}, nil
+
+	bc.AccountState, err = NewAccountState()
 	bc.GenesisBlock, err = GetGenesisBlock()
-	bc.PutBlock(bc.GenesisBlock)
 
 	return &bc, err
 }
@@ -59,6 +62,16 @@ func GetGenesisBlock() (*Block, error) {
 	block := &Block{
 		Header: header,
 	}
+	//FIXME: change location to save genesis state
+	//-------
+	account := Account{}
+	copy(account.Address[:], common.Hex2Bytes(coinbaseAddress))
+	account.AddBalance(new(big.Int).SetUint64(100))
+	accountState, _ := NewAccountState()
+	accountState.PutAccount(&account)
+	copy(header.AccountHash[:], accountState.Trie.RootHash())
+	//-------
+
 	block.MakeHash()
 	return block, nil
 }
@@ -84,7 +97,38 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 	return &block, nil
 }
 
+func (bc *BlockChain) DummyReward() {
+	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
+	var coinbaseAddress2 common.Address
+	copy(coinbaseAddress2[:], common.Hex2Bytes(coinbaseAddress))
+	account := bc.AccountState.GetAccount(coinbaseAddress2)
+	if account == nil { // At first, genesisblock
+		account = &Account{Address: coinbaseAddress2}
+	}
+	account.AddBalance(new(big.Int).SetUint64(100))
+	bc.AccountState.PutAccount(account)
+}
+
+func (bc *BlockChain) VerifyState(block *Block) bool {
+	//FIXME: where verfyState => Block
+	//check reward
+	var rootHash common.Hash
+	copy(rootHash[:], bc.AccountState.Trie.RootHash())
+	if block.Header.AccountHash != rootHash {
+		return false
+	} else {
+		return true
+	}
+
+}
+
 func (bc *BlockChain) PutBlock(block *Block) {
+	//FIXME: check if valid state
+	bc.DummyReward()
+	if bc.VerifyState(block) == false {
+		fmt.Println("error.....")
+		return
+	}
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
 	bc.storage.Put(block.Header.Hash[:], encodedBytes)
@@ -114,11 +158,6 @@ func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
 	if bc.HasParentInBlockChain(block) {
 		bc.PutBlock(block)
 		bc.putBlockIfParentExistInFutureBlocks(block)
-		// if bc.futureBlocks.Contains(block.Hash()) {
-		// 	block, _ := bc.futureBlocks.Get(block.Hash())
-		// 	bc.PutBlock(block.(*Block))
-		// 	bc.PutBlockIfParentExist(block.(*Block))
-		// }
 	} else {
 		bc.futureBlocks.Add(block.Header.ParentHash, block)
 	}

@@ -13,7 +13,7 @@ import (
 type Account struct {
 	Address common.Address
 	Balance *big.Int
-	Root    common.Hash // Before trie put
+	// Root    common.Hash // Before trie put
 }
 
 type AccountState struct {

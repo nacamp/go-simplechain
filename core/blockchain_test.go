@@ -1,14 +1,11 @@
 package core_test
 
 import (
-	"encoding/hex"
 	"math/big"
 	"testing"
 
-	// "github.com/najimmy/go-simplechain/core"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
-	"github.com/najimmy/go-simplechain/crypto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,60 +18,57 @@ func TestGenesisBlock(t *testing.T) {
 }
 
 func TestStorage(t *testing.T) {
-	h := core.Header{}
-	//h.Height = new(big.Int).SetUint64(11)
-	h.Height = 11
-	h.ParentHash.SetBytes(crypto.Sha3b256([]byte("dummy test")))
-	block := core.Block{&h}
-	block.MakeHash()
-	chain, err := core.NewBlockChain()
-	if err != nil {
-		return
-	}
-	chain.PutBlock(&block)
+	bc, _ := core.NewBlockChain()
+	bc.PutBlock(bc.GenesisBlock)
 
-	b1, err := chain.GetBlockByHeight(h.Height)
-	assert.Equal(t, "6151d993d53d37941297e3f3e31a26a7cdc1d5fb3efc4a5a25132cdd38e05b15", hex.EncodeToString(b1.Header.ParentHash[:]), "")
-	assert.Equal(t, uint64(11), b1.Header.Height, "")
-	assert.Equal(t, block.Hash(), b1.Hash(), "")
+	b1, _ := bc.GetBlockByHeight(0)
+	assert.Equal(t, uint64(0), b1.Header.Height, "")
+	assert.Equal(t, bc.GenesisBlock.Hash(), b1.Hash(), "")
 
-	b2, err := chain.GetBlockByHash(block.Hash())
-	assert.Equal(t, "6151d993d53d37941297e3f3e31a26a7cdc1d5fb3efc4a5a25132cdd38e05b15", hex.EncodeToString(b2.Header.ParentHash[:]), "")
-	assert.Equal(t, uint64(11), b2.Header.Height, "")
-	assert.Equal(t, block.Hash(), b2.Hash(), "")
+	b2, _ := bc.GetBlockByHash(bc.GenesisBlock.Hash())
+	assert.Equal(t, uint64(0), b2.Header.Height, "")
+	assert.Equal(t, bc.GenesisBlock.Hash(), b2.Hash(), "")
 
-	b3, err := chain.GetBlockByHash(common.Hash{0x01})
+	b3, _ := bc.GetBlockByHash(common.Hash{0x01})
 	assert.Nil(t, b3, "")
 
-	h = core.Header{}
+	h := core.Header{}
 	h.ParentHash = b1.Hash()
-	block = core.Block{&h}
-	assert.Equal(t, true, chain.HasParentInBlockChain(&block), "")
+	block := core.Block{&h}
+	assert.Equal(t, true, bc.HasParentInBlockChain(&block), "")
 	h.ParentHash.SetBytes([]byte{0x01})
-	assert.Equal(t, false, chain.HasParentInBlockChain(&block), "")
+	assert.Equal(t, false, bc.HasParentInBlockChain(&block), "")
 
 }
 
-func makeBlock(height uint64, parentHash common.Hash) *core.Block {
-	//1
+func makeBlock(bc *core.BlockChain, height uint64, parentHash common.Hash) *core.Block {
 	h := &core.Header{}
 	h.ParentHash = parentHash
 	h.Time = new(big.Int).SetUint64(1541112770 + height)
 	h.Height = height
 	block := &core.Block{h}
+
+	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
+	account := core.Account{}
+	copy(account.Address[:], common.Hex2Bytes(coinbaseAddress))
+	account.AddBalance(new(big.Int).SetUint64(100 + 100*height))
+	bc.AccountState.PutAccount(&account)
+
+	copy(h.AccountHash[:], bc.AccountState.Trie.RootHash())
+
 	block.MakeHash()
 	return block
 }
 
 func TestPutBlockIfParentExist(t *testing.T) {
-	bc, _ := core.NewBlockChain()
-	block, _ := core.GetGenesisBlock()
-	parentHash := block.Hash()
+	remoteBc, _ := core.NewBlockChain()
+	block1 := makeBlock(remoteBc, 1, remoteBc.GenesisBlock.Hash())
+	block2 := makeBlock(remoteBc, 2, block1.Hash())
+	block3 := makeBlock(remoteBc, 3, block2.Hash())
+	block4 := makeBlock(remoteBc, 4, block3.Hash())
 
-	block1 := makeBlock(1, parentHash)
-	block2 := makeBlock(2, block1.Hash())
-	block3 := makeBlock(3, block2.Hash())
-	block4 := makeBlock(4, block3.Hash())
+	bc, _ := core.NewBlockChain()
+	bc.PutBlock(bc.GenesisBlock)
 
 	bc.PutBlockIfParentExist(block1)
 	b, _ := bc.GetBlockByHash(block1.Hash())
