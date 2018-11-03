@@ -1,4 +1,4 @@
-// Copyright 2017 The go-ethereum Authors
+// Copyright 2014 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
 // The go-ethereum library is free software: you can redistribute it and/or modify
@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
-// +build nacl js nocgo
-
 package crypto
 
 import (
@@ -28,13 +26,20 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 )
 
+var (
+	secp256k1N, _  = new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
+	secp256k1halfN = new(big.Int).Div(secp256k1N, big.NewInt(2))
+)
+
 // Ecrecover returns the uncompressed public key that created the given signature.
 func Ecrecover(hash, sig []byte) ([]byte, error) {
 	pub, err := SigToPub(hash, sig)
 	if err != nil {
 		return nil, err
 	}
-	bytes := (*btcec.PublicKey)(pub).SerializeUncompressed()
+	//TODO:
+	//bytes := (*btcec.PublicKey)(pub).SerializeUncompressed()
+	bytes := (*btcec.PublicKey)(pub).SerializeCompressed()
 	return bytes, err
 }
 
