@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/rlp"
 )
 
 // Simple Header

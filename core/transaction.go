@@ -5,13 +5,9 @@ import (
 	"math/big"
 	"time"
 
-	// "github.com/ethereum/go-ethereum/crypto"
-	// "github.com/ethereum/go-ethereum/crypto/sha3"
-
-	// "github.com/ethereum/go-ethereum/crypto/sha3"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/crypto"
+	"github.com/najimmy/go-simplechain/rlp"
 	"golang.org/x/crypto/sha3"
 )
 

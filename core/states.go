@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/rlp"
 	"github.com/najimmy/go-simplechain/storage"
 	"github.com/najimmy/go-simplechain/trie"
 )
