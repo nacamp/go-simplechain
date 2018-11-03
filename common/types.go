@@ -4,6 +4,7 @@ package common
 const (
 	HashLength    = 32
 	AddressLength = 33
+	SigLength     = 65
 )
 
 // Address
@@ -11,6 +12,9 @@ type Address [AddressLength]byte
 
 // Hash
 type Hash [HashLength]byte
+
+//Signature
+type Sig [SigLength]byte
 
 // BytesToHash sets b to hash.
 // If b is larger than len(h), b will be cropped from the left.
