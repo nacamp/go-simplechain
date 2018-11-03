@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto/sha3"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/najimmy/go-simplechain/common"
 )
 
@@ -25,6 +27,17 @@ func NewTransaction(from, to common.Address, amount *big.Int) *Transaction {
 		Time:   time.Now().Unix(),
 	}
 	return tx
+}
+
+func (tx *Transaction) MakeHash() {
+	hasher := sha3.New256()
+	rlp.Encode(hasher, []interface{}{
+		tx.From,
+		tx.To,
+		tx.Amount,
+		tx.Time,
+	})
+	hasher.Sum(tx.Hash[:0])
 }
 
 /*TODO
