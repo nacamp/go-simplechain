@@ -32,6 +32,18 @@ func NewTransaction(from, to common.Address, amount *big.Int) *Transaction {
 }
 
 func (tx *Transaction) MakeHash() {
+	// hasher := sha3.New256()
+	// rlp.Encode(hasher, []interface{}{
+	// 	tx.From,
+	// 	tx.To,
+	// 	tx.Amount,
+	// 	tx.Time,
+	// })
+	// hasher.Sum(tx.Hash[:0])
+	tx.Hash = tx.CalcHash()
+}
+
+func (tx *Transaction) CalcHash() (hash common.Hash) {
 	hasher := sha3.New256()
 	rlp.Encode(hasher, []interface{}{
 		tx.From,
@@ -39,7 +51,8 @@ func (tx *Transaction) MakeHash() {
 		tx.Amount,
 		tx.Time,
 	})
-	hasher.Sum(tx.Hash[:0])
+	hasher.Sum(hash[:0])
+	return hash
 }
 
 func (tx *Transaction) Sign(prv *ecdsa.PrivateKey) {
