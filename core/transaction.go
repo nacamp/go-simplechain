@@ -17,7 +17,7 @@ type Transaction struct {
 	To     common.Address
 	Amount *big.Int
 	// Nonce  uint64, next
-	Time int64
+	Time uint64     // int64 rlp encoding error
 	Sig  common.Sig // TODO: change name
 }
 
@@ -26,7 +26,7 @@ func NewTransaction(from, to common.Address, amount *big.Int) *Transaction {
 		From:   from,
 		To:     to,
 		Amount: amount,
-		Time:   time.Now().Unix(),
+		Time:   uint64(time.Now().Unix()),
 	}
 	return tx
 }
