@@ -21,7 +21,7 @@ type AccountState struct {
 	Storage storage.Storage
 }
 
-//FIXME: only storage, no state?
+//no state, but need merkle root
 type TransactionState struct {
 	Trie    *trie.Trie
 	Storage storage.Storage
@@ -63,6 +63,11 @@ func (accs *AccountState) GetAccount(address common.Address) (account *Account) 
 	return account
 }
 
+func (accs *AccountState) RootHash() (hash common.Hash) {
+	copy(hash[:], accs.Trie.RootHash())
+	return hash
+}
+
 func (txs *TransactionState) PutTransaction(tx *Transaction) (hash common.Hash) {
 	encodedBytes, _ := rlp.EncodeToBytes(tx)
 	txs.Trie.Put(tx.Hash[:], encodedBytes)
@@ -70,8 +75,13 @@ func (txs *TransactionState) PutTransaction(tx *Transaction) (hash common.Hash) 
 	return hash
 }
 
-func (txs *AccountState) GetTransaction(hash common.Hash) (tx *Transaction) {
+func (txs *TransactionState) GetTransaction(hash common.Hash) (tx *Transaction) {
 	decodedBytes, _ := txs.Trie.Get(hash[:])
 	rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&tx)
 	return tx
+}
+
+func (txs *TransactionState) RootHash() (hash common.Hash) {
+	copy(hash[:], txs.Trie.RootHash())
+	return hash
 }
