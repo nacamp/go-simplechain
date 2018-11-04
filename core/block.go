@@ -16,13 +16,13 @@ type Header struct {
 	Time        *big.Int
 	Hash        common.Hash
 	AccountHash common.Hash
+	TxHash      common.Hash
 }
 
 // Simple Block
 type Block struct {
 	Header *Header
-	//next
-	//transactions Transactions
+	//Transactions []*Transaction
 }
 
 func (b *Block) Hash() common.Hash {
