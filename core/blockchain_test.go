@@ -34,7 +34,7 @@ func TestStorage(t *testing.T) {
 
 	h := core.Header{}
 	h.ParentHash = b1.Hash()
-	block := core.Block{&h}
+	block := core.Block{Header: &h}
 	assert.Equal(t, true, bc.HasParentInBlockChain(&block), "")
 	h.ParentHash.SetBytes([]byte{0x01})
 	assert.Equal(t, false, bc.HasParentInBlockChain(&block), "")
@@ -46,7 +46,7 @@ func makeBlock(bc *core.BlockChain, height uint64, parentHash common.Hash) *core
 	h.ParentHash = parentHash
 	h.Time = new(big.Int).SetUint64(1541112770 + height)
 	h.Height = height
-	block := &core.Block{h}
+	block := &core.Block{Header: h}
 
 	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	account := core.Account{}

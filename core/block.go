@@ -21,8 +21,8 @@ type Header struct {
 
 // Simple Block
 type Block struct {
-	Header *Header
-	//Transactions []*Transaction
+	Header       *Header
+	Transactions []*Transaction
 }
 
 func (b *Block) Hash() common.Hash {
@@ -38,4 +38,7 @@ func (b *Block) MakeHash() {
 		b.Header.Time,
 	})
 	hasher.Sum(b.Header.Hash[:0])
+}
+
+func (b *Block) Verify() {
 }
