@@ -192,3 +192,55 @@ func TestTrie_Operation(t *testing.T) {
 		t.Errorf("3 Trie.Del() = %v, want %v", nil, tr.rootHash)
 	}
 }
+
+func TestValueNotChangedAtParentHashWithSamekey(t *testing.T) {
+	storage, _ := storage.NewMemoryStorage()
+	tr, _ := NewTrie(nil, storage, false)
+	if !reflect.DeepEqual([]byte(nil), tr.rootHash) {
+		t.Errorf("3 Trie.Del() = %v, want %v", nil, tr.rootHash)
+	}
+	val := []byte("0x0")
+	addr1 := common.FromHex("1f345678e9")
+	val1 := []byte("value1")
+	tr.Put(addr1, val1)
+
+	addr2 := common.FromHex("1f245678e9")
+	val2 := []byte("value2")
+	tr.Put(addr2, val2)
+
+	addr3 := common.FromHex("1f235678e9")
+	val3 := []byte("value3")
+	tr.Put(addr3, val3)
+
+	// val, _ = tr.Get(addr1)
+	// fmt.Printf("%s\n", val)
+	// val, _ = tr.Get(addr2)
+	// fmt.Printf("%s\n", val)
+	// val, _ = tr.Get(addr3)
+	// fmt.Printf("%s\n", val)
+	//fmt.Printf("%#v\n", val)
+
+	parentHash := tr.rootHash
+	tr2, _ := NewTrie(parentHash, storage, false)
+	tr2.Put(addr1, []byte("value11"))
+	tr2.Put(addr2, []byte("value21"))
+	tr2.Put(addr3, []byte("value31"))
+	assert.NotEqual(t, parentHash, tr2.rootHash)
+	// val, _ = tr2.Get(addr1)
+	// fmt.Printf("%s\n", val)
+	// val, _ = tr2.Get(addr2)
+	// fmt.Printf("%s\n", val)
+	// val, _ = tr2.Get(addr3)
+	// fmt.Printf("%s\n", val)
+
+	tr1, _ := NewTrie(parentHash, storage, false)
+	val, _ = tr.Get(addr1)
+	val1, _ = tr1.Get(addr1)
+	assert.Equal(t, val, val1, "")
+	val, _ = tr.Get(addr2)
+	val1, _ = tr1.Get(addr2)
+	assert.Equal(t, val, val1, "")
+	val, _ = tr.Get(addr3)
+	val1, _ = tr1.Get(addr3)
+	assert.Equal(t, val, val1, "")
+}
