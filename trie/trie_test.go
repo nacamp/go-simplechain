@@ -68,6 +68,7 @@ func TestTrie_Operation(t *testing.T) {
 	if !reflect.DeepEqual(leaf1H, tr.rootHash) {
 		t.Errorf("1 Trie.Update() = %v, want %v", leaf1H, tr.rootHash)
 	}
+	oldRootHashForProve := tr.rootHash
 	// add a new leaf node with 3-length common prefix
 	addr2 := common.FromHex("1f355678e9")
 	key2 := []byte{0x1, 0xf, 0x3, 0x5, 0x5, 0x6, 0x7, 0x8, 0xe, 0x9}
@@ -131,6 +132,14 @@ func TestTrie_Operation(t *testing.T) {
 	if err := tr.Verify(tr.rootHash, addr1, proof); err != nil {
 		t.Errorf("1 Trie.Verify() %v", err.Error())
 	}
+
+	// check old root for hash
+	oldTr, _ := NewTrie(oldRootHashForProve, storage, false)
+	oldProof, err := oldTr.Prove(addr1)
+	if err := oldTr.Verify(oldRootHashForProve, addr1, oldProof); err != nil {
+		t.Errorf("1 Trie.Verify() at old node %v", err.Error())
+	}
+
 	// get node "1f345678e9"
 	checkVal1, _ := tr.Get(addr1)
 	if !reflect.DeepEqual(checkVal1, val11) {
