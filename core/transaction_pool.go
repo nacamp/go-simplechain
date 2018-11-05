@@ -9,9 +9,11 @@ type TransactionPool struct {
 }
 
 func (pool *TransactionPool) Put(tx *Transaction) {
+	//TODO: validate hash and sign before to put
 	pool.all[tx.Hash] = tx
 }
 
+// use this when make block in consensus
 func (pool *TransactionPool) Get(hash common.Hash) (tx *Transaction) {
 	return pool.all[hash]
 }
