@@ -2,12 +2,19 @@ package core
 
 import (
 	"bytes"
+	"errors"
 	"math/big"
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/rlp"
 	"github.com/najimmy/go-simplechain/storage"
 	"github.com/najimmy/go-simplechain/trie"
+)
+
+var (
+	ErrBalanceInsufficient     = errors.New("cannot subtract a value which is bigger than current balance")
+	ErrAccountNotFound         = errors.New("cannot found account in storage")
+	ErrContractAccountNotFound = errors.New("cannot found contract account in storage please check contract address is valid or deploy is success")
 )
 
 type Account struct {
@@ -34,16 +41,29 @@ func (acc *Account) AddBalance(amount *big.Int) {
 	acc.Balance.Add(acc.Balance, amount)
 }
 
-func (acc *Account) SubBalance(amount *big.Int) {
+func (acc *Account) SubBalance(amount *big.Int) error {
+
 	if acc.Balance == nil {
-		acc.Balance = new(big.Int).SetUint64(0)
+		return ErrBalanceInsufficient
+	}
+	if acc.Balance.Cmp(amount) < 0 {
+		return ErrBalanceInsufficient
 	}
 	acc.Balance.Sub(acc.Balance, amount)
+	return nil
 }
 
-func NewAccountState() (*AccountState, error) {
-	storage, _ := storage.NewMemoryStorage()
+func NewAccountState(storage storage.Storage) (*AccountState, error) {
+	// storage, _ := storage.NewMemoryStorage()
 	tr, err := trie.NewTrie(nil, storage, false)
+	return &AccountState{
+		Trie:    tr,
+		Storage: storage,
+	}, err
+}
+
+func NewAccountStateRootHash(rootHash common.Hash, storage storage.Storage) (*AccountState, error) {
+	tr, err := trie.NewTrie(rootHash[:], storage, false)
 	return &AccountState{
 		Trie:    tr,
 		Storage: storage,
@@ -66,6 +86,24 @@ func (accs *AccountState) GetAccount(address common.Address) (account *Account) 
 func (accs *AccountState) RootHash() (hash common.Hash) {
 	copy(hash[:], accs.Trie.RootHash())
 	return hash
+}
+
+//-------------------- TransactionState
+func NewTransactionState(storage storage.Storage) (*TransactionState, error) {
+	//TODO: how to do return NewTransactionStateRootHash(nil, storage)
+	tr, err := trie.NewTrie(nil, storage, false)
+	return &TransactionState{
+		Trie:    tr,
+		Storage: storage,
+	}, err
+}
+
+func NewTransactionStateRootHash(rootHash common.Hash, storage storage.Storage) (*TransactionState, error) {
+	tr, err := trie.NewTrie(rootHash[:], storage, false)
+	return &TransactionState{
+		Trie:    tr,
+		Storage: storage,
+	}, err
 }
 
 func (txs *TransactionState) PutTransaction(tx *Transaction) (hash common.Hash) {

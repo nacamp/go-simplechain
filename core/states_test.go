@@ -6,6 +6,7 @@ import (
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
+	"github.com/najimmy/go-simplechain/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -20,7 +21,11 @@ func TestAccount(t *testing.T) {
 }
 
 func TestAccountState(t *testing.T) {
-	accountState, _ := core.NewAccountState()
+	storage, err := storage.NewMemoryStorage()
+	if err != nil {
+		return
+	}
+	accountState, _ := core.NewAccountState(storage)
 	var hexAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	account := core.Account{}
 	copy(account.Address[:], common.Hex2Bytes(hexAddress))
