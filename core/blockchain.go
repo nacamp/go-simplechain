@@ -53,10 +53,10 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 		priv/pub
 		e68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1 / 036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0
 	*/
-	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
+	var coinbaseAddress = "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	common.Hex2Bytes(coinbaseAddress)
 	header := &Header{
-		Coinbase: common.BytesToAddress(common.Hex2Bytes(coinbaseAddress)),
+		Coinbase: common.BytesToAddress(common.FromHex(coinbaseAddress)),
 		Height:   0,
 		Time:     new(big.Int).SetUint64(1541072021),
 	}
@@ -68,7 +68,7 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	accs, _ := NewAccountState(storage)
 	txs, _ := NewTransactionState(storage)
 	account := Account{}
-	copy(account.Address[:], common.Hex2Bytes(coinbaseAddress))
+	copy(account.Address[:], common.FromHex(coinbaseAddress))
 	account.AddBalance(new(big.Int).SetUint64(100))
 	accs.PutAccount(&account)
 	header.AccountHash = accs.RootHash()
@@ -123,25 +123,22 @@ func (bc *BlockChain) PutState(block *Block) {
 	if block.Header.Height == uint64(0) {
 		return
 	}
-	// dummy reward for block creation start
-	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
-	accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
-
-	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
-	var coinbaseAddress2 common.Address
-	copy(coinbaseAddress2[:], common.Hex2Bytes(coinbaseAddress))
-	account := accs.GetAccount(coinbaseAddress2)
-	if account == nil { // At first, genesisblock
-		account = &Account{Address: coinbaseAddress2}
-	}
-	account.AddBalance(new(big.Int).SetUint64(100))
-	accs.PutAccount(account)
-	// fmt.Printf("%v\n", accs.RootHash())
-	// dummy reward for block creation end
-
+	bc.RewardForCoinbase(block)
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return
 	}
+}
+
+func (bc *BlockChain) RewardForCoinbase(block *Block) {
+	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
+	accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+	account := accs.GetAccount(block.Header.Coinbase)
+	if account == nil { // At first, genesisblock
+		account = &Account{Address: block.Header.Coinbase}
+	}
+	//FIXME: 100 for reward
+	account.AddBalance(new(big.Int).SetUint64(100))
+	accs.PutAccount(account)
 }
 
 func (bc *BlockChain) ExecuteTransaction(block *Block) error {
