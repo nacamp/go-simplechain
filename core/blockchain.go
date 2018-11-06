@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"math/big"
 
@@ -185,6 +186,12 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	//FIXME: check if valid state
 	//
 	bc.PutState(block)
+
+	//verify after saving state.
+	if block.Hash() != block.CalcHash() {
+		fmt.Println("block.Hash() != block.CalcHash()")
+		return
+	}
 
 	// if !bc.VerifyAccountState(block) {
 	// 	fmt.Println("error.....")

@@ -43,6 +43,8 @@ func (b *Block) CalcHash() (hash common.Hash) {
 		b.Header.Coinbase,
 		b.Header.Height,
 		b.Header.Time,
+		b.Header.AccountHash,
+		b.Header.TransactionHash,
 	})
 	hasher.Sum(hash[:0])
 	return hash
