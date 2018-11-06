@@ -3,7 +3,7 @@ package core
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"errors"
 	"math/big"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -25,8 +25,10 @@ const (
 type BlockChain struct {
 	GenesisBlock *Block
 	futureBlocks *lru.Cache
-	storage      storage.Storage
-	AccountState *AccountState
+	Storage      storage.Storage
+	// AccountState     *AccountState
+	// TransactionState *TransactionState
+	TransactionPool *TransactionPool
 }
 
 func NewBlockChain() (*BlockChain, error) {
@@ -36,17 +38,16 @@ func NewBlockChain() (*BlockChain, error) {
 	}
 	futureBlocks, _ := lru.New(maxFutureBlocks)
 	bc, err := BlockChain{
-		storage:      storage,
+		Storage:      storage,
 		futureBlocks: futureBlocks,
 	}, nil
 
-	bc.AccountState, err = NewAccountState()
-	bc.GenesisBlock, err = GetGenesisBlock()
-
+	bc.GenesisBlock, err = GetGenesisBlock(storage)
 	return &bc, err
 }
 
-func GetGenesisBlock() (*Block, error) {
+//make genesisblock and save state
+func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	//TODO: load genesis block from config or db
 	/*
 		priv/pub
@@ -64,12 +65,18 @@ func GetGenesisBlock() (*Block, error) {
 	}
 	//FIXME: change location to save genesis state
 	//-------
+	accs, _ := NewAccountState(storage)
+	txs, _ := NewTransactionState(storage)
 	account := Account{}
 	copy(account.Address[:], common.Hex2Bytes(coinbaseAddress))
 	account.AddBalance(new(big.Int).SetUint64(100))
-	accountState, _ := NewAccountState()
-	accountState.PutAccount(&account)
-	copy(header.AccountHash[:], accountState.Trie.RootHash())
+	accs.PutAccount(&account)
+	header.AccountHash = accs.RootHash()
+	block.AccountState = accs
+
+	txs.PutTransaction(&Transaction{})
+	header.TransactionHash = txs.RootHash()
+	block.TransactionState = txs
 	//-------
 
 	block.MakeHash()
@@ -77,7 +84,7 @@ func GetGenesisBlock() (*Block, error) {
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
-	encodedBytes, err := bc.storage.Get(hash[:])
+	encodedBytes, err := bc.Storage.Get(hash[:])
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +94,7 @@ func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
 }
 
 func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
-	encodedBytes, err := bc.storage.Get(encodeBlockHeight(height))
+	encodedBytes, err := bc.Storage.Get(encodeBlockHeight(height))
 	if err != nil {
 		return nil, err
 	}
@@ -97,42 +104,94 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 	return &block, nil
 }
 
-func (bc *BlockChain) DummyReward() {
+func (bc *BlockChain) VerifyState(block *Block) bool {
+	// //FIXME: where verfyState => Block
+	// //check reward
+	// var rootHash common.Hash
+	// copy(rootHash[:], bc.AccountState.Trie.RootHash())
+	// if block.Header.AccountHash != rootHash {
+	// 	return false
+	// } else {
+	// 	return true
+	// }
+	return true
+
+}
+
+func (bc *BlockChain) PutState(block *Block) {
+	//TODO: valid format check :  hash and sign before to put
+	if block.Header.Height == uint64(0) {
+		return
+	}
+	// dummy reward for block creation start
+	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
+	accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+
 	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	var coinbaseAddress2 common.Address
 	copy(coinbaseAddress2[:], common.Hex2Bytes(coinbaseAddress))
-	account := bc.AccountState.GetAccount(coinbaseAddress2)
+	account := accs.GetAccount(coinbaseAddress2)
 	if account == nil { // At first, genesisblock
 		account = &Account{Address: coinbaseAddress2}
 	}
 	account.AddBalance(new(big.Int).SetUint64(100))
-	bc.AccountState.PutAccount(account)
+	accs.PutAccount(account)
+	// fmt.Printf("%v\n", accs.RootHash())
+	// dummy reward for block creation end
+
+	if err := bc.ExecuteTransaction(block); err != nil {
+		return
+	}
 }
 
-func (bc *BlockChain) VerifyState(block *Block) bool {
-	//FIXME: where verfyState => Block
-	//check reward
-	var rootHash common.Hash
-	copy(rootHash[:], bc.AccountState.Trie.RootHash())
-	if block.Header.AccountHash != rootHash {
-		return false
-	} else {
-		return true
+func (bc *BlockChain) ExecuteTransaction(block *Block) error {
+	//TODO: valid format check :  hash and sign before to put
+	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
+	accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+	txs, _ := NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
+
+	for _, tx := range block.Transactions {
+		fromAccount := accs.GetAccount(tx.From)
+		toAccount := accs.GetAccount(tx.To)
+
+		if err := fromAccount.SubBalance(tx.Amount); err != nil {
+			return err
+		}
+		toAccount.AddBalance(tx.Amount)
+
+		accs.PutAccount(fromAccount)
+		accs.PutAccount(toAccount)
+		txs.PutTransaction(tx)
+	}
+	// fmt.Printf("%v\n", accs.RootHash())
+	if accs.RootHash() != block.Header.AccountHash {
+		return errors.New("accs.RootHash() != block.Header.AccountHash")
+	}
+	if txs.RootHash() != block.Header.TransactionHash {
+		return errors.New("txs.RootHash() != block.Header.TransactionHash")
 	}
 
+	return nil
 }
 
 func (bc *BlockChain) PutBlock(block *Block) {
 	//FIXME: check if valid state
-	bc.DummyReward()
-	if bc.VerifyState(block) == false {
-		fmt.Println("error.....")
-		return
-	}
+	//
+	bc.PutState(block)
+
+	// if !bc.VerifyAccountState(block) {
+	// 	fmt.Println("error.....")
+	// 	//return false
+	// }
+	// if !bc.VerifyTransactionState(block) {
+	// 	fmt.Println("error.....")
+	// 	//return false
+	// }
+
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
-	bc.storage.Put(block.Header.Hash[:], encodedBytes)
-	bc.storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
+	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
+	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
 }
 
 func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
@@ -167,4 +226,7 @@ func encodeBlockHeight(number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
+}
+
+func (bc *BlockChain) DummyTransaction() {
 }

@@ -6,12 +6,14 @@ import (
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
+	"github.com/najimmy/go-simplechain/storage"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGenesisBlock(t *testing.T) {
 	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
-	block, err := core.GetGenesisBlock()
+	storage, _ := storage.NewMemoryStorage()
+	block, err := core.GetGenesisBlock(storage)
 	if err != nil {
 	}
 	assert.Equal(t, coinbaseAddress, common.Bytes2Hex(block.Header.Coinbase[:]), "")
@@ -41,20 +43,27 @@ func TestStorage(t *testing.T) {
 
 }
 
-func makeBlock(bc *core.BlockChain, height uint64, parentHash common.Hash) *core.Block {
+func makeBlock(parentBlock *core.Block) *core.Block {
+	// func makeBlock(bc *core.BlockChain, height uint64, parentHash common.Hash) *core.Block {
 	h := &core.Header{}
-	h.ParentHash = parentHash
-	h.Time = new(big.Int).SetUint64(1541112770 + height)
-	h.Height = height
+	h.ParentHash = parentBlock.Hash()
+	h.Height = parentBlock.Header.Height + 1
+	h.Time = new(big.Int).SetUint64(1541112770 + h.Height)
 	block := &core.Block{Header: h}
 
 	var coinbaseAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	account := core.Account{}
 	copy(account.Address[:], common.Hex2Bytes(coinbaseAddress))
-	account.AddBalance(new(big.Int).SetUint64(100 + 100*height))
-	bc.AccountState.PutAccount(&account)
+	account.AddBalance(new(big.Int).SetUint64(100 + 100*h.Height))
+	block.AccountState, _ = parentBlock.AccountState.Clone()
+	block.AccountState.PutAccount(&account)
+	block.TransactionState, _ = parentBlock.TransactionState.Clone()
+	block.TransactionState.PutTransaction(&core.Transaction{})
 
-	copy(h.AccountHash[:], bc.AccountState.Trie.RootHash())
+	h.AccountHash = block.AccountState.RootHash()
+	h.TransactionHash = block.TransactionState.RootHash()
+	// fmt.Printf("%v\n", h.AccountHash)
+	// copy(h.TransactionHash[:], bc.TransactionState.Trie.RootHash())
 
 	block.MakeHash()
 	return block
@@ -62,13 +71,15 @@ func makeBlock(bc *core.BlockChain, height uint64, parentHash common.Hash) *core
 
 func TestPutBlockIfParentExist(t *testing.T) {
 	remoteBc, _ := core.NewBlockChain()
-	block1 := makeBlock(remoteBc, 1, remoteBc.GenesisBlock.Hash())
-	block2 := makeBlock(remoteBc, 2, block1.Hash())
-	block3 := makeBlock(remoteBc, 3, block2.Hash())
-	block4 := makeBlock(remoteBc, 4, block3.Hash())
+	block1 := makeBlock(remoteBc.GenesisBlock)
+	// fmt.Printf("%v\n", remoteBc.GenesisBlock.Hash())
+	block2 := makeBlock(block1)
+	block3 := makeBlock(block2)
+	block4 := makeBlock(block3)
 
 	bc, _ := core.NewBlockChain()
 	bc.PutBlock(bc.GenesisBlock)
+	// fmt.Printf("%v\n", bc.GenesisBlock.Hash())
 
 	bc.PutBlockIfParentExist(block1)
 	b, _ := bc.GetBlockByHash(block1.Hash())
