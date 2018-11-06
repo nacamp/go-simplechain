@@ -183,6 +183,12 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 }
 
 func (bc *BlockChain) PutBlock(block *Block) {
+
+	err := block.VerifyTransacion()
+	if err != nil {
+		fmt.Println("VerifyTransacion")
+		return
+	}
 	//FIXME: check if valid state
 	//
 	bc.PutState(block)
