@@ -10,19 +10,22 @@ import (
 
 // Simple Header
 type Header struct {
-	ParentHash  common.Hash
-	Coinbase    common.Address
-	Height      uint64
-	Time        *big.Int
-	Hash        common.Hash
-	AccountHash common.Hash
-	TxHash      common.Hash
+	ParentHash      common.Hash
+	Coinbase        common.Address
+	Height          uint64
+	Time            *big.Int
+	Hash            common.Hash
+	AccountHash     common.Hash
+	TransactionHash common.Hash
 }
 
 // Simple Block
 type Block struct {
 	Header       *Header
 	Transactions []*Transaction
+
+	AccountState     *AccountState
+	TransactionState *TransactionState
 }
 
 func (b *Block) Hash() common.Hash {
@@ -41,4 +44,5 @@ func (b *Block) MakeHash() {
 }
 
 func (b *Block) Verify() {
+
 }
