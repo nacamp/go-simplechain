@@ -24,14 +24,14 @@ type Account struct {
 }
 
 type AccountState struct {
-	Trie    *trie.Trie
-	Storage storage.Storage
+	Trie *trie.Trie
+	// Storage storage.Storage //FIMXE: current not use
 }
 
 //no state, but need merkle root
 type TransactionState struct {
-	Trie    *trie.Trie
-	Storage storage.Storage
+	Trie *trie.Trie
+	// Storage storage.Storage //FIMXE: current not use
 }
 
 func (acc *Account) AddBalance(amount *big.Int) {
@@ -57,16 +57,24 @@ func NewAccountState(storage storage.Storage) (*AccountState, error) {
 	// storage, _ := storage.NewMemoryStorage()
 	tr, err := trie.NewTrie(nil, storage, false)
 	return &AccountState{
-		Trie:    tr,
-		Storage: storage,
+		Trie: tr,
+		// Storage: storage,
 	}, err
 }
 
 func NewAccountStateRootHash(rootHash common.Hash, storage storage.Storage) (*AccountState, error) {
 	tr, err := trie.NewTrie(rootHash[:], storage, false)
 	return &AccountState{
-		Trie:    tr,
-		Storage: storage,
+		Trie: tr,
+		// Storage: storage,
+	}, err
+}
+
+func (accs *AccountState) Clone() (*AccountState, error) {
+	// storage, _ := storage.NewMemoryStorage()
+	tr, err := accs.Trie.Clone()
+	return &AccountState{
+		Trie: tr,
 	}, err
 }
 
@@ -90,19 +98,28 @@ func (accs *AccountState) RootHash() (hash common.Hash) {
 
 //-------------------- TransactionState
 func NewTransactionState(storage storage.Storage) (*TransactionState, error) {
-	//TODO: how to do return NewTransactionStateRootHash(nil, storage)
+	//TODO: how to do
+	//return NewTransactionStateRootHash(nil, storage)
 	tr, err := trie.NewTrie(nil, storage, false)
 	return &TransactionState{
-		Trie:    tr,
-		Storage: storage,
+		Trie: tr,
+		// Storage: storage,
 	}, err
 }
 
 func NewTransactionStateRootHash(rootHash common.Hash, storage storage.Storage) (*TransactionState, error) {
 	tr, err := trie.NewTrie(rootHash[:], storage, false)
 	return &TransactionState{
-		Trie:    tr,
-		Storage: storage,
+		Trie: tr,
+		// Storage: storage,
+	}, err
+}
+
+func (txs *TransactionState) Clone() (*TransactionState, error) {
+	// storage, _ := storage.NewMemoryStorage()
+	tr, err := txs.Trie.Clone()
+	return &TransactionState{
+		Trie: tr,
 	}, err
 }
 
