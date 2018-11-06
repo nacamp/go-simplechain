@@ -70,10 +70,13 @@ func makeBlock(parentBlock *core.Block, from, to string, amount *big.Int) *core.
 	block.AccountState.PutAccount(coinbaseAccount)
 	block.TransactionState, _ = parentBlock.TransactionState.Clone()
 	// block.TransactionState.PutTransaction(&core.Transaction{})
-	tx := makeTransaction(from, to, amount)
+	tx := makeTransaction(from, to, new(big.Int).Div(amount, new(big.Int).SetUint64(2)))
+	//tx := makeTransaction(from, to, amount)
+	//new(big.Int).Div(amount, new(big.Int).SetUint64(2))
 	block.TransactionState.PutTransaction(tx)
-	block.Transactions = make([]*core.Transaction, 1)
+	block.Transactions = make([]*core.Transaction, 2)
 	block.Transactions[0] = tx
+	block.Transactions[1] = tx
 
 	accs := block.AccountState
 	txs := block.TransactionState
