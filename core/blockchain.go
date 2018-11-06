@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/big"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -131,6 +132,7 @@ func (bc *BlockChain) PutState(block *Block) {
 
 func (bc *BlockChain) RewardForCoinbase(block *Block) {
 	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
+	//FIXME: return nil when using Clone
 	accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	account := accs.GetAccount(block.Header.Coinbase)
 	if account == nil { // At first, genesisblock
@@ -139,18 +141,26 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 	//FIXME: 100 for reward
 	account.AddBalance(new(big.Int).SetUint64(100))
 	accs.PutAccount(account)
+	fmt.Printf("%v\n", account.Balance)
+	fmt.Printf("%v\n", block.Header.Coinbase)
+
+	//set state,  nil before setting state
+	block.AccountState = accs
 }
 
 func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 	//TODO: valid format check :  hash and sign before to put
-	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
-	accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
-	txs, _ := NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
+	// parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
+	// accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+	// txs, _ := NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
+	accs := block.AccountState
+	txs := block.TransactionState
 
 	for _, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
 		toAccount := accs.GetAccount(tx.To)
-
+		fmt.Printf("%v\n", tx.From)
+		fmt.Printf("%v\n", fromAccount.Balance)
 		if err := fromAccount.SubBalance(tx.Amount); err != nil {
 			return err
 		}
