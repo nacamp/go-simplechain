@@ -43,3 +43,4 @@ func BytesToAddress(b []byte) Address {
 	copy(a[0:], b)
 	return a
 }
+func HexToAddress(s string) Address { return BytesToAddress(FromHex(s)) }
