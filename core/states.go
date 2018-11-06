@@ -86,9 +86,18 @@ func (accs *AccountState) PutAccount(account *Account) (hash common.Hash) {
 }
 
 func (accs *AccountState) GetAccount(address common.Address) (account *Account) {
-	decodedBytes, _ := accs.Trie.Get(address[:])
-	rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&account)
-	return account
+	decodedBytes, err := accs.Trie.Get(address[:])
+	//FIXME: TOBE
+	// if err != nil && err != storage.ErrKeyNotFound {
+	// 	return nil, err
+	// }
+	if err == nil {
+		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&account)
+		return account
+	} else {
+		return &Account{Address: address, Balance: new(big.Int).SetUint64(0)}
+	}
+
 }
 
 func (accs *AccountState) RootHash() (hash common.Hash) {
