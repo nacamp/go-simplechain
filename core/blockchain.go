@@ -25,11 +25,9 @@ const (
 )
 
 type BlockChain struct {
-	GenesisBlock *Block
-	futureBlocks *lru.Cache
-	Storage      storage.Storage
-	// AccountState     *AccountState
-	// TransactionState *TransactionState
+	GenesisBlock    *Block
+	futureBlocks    *lru.Cache
+	Storage         storage.Storage
 	TransactionPool *TransactionPool
 }
 
@@ -51,10 +49,6 @@ func NewBlockChain() (*BlockChain, error) {
 //make genesisblock and save state
 func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	//TODO: load genesis block from config or db
-	/*
-		priv/pub
-		e68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1 / 036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0
-	*/
 	var coinbaseAddress = "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	common.Hex2Bytes(coinbaseAddress)
 	header := &Header{
@@ -106,22 +100,7 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 	return &block, nil
 }
 
-func (bc *BlockChain) VerifyState(block *Block) bool {
-	// //FIXME: where verfyState => Block
-	// //check reward
-	// var rootHash common.Hash
-	// copy(rootHash[:], bc.AccountState.Trie.RootHash())
-	// if block.Header.AccountHash != rootHash {
-	// 	return false
-	// } else {
-	// 	return true
-	// }
-	return true
-
-}
-
 func (bc *BlockChain) PutState(block *Block) {
-	//TODO: valid format check :  hash and sign before to put
 	if block.Header.Height == uint64(0) {
 		return
 	}
@@ -150,10 +129,6 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 }
 
 func (bc *BlockChain) ExecuteTransaction(block *Block) error {
-	//TODO: valid format check :  hash and sign before to put
-	// parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
-	// accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
-	// txs, _ := NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
 	accs := block.AccountState
 	txs := block.TransactionState
 
@@ -183,30 +158,21 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 }
 
 func (bc *BlockChain) PutBlock(block *Block) {
-
+	//1. verify transaction
 	err := block.VerifyTransacion()
 	if err != nil {
 		fmt.Println("VerifyTransacion")
 		return
 	}
-	//FIXME: check if valid state
-	//
+
+	//2. save status and verify hash
 	bc.PutState(block)
 
-	//verify after saving state.
+	//3. verify block.hash
 	if block.Hash() != block.CalcHash() {
 		fmt.Println("block.Hash() != block.CalcHash()")
 		return
 	}
-
-	// if !bc.VerifyAccountState(block) {
-	// 	fmt.Println("error.....")
-	// 	//return false
-	// }
-	// if !bc.VerifyTransactionState(block) {
-	// 	fmt.Println("error.....")
-	// 	//return false
-	// }
 
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
@@ -246,7 +212,4 @@ func encodeBlockHeight(number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
-}
-
-func (bc *BlockChain) DummyTransaction() {
 }

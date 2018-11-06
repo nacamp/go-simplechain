@@ -8,6 +8,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
+	"github.com/najimmy/go-simplechain/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,14 +19,14 @@ var keystore = map[string]string{
 	"0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1": "0xb385aca81e134722cca902bf85443528c3d3a783cf54008cfc34a2ca563fc5b6",
 }
 
-// func TestGenesisBlock(t *testing.T) {
-// 	var coinbaseAddress = GenesisCoinbaseAddress
-// 	storage, _ := storage.NewMemoryStorage()
-// 	block, err := core.GetGenesisBlock(storage)
-// 	if err != nil {
-// 	}
-// 	assert.Equal(t, coinbaseAddress, common.Bytes2Hex(block.Header.Coinbase[2:]), "")
-// }
+func TestGenesisBlock(t *testing.T) {
+	var coinbaseAddress = GenesisCoinbaseAddress
+	storage, _ := storage.NewMemoryStorage()
+	block, err := core.GetGenesisBlock(storage)
+	if err != nil {
+	}
+	assert.Equal(t, common.HexToAddress(coinbaseAddress), block.Header.Coinbase, "")
+}
 
 func TestStorage(t *testing.T) {
 	bc, _ := core.NewBlockChain()
