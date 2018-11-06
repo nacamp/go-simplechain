@@ -1,6 +1,8 @@
 package core
 
 import (
+	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
@@ -48,4 +50,19 @@ func (b *Block) CalcHash() (hash common.Hash) {
 	})
 	hasher.Sum(hash[:0])
 	return hash
+}
+
+func (b *Block) VerifyTransacion() error {
+	for _, tx := range b.Transactions {
+		if tx.Hash != tx.CalcHash() {
+			fmt.Println("tx.Hash != tx.CalcHash()")
+			return errors.New("tx.Hash != tx.CalcHash()")
+		}
+		status, err := tx.VerifySign()
+		if status != true || err != nil {
+			fmt.Println("tx.VerifySign")
+			return errors.New("tx.VerifySign")
+		}
+	}
+	return nil
 }
