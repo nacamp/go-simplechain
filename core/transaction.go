@@ -32,14 +32,6 @@ func NewTransaction(from, to common.Address, amount *big.Int) *Transaction {
 }
 
 func (tx *Transaction) MakeHash() {
-	// hasher := sha3.New256()
-	// rlp.Encode(hasher, []interface{}{
-	// 	tx.From,
-	// 	tx.To,
-	// 	tx.Amount,
-	// 	tx.Time,
-	// })
-	// hasher.Sum(tx.Hash[:0])
 	tx.Hash = tx.CalcHash()
 }
 
