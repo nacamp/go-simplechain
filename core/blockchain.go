@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
+
 	"math/big"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -141,8 +141,8 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 	//FIXME: 100 for reward
 	account.AddBalance(new(big.Int).SetUint64(100))
 	accs.PutAccount(account)
-	fmt.Printf("%v\n", account.Balance)
-	fmt.Printf("%v\n", block.Header.Coinbase)
+	// fmt.Printf("%v\n", account.Balance)
+	// fmt.Printf("%v\n", block.Header.Coinbase)
 
 	//set state,  nil before setting state
 	block.AccountState = accs
@@ -159,8 +159,8 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 	for _, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
 		toAccount := accs.GetAccount(tx.To)
-		fmt.Printf("%v\n", tx.From)
-		fmt.Printf("%v\n", fromAccount.Balance)
+		// fmt.Printf("%v\n", tx.From)
+		// fmt.Printf("%v\n", fromAccount.Balance)
 		if err := fromAccount.SubBalance(tx.Amount); err != nil {
 			return err
 		}

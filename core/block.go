@@ -33,6 +33,10 @@ func (b *Block) Hash() common.Hash {
 }
 
 func (b *Block) MakeHash() {
+	b.Header.Hash = b.CalcHash()
+}
+
+func (b *Block) CalcHash() (hash common.Hash) {
 	hasher := sha3.New256()
 	rlp.Encode(hasher, []interface{}{
 		b.Header.ParentHash,
@@ -40,9 +44,6 @@ func (b *Block) MakeHash() {
 		b.Header.Height,
 		b.Header.Time,
 	})
-	hasher.Sum(b.Header.Hash[:0])
-}
-
-func (b *Block) Verify() {
-
+	hasher.Sum(hash[:0])
+	return hash
 }
