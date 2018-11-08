@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/consensus"
 	"github.com/najimmy/go-simplechain/rlp"
 )
 
@@ -18,6 +19,7 @@ type Header struct {
 	Hash            common.Hash
 	AccountHash     common.Hash
 	TransactionHash common.Hash
+	MinerHash       common.Hash
 }
 
 // Simple Block
@@ -27,6 +29,7 @@ type Block struct {
 
 	AccountState     *AccountState
 	TransactionState *TransactionState
+	MinerState       *consensus.MinerState
 }
 
 func (b *Block) Hash() common.Hash {
@@ -46,6 +49,7 @@ func (b *Block) CalcHash() (hash common.Hash) {
 		b.Header.Time,
 		b.Header.AccountHash,
 		b.Header.TransactionHash,
+		b.Header.MinerHash,
 	})
 	hasher.Sum(hash[:0])
 	return hash
