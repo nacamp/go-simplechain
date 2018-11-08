@@ -54,7 +54,7 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	header := &Header{
 		Coinbase: common.BytesToAddress(common.FromHex(coinbaseAddress)),
 		Height:   0,
-		Time:     new(big.Int).SetUint64(1541072021),
+		Time:     1541072021, //new(big.Int).SetUint64(1541072021),
 	}
 	block := &Block{
 		Header: header,

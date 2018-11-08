@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/najimmy/go-simplechain/common"
@@ -15,7 +14,7 @@ type Header struct {
 	ParentHash      common.Hash
 	Coinbase        common.Address
 	Height          uint64
-	Time            *big.Int
+	Time            uint64
 	Hash            common.Hash
 	AccountHash     common.Hash
 	TransactionHash common.Hash

@@ -58,7 +58,7 @@ func makeBlock(parentBlock *core.Block, from, to string, amount *big.Int) *core.
 	h := &core.Header{}
 	h.ParentHash = parentBlock.Hash()
 	h.Height = parentBlock.Header.Height + 1
-	h.Time = new(big.Int).SetUint64(1541112770 + h.Height)
+	h.Time = 1541112770 + h.Height //new(big.Int).SetUint64(1541112770 + h.Height)
 	h.Coinbase = common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress))
 	block := &core.Block{Header: h}
 
