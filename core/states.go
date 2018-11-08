@@ -78,6 +78,7 @@ func (accs *AccountState) Clone() (*AccountState, error) {
 	}, err
 }
 
+//TODO: error
 func (accs *AccountState) PutAccount(account *Account) (hash common.Hash) {
 	encodedBytes, _ := rlp.EncodeToBytes(account)
 	accs.Trie.Put(account.Address[:], encodedBytes)
@@ -85,6 +86,7 @@ func (accs *AccountState) PutAccount(account *Account) (hash common.Hash) {
 	return hash
 }
 
+//TODO: error
 func (accs *AccountState) GetAccount(address common.Address) (account *Account) {
 	decodedBytes, err := accs.Trie.Get(address[:])
 	//FIXME: TOBE
