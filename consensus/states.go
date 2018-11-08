@@ -11,7 +11,7 @@ import (
 )
 
 type Miner struct {
-	Timestamp  uint64
+	// Timestamp  uint64
 	Address    common.Address
 	nonce      uint64
 	MinerGroup []common.Address
