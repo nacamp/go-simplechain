@@ -226,6 +226,23 @@ func TestValueNotChangedAtParentHashWithSamekey(t *testing.T) {
 	tr2.Put(addr2, []byte("value21"))
 	tr2.Put(addr3, []byte("value31"))
 	assert.NotEqual(t, parentHash, tr2.rootHash)
+
+	// // Iterator
+	// iter, err := tr2.Iterator(nil)
+	// if err != nil {
+	// 	fmt.Println("Iterator Error ", err)
+	// 	return
+	// }
+	// exist, err := iter.Next()
+	// if err != nil {
+	// 	fmt.Println("Next Error1 ", err)
+	// 	return
+	// }
+	// for exist {
+	// 	fmt.Printf("%#v-%s\n", iter.Key(), iter.Value())
+	// 	exist, err = iter.Next()
+	// }
+
 	// val, _ = tr2.Get(addr1)
 	// fmt.Printf("%s\n", val)
 	// val, _ = tr2.Get(addr2)
@@ -243,4 +260,20 @@ func TestValueNotChangedAtParentHashWithSamekey(t *testing.T) {
 	val, _ = tr.Get(addr3)
 	val1, _ = tr1.Get(addr3)
 	assert.Equal(t, val, val1, "")
+
+	// // Iterator
+	// iter, err = tr1.Iterator(nil)
+	// if err != nil {
+	// 	fmt.Println("Iterator Error ", err)
+	// 	return
+	// }
+	// exist, err = iter.Next()
+	// if err != nil {
+	// 	fmt.Println("Next Error1 ", err)
+	// 	return
+	// }
+	// for exist {
+	// 	fmt.Printf("%#v-%s\n", iter.Key(), iter.Value())
+	// 	exist, err = iter.Next()
+	// }
 }
