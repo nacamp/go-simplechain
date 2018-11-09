@@ -29,6 +29,7 @@ type BlockChain struct {
 	futureBlocks    *lru.Cache
 	Storage         storage.Storage
 	TransactionPool *TransactionPool
+	Consensus       Consensus
 }
 
 func NewBlockChain() (*BlockChain, error) {
@@ -104,10 +105,62 @@ func (bc *BlockChain) PutState(block *Block) {
 	if block.Header.Height == uint64(0) {
 		return
 	}
+
 	bc.RewardForCoinbase(block)
+
+	//miner check
+	//bc.PutMinerState(block)
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return
 	}
+}
+
+func (bc *BlockChain) GetMinerGroup(block *Block) ([]common.Address, error) {
+	if block.Header.Height == 0 {
+
+	} else {
+		// block.Header.Height % 3
+	}
+	return nil, nil
+}
+func (bc *BlockChain) PutMinerState(block *Block) error {
+
+	//1. save status and check hash
+	var ms MinerState
+	if block.Header.Height == 0 {
+		//new
+		ms, _ = bc.Consensus.NewMinerState((common.Hash{}), bc.Storage)
+	} else {
+		parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
+		ms, _ = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
+	}
+
+	minerGroup, err := bc.GetMinerGroup(block)
+	if err != nil {
+		return errors.New("minerGroup == nil")
+	}
+	//ugly
+	ms.Put(struct {
+		Height     uint64
+		MinerGroup []common.Address
+	}{
+		Height:     block.Header.Height,
+		MinerGroup: minerGroup,
+	})
+	if ms.RootHash() != block.Header.MinerHash {
+		return errors.New("minerState.RootHash() != block.Header.MinerHash")
+	}
+
+	//2. check the order to mine
+	index := block.Header.Height % 3
+	if minerGroup[index] != block.Header.Coinbase {
+		return errors.New("minerGroup[index] != block.Header.Coinbase")
+	}
+
+	//3. set state,  nil before setting state
+	block.MinderState = ms
+	return nil
+
 }
 
 func (bc *BlockChain) RewardForCoinbase(block *Block) {
@@ -168,7 +221,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	//2. save status and verify hash
 	bc.PutState(block)
 
-	//3. verify block.hash
+	//4. verify block.hash
 	if block.Hash() != block.CalcHash() {
 		fmt.Println("block.Hash() != block.CalcHash()")
 		return
