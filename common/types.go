@@ -44,3 +44,12 @@ func BytesToAddress(b []byte) Address {
 	return a
 }
 func HexToAddress(s string) Address { return BytesToAddress(FromHex(s)) }
+
+func HashToBytes(hash Hash) []byte {
+	if hash == (Hash{}) {
+		return nil
+	} else {
+		return hash[:]
+	}
+
+}
