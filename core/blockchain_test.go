@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/najimmy/go-simplechain/consensus"
+
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
 	"github.com/najimmy/go-simplechain/storage"
@@ -29,7 +31,8 @@ func TestGenesisBlock(t *testing.T) {
 }
 
 func TestStorage(t *testing.T) {
-	bc, _ := core.NewBlockChain()
+	dpos := consensus.NewDpos()
+	bc, _ := core.NewBlockChain(dpos)
 	bc.PutBlock(bc.GenesisBlock)
 
 	b1, _ := bc.GetBlockByHeight(0)
@@ -109,14 +112,15 @@ func makeTransaction(from, to string, amount *big.Int) *core.Transaction {
 }
 
 func TestPutBlockIfParentExist(t *testing.T) {
-	remoteBc, _ := core.NewBlockChain()
+	dpos := consensus.NewDpos()
+	remoteBc, _ := core.NewBlockChain(dpos)
 	block1 := makeBlock(remoteBc.GenesisBlock, GenesisCoinbaseAddress, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", new(big.Int).SetUint64(100))
 	// fmt.Printf("%v\n", remoteBc.GenesisBlock.Hash())
 	block2 := makeBlock(block1, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
 	block3 := makeBlock(block2, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
 	block4 := makeBlock(block3, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
 
-	bc, _ := core.NewBlockChain()
+	bc, _ := core.NewBlockChain(dpos)
 	bc.PutBlock(bc.GenesisBlock)
 	// fmt.Printf("%v\n", bc.GenesisBlock.Hash())
 
@@ -141,4 +145,5 @@ func TestPutBlockIfParentExist(t *testing.T) {
 
 	b, _ = bc.GetBlockByHash(block4.Hash())
 	assert.NotNil(t, b, "")
+
 }

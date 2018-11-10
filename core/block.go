@@ -29,7 +29,7 @@ type Block struct {
 
 	AccountState     *AccountState
 	TransactionState *TransactionState
-	MinderState      State
+	MinderState      MinerState
 	VoterState       *AccountState
 }
 

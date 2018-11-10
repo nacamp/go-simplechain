@@ -39,7 +39,7 @@ type BlockChain struct {
 	Consensus       Consensus
 }
 
-func NewBlockChain() (*BlockChain, error) {
+func NewBlockChain(consensus Consensus) (*BlockChain, error) {
 	storage, err := storage.NewMemoryStorage()
 	if err != nil {
 		return nil, err
@@ -51,6 +51,7 @@ func NewBlockChain() (*BlockChain, error) {
 	}, nil
 
 	bc.GenesisBlock, err = GetGenesisBlock(storage)
+	bc.Consensus = consensus
 	return &bc, err
 }
 
@@ -104,6 +105,9 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	block.VoterState = vs
 	header.VoterHash = vs.RootHash()
 
+	//VoterState
+	// MinderState
+
 	//-------
 
 	block.MakeHash()
@@ -139,12 +143,12 @@ func (bc *BlockChain) PutState(block *Block) {
 	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
 	block.AccountState, _ = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	block.TransactionState, _ = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
-	// accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+	block.VoterState, _ = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
 
 	bc.RewardForCoinbase(block)
 
 	//miner check
-	//bc.PutMinerState(block)
+	bc.PutMinerState(block)
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return
 	}
@@ -174,19 +178,15 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 		parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
 		ms, _ = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
 	}
-
+	fmt.Println(ms)
 	minerGroup, err := bc.GetMinerGroup(block)
 	if err != nil {
 		return errors.New("minerGroup == nil")
 	}
+	fmt.Println(minerGroup)
+	fmt.Println(err)
 	//ugly
-	ms.Put(struct {
-		Height     uint64
-		MinerGroup []common.Address
-	}{
-		Height:     block.Header.Height,
-		MinerGroup: minerGroup,
-	})
+	ms.Put(minerGroup, common.Hash{}) //TODO voterhash
 	if ms.RootHash() != block.Header.MinerHash {
 		return errors.New("minerState.RootHash() != block.Header.MinerHash")
 	}
@@ -197,8 +197,8 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 		return errors.New("minerGroup[index] != block.Header.Coinbase")
 	}
 
-	//3. set state,  nil before setting state
-	block.MinderState = ms
+	// //3. set state,  nil before setting state
+	// block.MinderState = ms
 	return nil
 
 }
@@ -237,6 +237,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 		accs.PutAccount(fromAccount)
 		accs.PutAccount(toAccount)
 		txs.PutTransaction(tx)
+		//implement vote transaction later
 	}
 	// fmt.Printf("%v\n", accs.RootHash())
 	if accs.RootHash() != block.Header.AccountHash {
