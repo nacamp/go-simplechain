@@ -8,6 +8,7 @@ import (
 type MinerState interface {
 	RootHash() (hash common.Hash)
 	Put([]common.Address, common.Hash) (hash common.Hash)
+	GetMinerGroup(*Block) []common.Address
 }
 
 type Consensus interface {

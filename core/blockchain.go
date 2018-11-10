@@ -161,15 +161,6 @@ func (bc *BlockChain) PutState(block *Block) {
 	}
 }
 
-func (bc *BlockChain) GetMinerGroup(block *Block) ([]common.Address, error) {
-	if block.Header.Height == 0 {
-
-	} else {
-		// block.Header.Height % 3
-	}
-	return nil, nil
-}
-
 // func (bc *BlockChain) PutVoterState(block *Block) error {
 // 	return nil
 // }
@@ -185,14 +176,9 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 		parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
 		ms, _ = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
 	}
-	fmt.Println(ms)
-	minerGroup, err := bc.GetMinerGroup(block)
-	if err != nil {
-		return errors.New("minerGroup == nil")
-	}
-	fmt.Println(minerGroup)
-	fmt.Println(err)
-	//ugly
+
+	minerGroup := ms.GetMinerGroup(block)
+
 	ms.Put(minerGroup, common.Hash{}) //TODO voterhash
 	if ms.RootHash() != block.Header.MinerHash {
 		return errors.New("minerState.RootHash() != block.Header.MinerHash")

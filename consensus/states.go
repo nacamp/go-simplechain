@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/core"
 	"github.com/najimmy/go-simplechain/rlp"
 	"github.com/najimmy/go-simplechain/trie"
 )
@@ -26,4 +27,8 @@ func (ms *MinerState) Put(minerGroup []common.Address, snapshotVoterHash common.
 	ms.Trie.Put(miner.SnapshotVoterHash[:], encodedBytes)
 	copy(hash[:], ms.Trie.RootHash())
 	return hash
+}
+
+func (ms *MinerState) GetMinerGroup(block *core.Block) []common.Address {
+	return nil
 }
