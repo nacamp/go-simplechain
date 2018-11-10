@@ -177,7 +177,7 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 		ms, _ = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
 	}
 
-	minerGroup := ms.GetMinerGroup(block)
+	minerGroup := ms.GetMinerGroup(bc, block)
 
 	ms.Put(minerGroup, common.Hash{}) //TODO voterhash
 	if ms.RootHash() != block.Header.MinerHash {

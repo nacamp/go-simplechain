@@ -1,6 +1,8 @@
 package consensus
 
 import (
+	"bytes"
+
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
 	"github.com/najimmy/go-simplechain/rlp"
@@ -29,6 +31,30 @@ func (ms *MinerState) Put(minerGroup []common.Address, snapshotVoterHash common.
 	return hash
 }
 
-func (ms *MinerState) GetMinerGroup(block *core.Block) []common.Address {
-	return nil
+func (ms *MinerState) Get(hash common.Hash) *Miner {
+	// encodedBytes, _ := rlp.EncodeToBytes(snapshotVoterTime)
+	miner := Miner{}
+	decodedBytes, _ := ms.Trie.Get(hash[:])
+	rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&miner)
+	return &miner
+}
+
+func (ms *MinerState) GetMinerGroup(bc *core.BlockChain, block *core.Block) []common.Address {
+	if block.Header.Height == 0 {
+		//new MinerGroup
+		return nil
+	}
+	// var SnapshotVoterHash
+	snapshotVoterTime := block.Header.SnapshotVoterTime
+	if block.Header.Time >= snapshotVoterTime+3*3*3 { // 3round * 3miner * 3 duration for making block
+		//new MinerGroup
+		return nil
+	}
+
+	// block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+	for block.Header.Time != block.Header.SnapshotVoterTime {
+		block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+	}
+	miner := ms.Get(block.Header.VoterHash)
+	return miner.MinerGroup
 }
