@@ -11,15 +11,16 @@ import (
 
 // Simple Header
 type Header struct {
-	ParentHash      common.Hash
-	Coinbase        common.Address
-	Height          uint64
-	Time            uint64
-	Hash            common.Hash
-	AccountHash     common.Hash
-	TransactionHash common.Hash
-	MinerHash       common.Hash
-	VoterHash       common.Hash
+	ParentHash        common.Hash
+	Coinbase          common.Address
+	Height            uint64
+	Time              uint64
+	Hash              common.Hash
+	AccountHash       common.Hash
+	TransactionHash   common.Hash
+	MinerHash         common.Hash
+	VoterHash         common.Hash
+	SnapshotVoterTime uint64
 }
 
 // Simple Block
