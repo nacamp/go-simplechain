@@ -52,6 +52,12 @@ func NewBlockChain(consensus Consensus) (*BlockChain, error) {
 
 	bc.GenesisBlock, err = GetGenesisBlock(storage)
 	bc.Consensus = consensus
+
+	//MinerState
+	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, storage)
+	bc.GenesisBlock.MinerState = ms
+	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
+
 	return &bc, err
 }
 
@@ -105,8 +111,8 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	block.VoterState = vs
 	header.VoterHash = vs.RootHash()
 
-	//VoterState
 	// MinderState
+	//FIXME: current in NewBlockChain
 
 	//-------
 
@@ -144,6 +150,7 @@ func (bc *BlockChain) PutState(block *Block) {
 	block.AccountState, _ = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	block.TransactionState, _ = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
 	block.VoterState, _ = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
+	block.MinerState, _ = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
 
 	bc.RewardForCoinbase(block)
 
