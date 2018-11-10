@@ -102,9 +102,14 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 }
 
 func (bc *BlockChain) PutState(block *Block) {
+	//the state save here except genesis block
 	if block.Header.Height == uint64(0) {
 		return
 	}
+	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
+	block.AccountState, _ = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+	block.TransactionState, _ = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
+	// accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 
 	bc.RewardForCoinbase(block)
 
@@ -123,6 +128,11 @@ func (bc *BlockChain) GetMinerGroup(block *Block) ([]common.Address, error) {
 	}
 	return nil, nil
 }
+
+// func (bc *BlockChain) PutVoterState(block *Block) error {
+// 	return nil
+// }
+
 func (bc *BlockChain) PutMinerState(block *Block) error {
 
 	//1. save status and check hash
@@ -164,9 +174,9 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 }
 
 func (bc *BlockChain) RewardForCoinbase(block *Block) {
-	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
+	// parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
 	//FIXME: return nil when using Clone
-	accs, _ := NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+	accs := block.AccountState //NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	account := accs.GetAccount(block.Header.Coinbase)
 	if account == nil { // At first, genesisblock
 		account = &Account{Address: block.Header.Coinbase}
@@ -178,7 +188,7 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 	// fmt.Printf("%v\n", block.Header.Coinbase)
 
 	//set state,  nil before setting state
-	block.AccountState = accs
+	// block.AccountState = accs
 }
 
 func (bc *BlockChain) ExecuteTransaction(block *Block) error {
