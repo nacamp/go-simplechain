@@ -185,11 +185,18 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 
 	//1. save status and check hash
 	ms := block.MinerState
-	minerGroup, _, err := ms.GetMinerGroup(bc, block)
+	minerGroup, voterBlock, err := ms.GetMinerGroup(bc, block)
 	if err != nil {
 		return err
 	}
-	fmt.Println(minerGroup)
+	//make new miner group
+	if voterBlock.Header.Height == block.Header.Height {
+		ms.Put(minerGroup, block.Header.VoterHash) //TODO voterhash
+		//fmt.Printf("%v\n", block.Header.VoterHash)
+	}
+	//else use parent miner group
+
+	// fmt.Println(minerGroup)
 
 	// //bc.GenesisBlock.VoterState.RootHash()
 	// ms.Put(minerGroup, common.Hash{}) //TODO voterhash
@@ -276,6 +283,13 @@ func (bc *BlockChain) PutBlock(block *Block) {
 		return
 	}
 
+	encodedBytes, _ := rlp.EncodeToBytes(block)
+	//TODO: change height , hash
+	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
+	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
+}
+
+func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
