@@ -2,6 +2,8 @@ package consensus
 
 import (
 	"bytes"
+	"math/big"
+	"sort"
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
@@ -39,16 +41,14 @@ func (ms *MinerState) Get(hash common.Hash) *Miner {
 	return &miner
 }
 
-func (ms *MinerState) GetMinerGroup(bc *core.BlockChain, block *core.Block) []common.Address {
+func (ms *MinerState) GetMinerGroup(bc *core.BlockChain, block *core.Block) ([]common.Address, error) {
 	if block.Header.Height == 0 {
-		//new MinerGroup
-		return nil
+		return ms.MakeMiner(block.VoterState, 3)
 	}
 	// var SnapshotVoterHash
 	snapshotVoterTime := block.Header.SnapshotVoterTime
 	if block.Header.Time >= snapshotVoterTime+3*3*3 { // 3round * 3miner * 3 duration for making block
-		//new MinerGroup
-		return nil
+		return ms.MakeMiner(block.VoterState, 3)
 	}
 
 	// block, _ = bc.GetBlockByHash(block.Header.ParentHash)
@@ -56,5 +56,41 @@ func (ms *MinerState) GetMinerGroup(bc *core.BlockChain, block *core.Block) []co
 		block, _ = bc.GetBlockByHash(block.Header.ParentHash)
 	}
 	miner := ms.Get(block.Header.VoterHash)
-	return miner.MinerGroup
+	return miner.MinerGroup, nil
+}
+
+func (ms *MinerState) MakeMiner(voterState *core.AccountState, maxMaker int) ([]common.Address, error) {
+
+	accounts := make([]core.Account, 0)
+	miners := make([]common.Address, 0)
+
+	iter, err := voterState.Trie.Iterator(nil)
+	if err != nil {
+		return nil, err
+	}
+	exist, _ := iter.Next()
+	var balance uint64
+	for exist {
+		address := common.BytesToAddress(iter.Key())
+
+		decodedBytes := iter.Value()
+		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&balance)
+		accounts = append(accounts, core.Account{Address: address, Balance: new(big.Int).SetUint64(balance)})
+
+		exist, err = iter.Next()
+	}
+
+	sort.Slice(accounts, func(i, j int) bool {
+		return accounts[i].Balance.Cmp(accounts[j].Balance) > 0
+	})
+
+	//TODO: if len(accouts) < maxMaker
+	for i, v := range accounts {
+		if maxMaker == i {
+			break
+		}
+		miners = append(miners, v.Address)
+	}
+	//TODO: random sort for miners
+	return miners, nil
 }
