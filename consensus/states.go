@@ -50,12 +50,24 @@ func (ms *MinerState) Get(hash common.Hash) *Miner {
 func (ms *MinerState) GetMinerGroup(bc *core.BlockChain, block *core.Block) ([]common.Address, *core.Block, error) {
 	if block.Header.Height == 0 {
 		minerGroup, err := ms.MakeMiner(block.VoterState, 3)
+		block.Header.SnapshotVoterTime = block.Header.Time
 		if err != nil {
 			return nil, nil, nil
 		}
 		return minerGroup, block, nil
 	}
+	//reuse miner group in SnapshotVoterTime
+	if block.Header.Time < block.Header.SnapshotVoterTime+3*3*3 { // 3round * 3miner * 3 duration for making block
+		for block.Header.Time != block.Header.SnapshotVoterTime {
+			block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+		}
+		miner := ms.Get(block.Header.VoterHash)
+		return miner.MinerGroup, block, nil
+
+	}
+	//make new miner group
 	makeMiner, err := ms.MakeMiner(block.VoterState, 3)
+	block.Header.SnapshotVoterTime = block.Header.Time
 	if err != nil {
 		return nil, nil, nil
 	}
