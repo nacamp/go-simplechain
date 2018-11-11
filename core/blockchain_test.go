@@ -10,7 +10,6 @@ import (
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
-	"github.com/najimmy/go-simplechain/storage"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,12 +21,20 @@ var keystore = map[string]string{
 }
 
 func TestGenesisBlock(t *testing.T) {
-	var coinbaseAddress = GenesisCoinbaseAddress
-	storage, _ := storage.NewMemoryStorage()
-	block, err := core.GetGenesisBlock(storage)
-	if err != nil {
-	}
-	assert.Equal(t, common.HexToAddress(coinbaseAddress), block.Header.Coinbase, "")
+	// var coinbaseAddress = GenesisCoinbaseAddress
+	// storage, _ := storage.NewMemoryStorage()
+	// block, err := core.GetGenesisBlock(storage)
+	// if err != nil {
+	// }
+	// assert.Equal(t, common.HexToAddress(coinbaseAddress), block.Header.Coinbase, "")
+
+	dpos := consensus.NewDpos()
+	bc, _ := core.NewBlockChain(dpos)
+	minerGroup, _ := bc.GenesisBlock.MinerState.GetMinerGroup(bc, bc.GenesisBlock)
+	assert.Equal(t, common.HexToAddress(GenesisCoinbaseAddress), minerGroup[0], "")
+	assert.Equal(t, common.HexToAddress("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"), minerGroup[2], "")
+	assert.Equal(t, common.HexToAddress("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"), minerGroup[1], "")
+
 }
 
 func TestStorage(t *testing.T) {

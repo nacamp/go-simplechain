@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"math/big"
 	"sort"
 
 	"github.com/najimmy/go-simplechain/common"
@@ -69,14 +68,11 @@ func (ms *MinerState) MakeMiner(voterState *core.AccountState, maxMaker int) ([]
 		return nil, err
 	}
 	exist, _ := iter.Next()
-	var balance uint64
 	for exist {
-		address := common.BytesToAddress(iter.Key())
-
+		account := core.Account{}
 		decodedBytes := iter.Value()
-		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&balance)
-		accounts = append(accounts, core.Account{Address: address, Balance: new(big.Int).SetUint64(balance)})
-
+		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&account)
+		accounts = append(accounts, account)
 		exist, err = iter.Next()
 	}
 

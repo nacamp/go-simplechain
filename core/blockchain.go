@@ -104,12 +104,12 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 
 	account2 := Account{}
 	copy(account2.Address[:], common.FromHex("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"))
-	account2.AddBalance(new(big.Int).SetUint64(50))
+	account2.AddBalance(new(big.Int).SetUint64(20))
 	vs.PutAccount(&account2)
 
 	account3 := Account{}
 	copy(account3.Address[:], common.FromHex("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"))
-	account3.AddBalance(new(big.Int).SetUint64(20))
+	account3.AddBalance(new(big.Int).SetUint64(50))
 	vs.PutAccount(&account3)
 
 	block.VoterState = vs
