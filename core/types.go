@@ -15,4 +15,5 @@ type MinerState interface {
 
 type Consensus interface {
 	NewMinerState(rootHash common.Hash, storage storage.Storage) (MinerState, error)
+	UpdateLIB(bc *BlockChain)
 }
