@@ -120,7 +120,7 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 
 	//-------
 
-	//block.MakeHash()
+	// block.MakeHash()
 	return block, nil
 }
 
@@ -145,11 +145,11 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 	return &block, nil
 }
 
-func (bc *BlockChain) PutState(block *Block) {
+func (bc *BlockChain) PutState(block *Block) error {
 	//the state save here except genesis block
 	//FIXME: verify genesis block
 	if block.Header.Height == uint64(0) {
-		return
+		return nil
 	}
 	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
 	block.AccountState, _ = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
@@ -162,8 +162,18 @@ func (bc *BlockChain) PutState(block *Block) {
 	//miner check
 	//bc.PutMinerState(block)
 	if err := bc.ExecuteTransaction(block); err != nil {
-		return
+		return err
 	}
+
+	//check rootHash
+	// fmt.Printf("%v\n", accs.RootHash())
+	if block.AccountState.RootHash() != block.Header.AccountHash {
+		return errors.New("accs.RootHash() != block.Header.AccountHash")
+	}
+	if block.TransactionState.RootHash() != block.Header.TransactionHash {
+		return errors.New("txs.RootHash() != block.Header.TransactionHash")
+	}
+	return nil
 }
 
 // func (bc *BlockChain) PutVoterState(block *Block) error {
@@ -232,13 +242,12 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 		txs.PutTransaction(tx)
 		//implement vote transaction later
 	}
-	// fmt.Printf("%v\n", accs.RootHash())
-	if accs.RootHash() != block.Header.AccountHash {
-		return errors.New("accs.RootHash() != block.Header.AccountHash")
-	}
-	if txs.RootHash() != block.Header.TransactionHash {
-		return errors.New("txs.RootHash() != block.Header.TransactionHash")
-	}
+	// if accs.RootHash() != block.Header.AccountHash {
+	// 	return errors.New("accs.RootHash() != block.Header.AccountHash")
+	// }
+	// if txs.RootHash() != block.Header.TransactionHash {
+	// 	return errors.New("txs.RootHash() != block.Header.TransactionHash")
+	// }
 
 	return nil
 }
@@ -247,12 +256,16 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	//1. verify transaction
 	err := block.VerifyTransacion()
 	if err != nil {
-		fmt.Println("VerifyTransacion")
+		fmt.Println("Error VerifyTransacion")
 		return
 	}
 
 	//2. save status and verify hash
-	bc.PutState(block)
+	err = bc.PutState(block)
+	if err != nil {
+		fmt.Println("Error PutState")
+		return
+	}
 
 	//4. verify block.hash
 	if block.Hash() != block.CalcHash() {

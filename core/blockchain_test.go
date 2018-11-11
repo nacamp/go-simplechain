@@ -65,7 +65,7 @@ func makeBlock(parentBlock *core.Block, from, to string, amount *big.Int) *core.
 	h := &core.Header{}
 	h.ParentHash = parentBlock.Hash()
 	h.Height = parentBlock.Header.Height + 1
-	h.Time = 1541112770 + h.Height //new(big.Int).SetUint64(1541112770 + h.Height)
+	h.Time = 0 + h.Height //new(big.Int).SetUint64(1541112770 + h.Height)
 	h.Coinbase = common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress))
 	block := &core.Block{Header: h}
 
@@ -90,6 +90,8 @@ func makeBlock(parentBlock *core.Block, from, to string, amount *big.Int) *core.
 	txs := block.TransactionState
 	fromAccount := accs.GetAccount(tx.From)
 	toAccount := accs.GetAccount(tx.To)
+	fromAccount.SubBalance(tx.Amount)
+	toAccount.AddBalance(tx.Amount)
 	fromAccount.SubBalance(tx.Amount)
 	toAccount.AddBalance(tx.Amount)
 
@@ -117,11 +119,16 @@ func makeTransaction(from, to string, amount *big.Int) *core.Transaction {
 
 func TestPutBlockIfParentExist(t *testing.T) {
 	dpos := consensus.NewDpos()
+	//balance genesis 100
 	remoteBc, _ := core.NewBlockChain(dpos)
+	//balance genesis 100, 1:100
 	block1 := makeBlock(remoteBc.GenesisBlock, GenesisCoinbaseAddress, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", new(big.Int).SetUint64(100))
 	// fmt.Printf("%v\n", remoteBc.GenesisBlock.Hash())
+	//balance genesis 200, 1:90,   2:10
 	block2 := makeBlock(block1, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
+	//balance genesis 300, 1:80,   2:20
 	block3 := makeBlock(block2, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
+	//balance genesis 400, 1:70,   2:30
 	block4 := makeBlock(block3, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
 
 	bc, _ := core.NewBlockChain(dpos)
