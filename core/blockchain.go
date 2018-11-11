@@ -37,6 +37,8 @@ type BlockChain struct {
 	Storage         storage.Storage
 	TransactionPool *TransactionPool
 	Consensus       Consensus
+	Lib             *Block
+	Tail            *Block
 }
 
 func NewBlockChain(consensus Consensus) (*BlockChain, error) {
@@ -62,6 +64,8 @@ func NewBlockChain(consensus Consensus) (*BlockChain, error) {
 	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
 
 	bc.GenesisBlock.MakeHash()
+	bc.Lib = bc.GenesisBlock
+	bc.Tail = bc.GenesisBlock
 	return &bc, err
 }
 
@@ -262,17 +266,22 @@ func (bc *BlockChain) PutBlock(block *Block) {
 		return
 	}
 
+	//5. todo signer확인
+
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
 	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
+
+	//set tail
+	bc.Tail = block
 }
 
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	encodedBytes, _ := rlp.EncodeToBytes(block)
-	//TODO: change height , hash
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
 	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
+	bc.Tail = block
 }
 
 func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
