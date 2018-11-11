@@ -159,8 +159,8 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	bc.RewardForCoinbase(block)
 
-	//miner check
-	//bc.PutMinerState(block)
+	bc.PutMinerState(block)
+
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return err
 	}
@@ -168,17 +168,21 @@ func (bc *BlockChain) PutState(block *Block) error {
 	//check rootHash
 	// fmt.Printf("%v\n", accs.RootHash())
 	if block.AccountState.RootHash() != block.Header.AccountHash {
-		return errors.New("accs.RootHash() != block.Header.AccountHash")
+		return errors.New("block.AccountState.RootHash() != block.Header.AccountHash")
 	}
 	if block.TransactionState.RootHash() != block.Header.TransactionHash {
-		return errors.New("txs.RootHash() != block.Header.TransactionHash")
+		return errors.New("block.TransactionState.RootHash() != block.Header.TransactionHash")
+	}
+
+	// if block.MinerState.RootHash() != block.Header.MinerHash {
+	// 	return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
+	// }
+
+	if block.VoterState.RootHash() != block.Header.VoterHash {
+		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
 	}
 	return nil
 }
-
-// func (bc *BlockChain) PutVoterState(block *Block) error {
-// 	return nil
-// }
 
 func (bc *BlockChain) PutMinerState(block *Block) error {
 

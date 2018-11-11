@@ -69,18 +69,13 @@ func makeBlock(parentBlock *core.Block, from, to string, amount *big.Int) *core.
 	h.Coinbase = common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress))
 	block := &core.Block{Header: h}
 
-	// coinbaseAccount := core.Account{}
-	// copy(coinbaseAccount.Address[:], common.FromHex(GenesisCoinbaseAddress))
-	//account.AddBalance(new(big.Int).SetUint64(100 + 100*h.Height))
+	//account, transaction
 	block.AccountState, _ = parentBlock.AccountState.Clone()
+	block.TransactionState, _ = parentBlock.TransactionState.Clone()
 	coinbaseAccount := block.AccountState.GetAccount(common.HexToAddress(GenesisCoinbaseAddress))
 	coinbaseAccount.AddBalance(new(big.Int).SetUint64(100))
 	block.AccountState.PutAccount(coinbaseAccount)
-	block.TransactionState, _ = parentBlock.TransactionState.Clone()
-	// block.TransactionState.PutTransaction(&core.Transaction{})
 	tx := makeTransaction(from, to, new(big.Int).Div(amount, new(big.Int).SetUint64(2)))
-	//tx := makeTransaction(from, to, amount)
-	//new(big.Int).Div(amount, new(big.Int).SetUint64(2))
 	block.TransactionState.PutTransaction(tx)
 	block.Transactions = make([]*core.Transaction, 2)
 	block.Transactions[0] = tx
@@ -99,11 +94,12 @@ func makeBlock(parentBlock *core.Block, from, to string, amount *big.Int) *core.
 	accs.PutAccount(toAccount)
 	txs.PutTransaction(tx)
 
+	//voter
+	block.VoterState, _ = parentBlock.VoterState.Clone()
+
 	h.AccountHash = block.AccountState.RootHash()
 	h.TransactionHash = block.TransactionState.RootHash()
-
-	// fmt.Printf("%v\n", h.AccountHash)
-	// copy(h.TransactionHash[:], bc.TransactionState.Trie.RootHash())
+	h.VoterHash = block.VoterState.RootHash()
 
 	block.MakeHash()
 	return block
