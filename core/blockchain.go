@@ -56,8 +56,12 @@ func NewBlockChain(consensus Consensus) (*BlockChain, error) {
 	//MinerState
 	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, storage)
 	bc.GenesisBlock.MinerState = ms
+	minerGroup, _ := ms.GetMinerGroup(&bc, bc.GenesisBlock)
+	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
 	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
+	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
 
+	bc.GenesisBlock.MakeHash()
 	return &bc, err
 }
 
@@ -69,7 +73,7 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	header := &Header{
 		Coinbase: common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress)),
 		Height:   0,
-		Time:     1541072021, //new(big.Int).SetUint64(1541072021),
+		Time:     1541072021, //FIXME: how to do when we make block from config.
 	}
 	block := &Block{
 		Header: header,
@@ -116,7 +120,7 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 
 	//-------
 
-	block.MakeHash()
+	//block.MakeHash()
 	return block, nil
 }
 
@@ -143,6 +147,7 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 
 func (bc *BlockChain) PutState(block *Block) {
 	//the state save here except genesis block
+	//FIXME: verify genesis block
 	if block.Header.Height == uint64(0) {
 		return
 	}
@@ -155,7 +160,7 @@ func (bc *BlockChain) PutState(block *Block) {
 	bc.RewardForCoinbase(block)
 
 	//miner check
-	bc.PutMinerState(block)
+	//bc.PutMinerState(block)
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return
 	}
@@ -168,15 +173,7 @@ func (bc *BlockChain) PutState(block *Block) {
 func (bc *BlockChain) PutMinerState(block *Block) error {
 
 	//1. save status and check hash
-	var ms MinerState
-	if block.Header.Height == 0 {
-		//new
-		ms, _ = bc.Consensus.NewMinerState((common.Hash{}), bc.Storage)
-	} else {
-		parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
-		ms, _ = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
-	}
-
+	ms := block.MinerState
 	minerGroup, err := ms.GetMinerGroup(bc, block)
 	if err != nil {
 		return err
