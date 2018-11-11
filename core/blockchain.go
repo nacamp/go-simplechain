@@ -159,7 +159,11 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	bc.RewardForCoinbase(block)
 
-	bc.PutMinerState(block)
+	err := bc.PutMinerState(block)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return err
@@ -183,35 +187,24 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 func (bc *BlockChain) PutMinerState(block *Block) error {
 
-	//1. save status and check hash
+	// save status
 	ms := block.MinerState
 	minerGroup, voterBlock, err := ms.GetMinerGroup(bc, block)
 	if err != nil {
 		return err
 	}
+	//TODO: we need to test  when voter transaction make
 	//make new miner group
 	if voterBlock.Header.Height == block.Header.Height {
 		ms.Put(minerGroup, block.Header.VoterHash) //TODO voterhash
-		//fmt.Printf("%v\n", block.Header.VoterHash)
 	}
 	//else use parent miner group
 
-	// fmt.Println(minerGroup)
+	index := block.Header.Height % 3
+	if minerGroup[index] != block.Header.Coinbase {
+		return errors.New("minerGroup[index] != block.Header.Coinbase")
+	}
 
-	// //bc.GenesisBlock.VoterState.RootHash()
-	// ms.Put(minerGroup, common.Hash{}) //TODO voterhash
-	// if ms.RootHash() != block.Header.MinerHash {
-	// 	return errors.New("minerState.RootHash() != block.Header.MinerHash")
-	// }
-
-	// //2. check the order to mine
-	// index := block.Header.Height % 3
-	// if minerGroup[index] != block.Header.Coinbase {
-	// 	return errors.New("minerGroup[index] != block.Header.Coinbase")
-	// }
-
-	// //3. set state,  nil before setting state
-	// block.MinderState = ms
 	return nil
 
 }
@@ -226,11 +219,6 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 	//FIXME: 100 for reward
 	account.AddBalance(new(big.Int).SetUint64(100))
 	accs.PutAccount(account)
-	// fmt.Printf("%v\n", account.Balance)
-	// fmt.Printf("%v\n", block.Header.Coinbase)
-
-	//set state,  nil before setting state
-	// block.AccountState = accs
 }
 
 func (bc *BlockChain) ExecuteTransaction(block *Block) error {
@@ -240,8 +228,6 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 	for _, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
 		toAccount := accs.GetAccount(tx.To)
-		// fmt.Printf("%v\n", tx.From)
-		// fmt.Printf("%v\n", fromAccount.Balance)
 		if err := fromAccount.SubBalance(tx.Amount); err != nil {
 			return err
 		}
@@ -252,13 +238,6 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 		txs.PutTransaction(tx)
 		//implement vote transaction later
 	}
-	// if accs.RootHash() != block.Header.AccountHash {
-	// 	return errors.New("accs.RootHash() != block.Header.AccountHash")
-	// }
-	// if txs.RootHash() != block.Header.TransactionHash {
-	// 	return errors.New("txs.RootHash() != block.Header.TransactionHash")
-	// }
-
 	return nil
 }
 
