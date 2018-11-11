@@ -56,7 +56,7 @@ func NewBlockChain(consensus Consensus) (*BlockChain, error) {
 	//MinerState
 	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, storage)
 	bc.GenesisBlock.MinerState = ms
-	minerGroup, _ := ms.GetMinerGroup(&bc, bc.GenesisBlock)
+	minerGroup, _, _ := ms.GetMinerGroup(&bc, bc.GenesisBlock)
 	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
 	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
 	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
@@ -166,20 +166,17 @@ func (bc *BlockChain) PutState(block *Block) error {
 	}
 
 	//check rootHash
-	// fmt.Printf("%v\n", accs.RootHash())
 	if block.AccountState.RootHash() != block.Header.AccountHash {
 		return errors.New("block.AccountState.RootHash() != block.Header.AccountHash")
 	}
 	if block.TransactionState.RootHash() != block.Header.TransactionHash {
 		return errors.New("block.TransactionState.RootHash() != block.Header.TransactionHash")
 	}
-
-	// if block.MinerState.RootHash() != block.Header.MinerHash {
-	// 	return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
-	// }
-
 	if block.VoterState.RootHash() != block.Header.VoterHash {
 		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
+	}
+	if block.MinerState.RootHash() != block.Header.MinerHash {
+		return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
 	}
 	return nil
 }
@@ -188,21 +185,23 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 
 	//1. save status and check hash
 	ms := block.MinerState
-	minerGroup, err := ms.GetMinerGroup(bc, block)
+	minerGroup, _, err := ms.GetMinerGroup(bc, block)
 	if err != nil {
 		return err
 	}
+	fmt.Println(minerGroup)
 
-	ms.Put(minerGroup, common.Hash{}) //TODO voterhash
-	if ms.RootHash() != block.Header.MinerHash {
-		return errors.New("minerState.RootHash() != block.Header.MinerHash")
-	}
+	// //bc.GenesisBlock.VoterState.RootHash()
+	// ms.Put(minerGroup, common.Hash{}) //TODO voterhash
+	// if ms.RootHash() != block.Header.MinerHash {
+	// 	return errors.New("minerState.RootHash() != block.Header.MinerHash")
+	// }
 
-	//2. check the order to mine
-	index := block.Header.Height % 3
-	if minerGroup[index] != block.Header.Coinbase {
-		return errors.New("minerGroup[index] != block.Header.Coinbase")
-	}
+	// //2. check the order to mine
+	// index := block.Header.Height % 3
+	// if minerGroup[index] != block.Header.Coinbase {
+	// 	return errors.New("minerGroup[index] != block.Header.Coinbase")
+	// }
 
 	// //3. set state,  nil before setting state
 	// block.MinderState = ms

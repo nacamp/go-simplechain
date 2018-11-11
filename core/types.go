@@ -6,9 +6,11 @@ import (
 )
 
 type MinerState interface {
+	Clone() (MinerState, error)
 	RootHash() (hash common.Hash)
 	Put([]common.Address, common.Hash) (hash common.Hash)
-	GetMinerGroup(*BlockChain, *Block) ([]common.Address, error)
+	GetMinerGroup(*BlockChain, *Block) ([]common.Address, *Block, error)
+	MakeMiner(*AccountState, int) ([]common.Address, error)
 }
 
 type Consensus interface {

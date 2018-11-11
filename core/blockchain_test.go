@@ -2,6 +2,7 @@ package core_test
 
 import (
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -28,7 +29,7 @@ func TestGenesisBlock(t *testing.T) {
 	assert.Equal(t, bc.GenesisBlock.Header.SnapshotVoterTime, uint64(0), "")
 
 	//Test GetMinerGroup
-	minerGroup, _ := bc.GenesisBlock.MinerState.GetMinerGroup(bc, bc.GenesisBlock)
+	minerGroup, _, _ := bc.GenesisBlock.MinerState.GetMinerGroup(bc, bc.GenesisBlock)
 	assert.Equal(t, common.HexToAddress(GenesisCoinbaseAddress), minerGroup[0], "")
 	assert.Equal(t, common.HexToAddress("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"), minerGroup[2], "")
 	assert.Equal(t, common.HexToAddress("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"), minerGroup[1], "")
@@ -59,7 +60,7 @@ func TestStorage(t *testing.T) {
 
 }
 
-func makeBlock(parentBlock *core.Block, from, to string, amount *big.Int) *core.Block {
+func makeBlock(bc *core.BlockChain, parentBlock *core.Block, from, to string, amount *big.Int) *core.Block {
 	// var coinbaseAddress = "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	// func makeBlock(bc *core.BlockChain, height uint64, parentHash common.Hash) *core.Block {
 	h := &core.Header{}
@@ -97,9 +98,15 @@ func makeBlock(parentBlock *core.Block, from, to string, amount *big.Int) *core.
 	//voter
 	block.VoterState, _ = parentBlock.VoterState.Clone()
 
+	//miner
+	block.MinerState, _ = parentBlock.MinerState.Clone()
+	makeMiner, _ := block.MinerState.MakeMiner(block.VoterState, 3)
+	fmt.Println(makeMiner)
+
 	h.AccountHash = block.AccountState.RootHash()
 	h.TransactionHash = block.TransactionState.RootHash()
 	h.VoterHash = block.VoterState.RootHash()
+	h.MinerHash = block.MinerState.RootHash()
 
 	block.MakeHash()
 	return block
@@ -118,14 +125,14 @@ func TestPutBlockIfParentExist(t *testing.T) {
 	//balance genesis 100
 	remoteBc, _ := core.NewBlockChain(dpos)
 	//balance genesis 100, 1:100
-	block1 := makeBlock(remoteBc.GenesisBlock, GenesisCoinbaseAddress, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", new(big.Int).SetUint64(100))
+	block1 := makeBlock(remoteBc, remoteBc.GenesisBlock, GenesisCoinbaseAddress, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", new(big.Int).SetUint64(100))
 	// fmt.Printf("%v\n", remoteBc.GenesisBlock.Hash())
 	//balance genesis 200, 1:90,   2:10
-	block2 := makeBlock(block1, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
+	block2 := makeBlock(remoteBc, block1, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
 	//balance genesis 300, 1:80,   2:20
-	block3 := makeBlock(block2, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
+	block3 := makeBlock(remoteBc, block2, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
 	//balance genesis 400, 1:70,   2:30
-	block4 := makeBlock(block3, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
+	block4 := makeBlock(remoteBc, block3, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
 
 	bc, _ := core.NewBlockChain(dpos)
 	bc.PutBlock(bc.GenesisBlock)

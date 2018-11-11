@@ -19,6 +19,13 @@ type MinerState struct {
 	Trie *trie.Trie
 }
 
+func (ms *MinerState) Clone() (core.MinerState, error) {
+	tr, err := ms.Trie.Clone()
+	return &MinerState{
+		Trie: tr,
+	}, err
+}
+
 func (ms *MinerState) RootHash() (hash common.Hash) {
 	copy(hash[:], ms.Trie.RootHash())
 	return hash
@@ -40,22 +47,51 @@ func (ms *MinerState) Get(hash common.Hash) *Miner {
 	return &miner
 }
 
-func (ms *MinerState) GetMinerGroup(bc *core.BlockChain, block *core.Block) ([]common.Address, error) {
+func (ms *MinerState) GetMinerGroup(bc *core.BlockChain, block *core.Block) ([]common.Address, *core.Block, error) {
 	if block.Header.Height == 0 {
-		return ms.MakeMiner(block.VoterState, 3)
+		minerGroup, err := ms.MakeMiner(block.VoterState, 3)
+		if err != nil {
+			return nil, nil, nil
+		}
+		return minerGroup, block, nil
 	}
-	// var SnapshotVoterHash
-	snapshotVoterTime := block.Header.SnapshotVoterTime
-	if block.Header.Time >= snapshotVoterTime+3*3*3 { // 3round * 3miner * 3 duration for making block
-		return ms.MakeMiner(block.VoterState, 3)
+	makeMiner, err := ms.MakeMiner(block.VoterState, 3)
+	if err != nil {
+		return nil, nil, nil
 	}
+	return makeMiner, block, nil
 
-	// block, _ = bc.GetBlockByHash(block.Header.ParentHash)
-	for block.Header.Time != block.Header.SnapshotVoterTime {
-		block, _ = bc.GetBlockByHash(block.Header.ParentHash)
-	}
-	miner := ms.Get(block.Header.VoterHash)
-	return miner.MinerGroup, nil
+	// // var SnapshotVoterHash
+	// // snapshotVoterTime := block.Header.SnapshotVoterTime
+	// if block.Header.Time < block.Header.SnapshotVoterTime+3*3*3 { // 3round * 3miner * 3 duration for making block
+	// 	//return ms.MakeMiner(block.VoterState, 3)
+	// 	for block.Header.Time != block.Header.SnapshotVoterTime {
+	// 		block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+	// 	}
+	// 	miner := ms.Get(block.Header.VoterHash)
+	// 	return miner.MinerGroup, block, nil
+
+	// }
+
+	// // block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+	// for block.Header.Time != block.Header.SnapshotVoterTime {
+	// 	block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+	// }
+	// miner := ms.Get(block.Header.VoterHash)
+	// return miner.MinerGroup, block, nil
+
+	// // // var SnapshotVoterHash
+	// // snapshotVoterTime := block.Header.SnapshotVoterTime
+	// // if block.Header.Time >= snapshotVoterTime+3*3*3 { // 3round * 3miner * 3 duration for making block
+	// // 	return ms.MakeMiner(block.VoterState, 3)
+	// // }
+
+	// // // block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+	// // for block.Header.Time != block.Header.SnapshotVoterTime {
+	// // 	block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+	// // }
+	// // miner := ms.Get(block.Header.VoterHash)
+	// // return miner.MinerGroup, block, nil
 }
 
 func (ms *MinerState) MakeMiner(voterState *core.AccountState, maxMaker int) ([]common.Address, error) {
