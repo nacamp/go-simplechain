@@ -11,6 +11,7 @@ import (
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/najimmy/go-simplechain/rlp"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -56,8 +57,9 @@ func (P2PStream *P2PStream) Start() {
 
 func (P2PStream *P2PStream) readData(rw *bufio.ReadWriter) {
 	for {
-		b, err := rw.ReadBytes('\n')
-		if len(b) == 0 {
+		message := Message{}
+		err := rlp.Decode(rw, &message)
+		if err != nil {
 			//time.Sleep(30 * time.Second)
 			P2PStream.stream.Close()
 			P2PStream.mu.Lock()
@@ -68,19 +70,19 @@ func (P2PStream *P2PStream) readData(rw *bufio.ReadWriter) {
 			log.Warning("client closed")
 			return
 		}
-		if len(b) < 2 {
-			continue
-		}
-		if err != nil {
-			//return err
-		}
-		var message Message
-		message.Unmarshal(b)
+		// if len(b) < 2 {
+		// 	continue
+		// }
+		// if err != nil {
+		// 	//return err
+		// }
+		// var message Message
+		// message.Unmarshal(b)
 
-		switch message.Command {
-		case "HELLO":
+		switch message.Code {
+		case CMD_HELLO:
 			P2PStream.onHello(&message)
-		case "HELLO-ACK":
+		case CMD_HELLO_ACK:
 			P2PStream.onHelloAck(&message)
 		default:
 			fmt.Println("lock...")
@@ -90,19 +92,19 @@ func (P2PStream *P2PStream) readData(rw *bufio.ReadWriter) {
 			fmt.Println("unlock...")
 		}
 
-		switch message.Command {
-		case "PEERS":
+		switch message.Code {
+		case CMD_PEERS:
 			P2PStream.onPeers(&message)
-		case "PEERS-ACK":
+		case CMD_PEERS_ACK:
 			P2PStream.onPeersAck(&message)
-		case "BLOCKS":
-			fmt.Println("Blocks")
-		case "BLOCKS-ACK":
-			fmt.Println("Blocks")
-		case "BYE":
-			fmt.Println("Bye")
-		case "BYE-ACK":
-			fmt.Println("Bye")
+			// case "BLOCKS":
+			// 	fmt.Println("Blocks")
+			// case "BLOCKS-ACK":
+			// 	fmt.Println("Blocks")
+			// case "BYE":
+			// 	fmt.Println("Bye")
+			// case "BYE-ACK":
+			// 	fmt.Println("Bye")
 		}
 	}
 }
@@ -123,26 +125,32 @@ func (P2PStream *P2PStream) WaitFinshedHandshake() {
 //send Hello
 func (P2PStream *P2PStream) SendHello() error {
 	P2PStream.prevSendMsgType = HELLO
-	msg := Message{"HELLO", P2PStream.node.maddr.String()}
+	// fmt.Println(P2PStream.node.maddr.String())
+	//msg :=  Message{Code: CMD_HELLO, Payload: P2PStream.node.maddr.String()}
+	msg := NewMessageEncodePayload(CMD_HELLO, P2PStream.node.maddr.String())
 	log.Info("SendHello")
 	return P2PStream.sendMessage(&msg)
 }
 
 func (P2PStream *P2PStream) SendHelloAck() error {
 	P2PStream.prevSendMsgType = HELLO
-	msg := Message{"HELLO-ACK", P2PStream.node.maddr.String()}
+	//msg := Message{CMD_HELLO_ACK, P2PStream.node.maddr.String()}
+	msg := NewMessageEncodePayload(CMD_HELLO_ACK, P2PStream.node.maddr.String())
 	log.Info("SendHelloAck")
 	return P2PStream.sendMessage(&msg)
 }
 
 func (P2PStream *P2PStream) onHello(message *Message) error {
 	defer P2PStream.finshHandshake()
+	data := string("")
+	rlp.DecodeBytes(message.Payload, &data)
+	// fmt.Println((message.Payload).(string))
 	log.WithFields(log.Fields{
-		"Command": message.Command,
-		"Data":    message.Data,
+		"Command": message.Code,
+		"Data":    data,
 	}).Info("onHello")
 	node := P2PStream.node
-	addr, err := ma.NewMultiaddr(message.Data)
+	addr, err := ma.NewMultiaddr(data)
 	if err != nil {
 		return err
 	}
@@ -152,12 +160,14 @@ func (P2PStream *P2PStream) onHello(message *Message) error {
 
 func (P2PStream *P2PStream) onHelloAck(message *Message) error {
 	defer P2PStream.finshHandshake()
+	data := string("")
+	rlp.DecodeBytes(message.Payload, &data)
 	log.WithFields(log.Fields{
-		"Command": message.Command,
-		"Data":    message.Data,
+		"Command": message.Code,
+		"Data":    data,
 	}).Info("onHello")
 	node := P2PStream.node
-	addr, err := ma.NewMultiaddr(message.Data)
+	addr, err := ma.NewMultiaddr(data)
 	if err != nil {
 		return err
 	}
@@ -168,14 +178,14 @@ func (P2PStream *P2PStream) onHelloAck(message *Message) error {
 //send request peers
 func (P2PStream *P2PStream) SendPeers() error {
 	P2PStream.prevSendMsgType = PEERS
-	msg := Message{"PEERS", "version 0.1"}
+	//msg := Message{CMD_PEERS, "version 0.1"}
+	msg := NewMessageEncodePayload(CMD_PEERS, "version 0.1")
 	log.Info("SendPeers")
 	return P2PStream.sendMessage(&msg)
 }
 
 func (P2PStream *P2PStream) SendPeersAck() error {
 	log.Info("SendPeersAck>>>>>")
-	//먼저 어딘가에 저장...
 	node := P2PStream.node
 
 	peers := node.nodeRoute.NearestPeers(P2PStream.peerID, 10)
@@ -194,15 +204,18 @@ func (P2PStream *P2PStream) SendPeersAck() error {
 	json.Unmarshal(b, &m2)
 
 	P2PStream.prevSendMsgType = PEERS
-	msg := Message{"PEERS-ACK", hex.EncodeToString(b)}
+	//msg := Message{CMD_PEERS_ACK, hex.EncodeToString(b)}
+	msg := NewMessageEncodePayload(CMD_PEERS_ACK, hex.EncodeToString(b))
 	log.Info("<<<<<SendPeersAck")
 	return P2PStream.sendMessage(&msg)
 }
 
 func (P2PStream *P2PStream) onPeers(message *Message) error {
+	data := string("")
+	rlp.DecodeBytes(message.Payload, &data)
 	log.WithFields(log.Fields{
-		"Command": message.Command,
-		"Data":    message.Data,
+		"Command": message.Code,
+		"Data":    data,
 	}).Info("onPeers>>>>>")
 	log.Info("<<<<<onPeers")
 	return P2PStream.SendPeersAck()
@@ -214,7 +227,9 @@ func (P2PStream *P2PStream) onPeersAck(message *Message) error {
 	// 	"Data":    message.Data,
 	// }).Info("onPeersAck>>>>>")
 	log.Info("onPeersAck>>>>>")
-	b, err := hex.DecodeString(message.Data)
+	data := string("")
+	rlp.DecodeBytes(message.Payload, &data)
+	b, err := hex.DecodeString(data)
 	if err != nil {
 		return err
 	}
@@ -234,7 +249,8 @@ func (P2PStream *P2PStream) onPeersAck(message *Message) error {
 }
 
 func (P2PStream *P2PStream) sendMessage(message *Message) error {
-	_, err := P2PStream.stream.Write(append(message.Marshal(), '\n'))
+	encodedBytes, _ := rlp.EncodeToBytes(message)
+	_, err := P2PStream.stream.Write(encodedBytes)
 	if err != nil {
 		//test host입장에서 muliple stream인건지
 		//time.Sleep(30 * time.Second)
@@ -257,16 +273,16 @@ func (P2PStream *P2PStream) finshHandshake() {
 	P2PStream.mu.Unlock()
 }
 
-func receiveMessage(s libnet.Stream) (*Message, error) {
-	buf := bufio.NewReader(s)
-	out, err := buf.ReadBytes('\n')
-	fmt.Println(len(out))
-	// out, err := ioutil.ReadAll(s)
-	if err != nil {
-		//log.Fatalln(err)
-		return nil, err
-	}
-	var message Message
-	message.Unmarshal(out)
-	return &message, nil
-}
+// func receiveMessage(s libnet.Stream) (*Message, error) {
+// 	// buf := bufio.NewReader(s)
+// 	// out, err := buf.ReadBytes('\n')
+// 	// fmt.Println(len(out))
+// 	// // out, err := ioutil.ReadAll(s)
+// 	// if err != nil {
+// 	// 	//log.Fatalln(err)
+// 	// 	return nil, err
+// 	// }
+// 	// var message Message
+// 	// message.Unmarshal(out)
+// 	// return &message, nil
+// }
