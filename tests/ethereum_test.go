@@ -12,8 +12,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRlpMapSlice(t *testing.T) {
+	m := make(map[string]string)
+	m["key0"] = "val0"
+	encodedBytes, err := rlp.EncodeToBytes(m)
+	assert.Error(t, err, "xxx is not RLP-serializable")
+
+	s := make([][]string, 3)
+	s[0] = make([]string, 2)
+	s[0][0] = "key0"
+	s[0][1] = "val0"
+	s[1] = []string{"key1", "val2"}
+
+	encodedBytes, err = rlp.EncodeToBytes(s)
+	assert.NoError(t, err, "xxx is not RLP-serializable")
+
+	s2 := make([][]string, 3)
+	rlp.Decode(bytes.NewReader(encodedBytes), &s2)
+	// fmt.Printf("%#v", s2)
+
+	assert.Equal(t, s[0], s2[0], "")
+	assert.Equal(t, s[1], s2[1], "")
+}
+
 func TestMessage(t *testing.T) {
-	msg := net.NewRLPMessage(1, "test")
+	msg, _ := net.NewRLPMessage(1, "test")
 	encodedBytes, _ := rlp.EncodeToBytes(msg)
 
 	msg2 := net.Message{}
