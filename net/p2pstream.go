@@ -30,7 +30,6 @@ type P2PStream struct {
 	isClosed            bool
 	finshedHandshakeCh  chan bool
 	messageCh           chan *Message
-	prevSendMsgType     int8
 }
 
 func NewP2PStream(node *Node, peerID peer.ID) (*P2PStream, error) {
@@ -126,7 +125,6 @@ func (ps *P2PStream) writeData(rw *bufio.ReadWriter) {
 }
 
 func (ps *P2PStream) SendHello() error {
-	ps.prevSendMsgType = HELLO
 	if msg, err := NewRLPMessage(CMD_HELLO, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
@@ -136,7 +134,6 @@ func (ps *P2PStream) SendHello() error {
 }
 
 func (ps *P2PStream) SendHelloAck() error {
-	ps.prevSendMsgType = HELLO
 	if msg, err := NewRLPMessage(CMD_HELLO_ACK, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
@@ -181,7 +178,6 @@ func (ps *P2PStream) onHelloAck(message *Message) error {
 
 //send request peers
 func (ps *P2PStream) SendPeers() error {
-	ps.prevSendMsgType = PEERS
 	if msg, err := NewRLPMessage(CMD_PEERS, "version 0.1"); err != nil {
 		return err
 	} else {
@@ -201,7 +197,6 @@ func (ps *P2PStream) SendPeersAck() error {
 		payload = append(payload, []string{k.Pretty(), addr.String()})
 	}
 
-	ps.prevSendMsgType = PEERS
 	//msg := Message{CMD_PEERS_ACK, hex.EncodeToString(b)}
 	if msg, err := NewRLPMessage(CMD_PEERS_ACK, &payload); err != nil {
 		return err
