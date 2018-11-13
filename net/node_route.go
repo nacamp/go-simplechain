@@ -113,7 +113,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 			p2pStream := v.(*P2PStream)
 			if !p2pStream.isClosed {
 				log.Info("reuse stream")
-				p2pStream.SendPeers()
+				p2pStream.RequestPeers()
 			} else {
 				log.Debug("FindNewNodes lock before")
 				p2pStream.mu.Lock()
@@ -143,7 +143,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 				log.Info(p2pStream.addr, " new")
 				node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
 				p2pStream.Start(false)
-				p2pStream.SendPeers()
+				p2pStream.RequestPeers()
 			}
 
 		}

@@ -170,18 +170,18 @@ func (ps *P2PStream) onHelloAck(message *Message) error {
 }
 
 //send request peers
-func (ps *P2PStream) SendPeers() error {
+func (ps *P2PStream) RequestPeers() error {
 	if msg, err := NewRLPMessage(CMD_PEERS, "version 0.1"); err != nil {
 		return err
 	} else {
-		log.Info("SendPeers")
+		log.Info("RequestPeers")
 		ps.messageCh <- &msg
 	}
 	return nil
 }
 
-func (ps *P2PStream) SendPeersAck() error {
-	log.Info("SendPeersAck>>>>>")
+func (ps *P2PStream) RequestPeersAck() error {
+	log.Info("RequestPeersAck>>>>>")
 	node := ps.node
 
 	peers := node.nodeRoute.NearestPeers(ps.peerID, 10)
@@ -190,11 +190,10 @@ func (ps *P2PStream) SendPeersAck() error {
 		payload = append(payload, []string{k.Pretty(), addr.String()})
 	}
 
-	//msg := Message{CMD_PEERS_ACK, hex.EncodeToString(b)}
 	if msg, err := NewRLPMessage(CMD_PEERS_ACK, &payload); err != nil {
 		return err
 	} else {
-		log.Info("<<<<<SendPeersAck")
+		log.Info("<<<<<RequestPeersAck")
 		ps.messageCh <- &msg
 	}
 	return nil
@@ -208,7 +207,7 @@ func (ps *P2PStream) onPeers(message *Message) error {
 		"Data":    data,
 	}).Info("onPeers>>>>>")
 	log.Info("<<<<<onPeers")
-	return ps.SendPeersAck()
+	return ps.RequestPeersAck()
 }
 
 func (ps *P2PStream) onPeersAck(message *Message) error {
@@ -217,7 +216,7 @@ func (ps *P2PStream) onPeersAck(message *Message) error {
 
 	err := rlp.DecodeBytes(message.Payload, &payload)
 	if err != nil {
-		fmt.Println(err)
+		log.Warning(err)
 		return err
 	}
 
