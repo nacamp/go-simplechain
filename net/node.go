@@ -68,13 +68,13 @@ func (node *Node) HandleStream(s libnet.Stream) {
 		"RemotePeer": s.Conn().RemotePeer().Pretty(),
 	}).Info("Got a new stream!")
 
-	p2pStreamMap, err := NewP2PStreamWithStream(node, s)
-	node.p2pStreamMap.Store(p2pStreamMap.peerID, p2pStreamMap)
+	p2pStream, err := NewP2PStreamWithStream(node, s)
+	node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
 	if err != nil {
 		log.Fatal("HandleStream", err)
 	}
 
 	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
 
-	go p2pStreamMap.readData(rw)
+	go p2pStream.readData(rw)
 }
