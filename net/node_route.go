@@ -125,17 +125,17 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 		} else {
 			// Always firt add id and addr at Peerstore
 			node.host.Peerstore().AddAddr(peerid, addr, pstore.PermanentAddrTTL)
-			streamState, err := NewP2PStream(node, peerid)
+			p2pStream, err := NewP2PStream(node, peerid)
 			if err != nil {
 				node.host.Peerstore().ClearAddrs(peerid)
 				nodeRoute.Remove(peerid)
 			} else {
-				log.Info(streamState.addr, " new")
-				node.p2pStreamMap.Store(streamState.peerID, streamState)
-				streamState.Start()
-				streamState.SendHello()
-				streamState.WaitFinshedHandshake()
-				streamState.SendPeers()
+				log.Info(p2pStream.addr, " new")
+				node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
+				p2pStream.Start()
+				p2pStream.SendHello()
+				p2pStream.WaitFinshedHandshake()
+				p2pStream.SendPeers()
 			}
 
 		}
