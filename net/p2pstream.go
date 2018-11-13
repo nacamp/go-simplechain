@@ -53,17 +53,17 @@ func (P2PStream *P2PStream) Start() {
 	go P2PStream.readData(rw)
 }
 
-func (P2PStream *P2PStream) readData(rw *bufio.ReadWriter) {
+func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 	for {
 		message := Message{}
 		err := rlp.Decode(rw, &message)
 		if err != nil {
 			//time.Sleep(30 * time.Second)
-			P2PStream.stream.Close()
-			P2PStream.mu.Lock()
-			P2PStream.isClosed = true
-			P2PStream.mu.Unlock()
-			P2PStream.node.host.Peerstore().ClearAddrs(P2PStream.peerID)
+			ps.stream.Close()
+			ps.mu.Lock()
+			ps.isClosed = true
+			ps.mu.Unlock()
+			ps.node.host.Peerstore().ClearAddrs(ps.peerID)
 			//P2PStream.node.host.Peerstore().AddAddr(P2PStream.peerID, P2PStream.addr, 0)
 			log.Warning("client closed")
 			return
@@ -71,12 +71,12 @@ func (P2PStream *P2PStream) readData(rw *bufio.ReadWriter) {
 
 		switch message.Code {
 		case CMD_HELLO:
-			P2PStream.onHello(&message)
+			ps.onHello(&message)
 		case CMD_HELLO_ACK:
-			P2PStream.onHelloAck(&message)
+			ps.onHelloAck(&message)
 		default:
 			fmt.Println("lock...")
-			if !P2PStream.isFinishedHandshake {
+			if !ps.isFinishedHandshake {
 				continue
 			}
 			fmt.Println("unlock...")
@@ -84,9 +84,9 @@ func (P2PStream *P2PStream) readData(rw *bufio.ReadWriter) {
 
 		switch message.Code {
 		case CMD_PEERS:
-			P2PStream.onPeers(&message)
+			ps.onPeers(&message)
 		case CMD_PEERS_ACK:
-			P2PStream.onPeersAck(&message)
+			ps.onPeersAck(&message)
 
 		}
 	}

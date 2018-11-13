@@ -104,24 +104,26 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 
 		v, ok := node.p2pStreamMap.Load(peerid)
 		if ok {
-			streamState := v.(*P2PStream)
-			streamState.mu.Lock()
-			if !streamState.isClosed {
+			p2pStream := v.(*P2PStream)
+			p2pStream.mu.Lock()
+			if !p2pStream.isClosed {
 				log.Info("reuse stream")
-				streamState.SendPeers()
+				p2pStream.SendPeers()
 			} else {
+				log.Warning("p2pStream is closed")
 				node.p2pStreamMap.Delete(peerid)
 				node.host.Peerstore().ClearAddrs(peerid)
-				nodeRoute.Remove(streamState.peerID)
-				log.Warning("streamState is removed")
+				nodeRoute.Remove(p2pStream.peerID)
+				log.Warning("p2pStream is removed")
 
 				if node.seedID == peerid {
 					log.Warning("add seed node")
 					nodeRoute.Update(peerid, addr)
 				}
 			}
-			streamState.mu.Unlock()
+			p2pStream.mu.Unlock()
 		} else {
+			// Always firt add id and addr at Peerstore
 			node.host.Peerstore().AddAddr(peerid, addr, pstore.PermanentAddrTTL)
 			streamState, err := NewP2PStream(node, peerid)
 			if err != nil {
