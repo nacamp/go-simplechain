@@ -17,12 +17,12 @@ type NodeRoute struct {
 	mu           sync.Mutex
 	done         chan bool
 	node         *Node
-	addrMap      map[peer.ID]ma.Multiaddr // TODO  change []ma.Multiaddr
+	AddrMap      map[peer.ID]ma.Multiaddr // TODO  change []ma.Multiaddr
 	routingTable *kb.RoutingTable
 }
 
 func NewNodeRoute(node *Node) *NodeRoute {
-	nodeRoute := &NodeRoute{node: node, addrMap: make(map[peer.ID]ma.Multiaddr)}
+	nodeRoute := &NodeRoute{node: node, AddrMap: make(map[peer.ID]ma.Multiaddr)}
 	nodeRoute.routingTable =
 		kb.NewRoutingTable(20, kb.ConvertPeerID(node.host.ID()), time.Minute, node.host.Peerstore())
 	return nodeRoute
@@ -31,7 +31,7 @@ func NewNodeRoute(node *Node) *NodeRoute {
 func (nodeRoute *NodeRoute) Update(peerid peer.ID, addr ma.Multiaddr) {
 	nodeRoute.mu.Lock()
 	nodeRoute.routingTable.Update(peerid)
-	nodeRoute.addrMap[peerid] = addr
+	nodeRoute.AddrMap[peerid] = addr
 	nodeRoute.mu.Unlock()
 
 	log.WithFields(log.Fields{
@@ -43,22 +43,22 @@ func (nodeRoute *NodeRoute) Update(peerid peer.ID, addr ma.Multiaddr) {
 func (nodeRoute *NodeRoute) Remove(peerid peer.ID) {
 	nodeRoute.mu.Lock()
 	nodeRoute.routingTable.Remove(peerid)
-	delete(nodeRoute.addrMap, peerid)
+	delete(nodeRoute.AddrMap, peerid)
 	nodeRoute.mu.Unlock()
 }
 
 func (nodeRoute *NodeRoute) NearestPeers(peerid peer.ID, count int) map[peer.ID]ma.Multiaddr {
-	addrMap := make(map[peer.ID]ma.Multiaddr)
+	AddrMap := make(map[peer.ID]ma.Multiaddr)
 	nodeRoute.mu.Lock()
 	peers := nodeRoute.routingTable.NearestPeers(kb.ConvertPeerID(peerid), count)
 	for i, p := range peers {
-		addrMap[p] = nodeRoute.addrMap[peers[i]]
+		AddrMap[p] = nodeRoute.AddrMap[peers[i]]
 	}
 	nodeRoute.mu.Unlock()
 	log.WithFields(log.Fields{
 		"peers": peers,
 	}).Info("NearestPeers")
-	return addrMap
+	return AddrMap
 }
 
 //AddNodeFromSeedString is
