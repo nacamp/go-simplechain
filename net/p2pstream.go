@@ -127,7 +127,7 @@ func (P2PStream *P2PStream) SendHello() error {
 	P2PStream.prevSendMsgType = HELLO
 	// fmt.Println(P2PStream.node.maddr.String())
 	//msg :=  Message{Code: CMD_HELLO, Payload: P2PStream.node.maddr.String()}
-	msg := NewMessageEncodePayload(CMD_HELLO, P2PStream.node.maddr.String())
+	msg := NewRLPMessage(CMD_HELLO, P2PStream.node.maddr.String())
 	log.Info("SendHello")
 	return P2PStream.sendMessage(&msg)
 }
@@ -135,7 +135,7 @@ func (P2PStream *P2PStream) SendHello() error {
 func (P2PStream *P2PStream) SendHelloAck() error {
 	P2PStream.prevSendMsgType = HELLO
 	//msg := Message{CMD_HELLO_ACK, P2PStream.node.maddr.String()}
-	msg := NewMessageEncodePayload(CMD_HELLO_ACK, P2PStream.node.maddr.String())
+	msg := NewRLPMessage(CMD_HELLO_ACK, P2PStream.node.maddr.String())
 	log.Info("SendHelloAck")
 	return P2PStream.sendMessage(&msg)
 }
@@ -179,7 +179,7 @@ func (P2PStream *P2PStream) onHelloAck(message *Message) error {
 func (P2PStream *P2PStream) SendPeers() error {
 	P2PStream.prevSendMsgType = PEERS
 	//msg := Message{CMD_PEERS, "version 0.1"}
-	msg := NewMessageEncodePayload(CMD_PEERS, "version 0.1")
+	msg := NewRLPMessage(CMD_PEERS, "version 0.1")
 	log.Info("SendPeers")
 	return P2PStream.sendMessage(&msg)
 }
@@ -205,7 +205,7 @@ func (P2PStream *P2PStream) SendPeersAck() error {
 
 	P2PStream.prevSendMsgType = PEERS
 	//msg := Message{CMD_PEERS_ACK, hex.EncodeToString(b)}
-	msg := NewMessageEncodePayload(CMD_PEERS_ACK, hex.EncodeToString(b))
+	msg := NewRLPMessage(CMD_PEERS_ACK, hex.EncodeToString(b))
 	log.Info("<<<<<SendPeersAck")
 	return P2PStream.sendMessage(&msg)
 }

@@ -12,19 +12,13 @@ const (
 )
 
 type Message struct {
-	Code uint64
-	// Payload interface{}
+	Code    uint64
 	Payload []byte
 }
 
-func NewMessageEncodePayload(code uint64, payload interface{}) (msg Message) {
+func NewRLPMessage(code uint64, payload interface{}) (msg Message) {
+	msg.Code = code
 	encodedBytes, _ := rlp.EncodeToBytes(payload)
 	msg.Payload = encodedBytes
-	msg.Code = code
-	// rlp.NewStream(bytes.NewReader(encodedBytes), 0).Decode(&msg)
 	return msg
-}
-
-func (m *Message) Decode(payload *string) {
-	rlp.DecodeBytes(m.Payload, payload)
 }

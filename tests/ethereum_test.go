@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRlp2(t *testing.T) {
-	msg := net.NewMessageEncodePayload(1, "test")
+func TestMessage(t *testing.T) {
+	msg := net.NewRLPMessage(1, "test")
 	encodedBytes, _ := rlp.EncodeToBytes(msg)
 
 	msg2 := net.Message{}
@@ -22,10 +22,7 @@ func TestRlp2(t *testing.T) {
 
 	str := string("")
 	rlp.DecodeBytes(msg2.Payload, &str)
-	str2 := string("")
-	msg2.Decode(&str2)
 	assert.Equal(t, "test", str, "")
-	assert.Equal(t, "test", str2, "")
 }
 func TestRlp(t *testing.T) {
 	//https://godoc.org/github.com/ethereum/go-ethereum/rlp#example-Encoder
