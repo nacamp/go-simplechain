@@ -48,9 +48,9 @@ func NewP2PStreamWithStream(node *Node, s libnet.Stream) (*P2PStream, error) {
 	return P2PStream, nil
 }
 
-func (P2PStream *P2PStream) Start() {
-	rw := bufio.NewReadWriter(bufio.NewReader(P2PStream.stream), bufio.NewWriter(P2PStream.stream))
-	go P2PStream.readData(rw)
+func (ps *P2PStream) Start() {
+	rw := bufio.NewReadWriter(bufio.NewReader(ps.stream), bufio.NewWriter(ps.stream))
+	go ps.readData(rw)
 }
 
 func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
@@ -97,101 +97,101 @@ func writeData(rw *bufio.ReadWriter) {
 	}
 }
 
-func (P2PStream *P2PStream) WaitFinshedHandshake() {
-	P2PStream.mu.Lock()
-	if !P2PStream.isFinishedHandshake {
-		<-P2PStream.finshedHandshake
+func (ps *P2PStream) WaitFinshedHandshake() {
+	ps.mu.Lock()
+	if !ps.isFinishedHandshake {
+		<-ps.finshedHandshake
 	}
-	P2PStream.mu.Unlock()
+	ps.mu.Unlock()
 }
 
 //send Hello
-func (P2PStream *P2PStream) SendHello() error {
-	P2PStream.prevSendMsgType = HELLO
-	if msg, err := NewRLPMessage(CMD_HELLO, P2PStream.node.maddr.String()); err != nil {
+func (ps *P2PStream) SendHello() error {
+	ps.prevSendMsgType = HELLO
+	if msg, err := NewRLPMessage(CMD_HELLO, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
 		log.Info("SendHello")
-		return P2PStream.sendMessage(&msg)
+		return ps.sendMessage(&msg)
 	}
 }
 
-func (P2PStream *P2PStream) SendHelloAck() error {
-	P2PStream.prevSendMsgType = HELLO
-	if msg, err := NewRLPMessage(CMD_HELLO_ACK, P2PStream.node.maddr.String()); err != nil {
+func (ps *P2PStream) SendHelloAck() error {
+	ps.prevSendMsgType = HELLO
+	if msg, err := NewRLPMessage(CMD_HELLO_ACK, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
 		log.Info("SendHelloAck")
-		return P2PStream.sendMessage(&msg)
+		return ps.sendMessage(&msg)
 	}
 }
 
-func (P2PStream *P2PStream) onHello(message *Message) error {
-	defer P2PStream.finshHandshake()
+func (ps *P2PStream) onHello(message *Message) error {
+	defer ps.finshHandshake()
 	data := string("")
 	rlp.DecodeBytes(message.Payload, &data)
 	log.WithFields(log.Fields{
 		"Command": message.Code,
 		"Data":    data,
 	}).Info("onHello")
-	node := P2PStream.node
+	node := ps.node
 	addr, err := ma.NewMultiaddr(data)
 	if err != nil {
 		return err
 	}
-	node.nodeRoute.Update(P2PStream.peerID, addr) //P2PStream.addr
-	return P2PStream.SendHelloAck()
+	node.nodeRoute.Update(ps.peerID, addr) //P2PStream.addr
+	return ps.SendHelloAck()
 }
 
-func (P2PStream *P2PStream) onHelloAck(message *Message) error {
-	defer P2PStream.finshHandshake()
+func (ps *P2PStream) onHelloAck(message *Message) error {
+	defer ps.finshHandshake()
 	data := string("")
 	rlp.DecodeBytes(message.Payload, &data)
 	log.WithFields(log.Fields{
 		"Command": message.Code,
 		"Data":    data,
 	}).Info("onHello")
-	node := P2PStream.node
+	node := ps.node
 	addr, err := ma.NewMultiaddr(data)
 	if err != nil {
 		return err
 	}
-	node.nodeRoute.Update(P2PStream.peerID, addr) //P2PStream.addr
+	node.nodeRoute.Update(ps.peerID, addr) //P2PStream.addr
 	return nil
 }
 
 //send request peers
-func (P2PStream *P2PStream) SendPeers() error {
-	P2PStream.prevSendMsgType = PEERS
+func (ps *P2PStream) SendPeers() error {
+	ps.prevSendMsgType = PEERS
 	if msg, err := NewRLPMessage(CMD_PEERS, "version 0.1"); err != nil {
 		return err
 	} else {
 		log.Info("SendPeers")
-		return P2PStream.sendMessage(&msg)
+		return ps.sendMessage(&msg)
 	}
 }
 
-func (P2PStream *P2PStream) SendPeersAck() error {
+func (ps *P2PStream) SendPeersAck() error {
 	log.Info("SendPeersAck>>>>>")
-	node := P2PStream.node
+	node := ps.node
 
-	peers := node.nodeRoute.NearestPeers(P2PStream.peerID, 10)
+	peers := node.nodeRoute.NearestPeers(ps.peerID, 10)
 	payload := make([][]string, 0)
 	for k, addr := range peers {
 		payload = append(payload, []string{k.Pretty(), addr.String()})
 	}
 
-	P2PStream.prevSendMsgType = PEERS
+	ps.prevSendMsgType = PEERS
 	//msg := Message{CMD_PEERS_ACK, hex.EncodeToString(b)}
 	if msg, err := NewRLPMessage(CMD_PEERS_ACK, &payload); err != nil {
 		return err
 	} else {
 		log.Info("<<<<<SendPeersAck")
-		return P2PStream.sendMessage(&msg)
+		return ps.sendMessage(&msg)
 	}
 }
 
-func (P2PStream *P2PStream) onPeers(message *Message) error {
+func (ps *P2PStream) onPeers(message *Message) error {
 	data := string("")
 	rlp.DecodeBytes(message.Payload, &data)
 	log.WithFields(log.Fields{
@@ -199,10 +199,10 @@ func (P2PStream *P2PStream) onPeers(message *Message) error {
 		"Data":    data,
 	}).Info("onPeers>>>>>")
 	log.Info("<<<<<onPeers")
-	return P2PStream.SendPeersAck()
+	return ps.SendPeersAck()
 }
 
-func (P2PStream *P2PStream) onPeersAck(message *Message) error {
+func (ps *P2PStream) onPeersAck(message *Message) error {
 	log.Info("onPeersAck>>>>>")
 	payload := make([][]string, 0)
 
@@ -212,7 +212,7 @@ func (P2PStream *P2PStream) onPeersAck(message *Message) error {
 		return err
 	}
 
-	node := P2PStream.node
+	node := ps.node
 	for _, addr := range payload {
 		fmt.Printf("%v\n", addr)
 		id, _ := peer.IDB58Decode(addr[0])
@@ -225,27 +225,27 @@ func (P2PStream *P2PStream) onPeersAck(message *Message) error {
 	return nil
 }
 
-func (P2PStream *P2PStream) sendMessage(message *Message) error {
+func (ps *P2PStream) sendMessage(message *Message) error {
 	encodedBytes, _ := rlp.EncodeToBytes(message)
-	_, err := P2PStream.stream.Write(encodedBytes)
+	_, err := ps.stream.Write(encodedBytes)
 	if err != nil {
 		//test host입장에서 muliple stream인건지
 		//time.Sleep(30 * time.Second)
-		P2PStream.stream.Close()
-		P2PStream.mu.Lock()
-		P2PStream.isClosed = true
-		P2PStream.mu.Unlock()
-		P2PStream.node.host.Peerstore().ClearAddrs(P2PStream.peerID)
-		//P2PStream.node.host.Peerstore().AddAddr(P2PStream.peerID, P2PStream.addr, 0)
+		ps.stream.Close()
+		ps.mu.Lock()
+		ps.isClosed = true
+		ps.mu.Unlock()
+		ps.node.host.Peerstore().ClearAddrs(ps.peerID)
+		//ps.node.host.Peerstore().AddAddr(ps.peerID, ps.addr, 0)
 		log.Warning("sendMessage: client closed")
 		return err
 	}
 	return nil
 }
 
-func (P2PStream *P2PStream) finshHandshake() {
-	P2PStream.finshedHandshake <- true
-	P2PStream.mu.Lock()
-	P2PStream.isFinishedHandshake = true
-	P2PStream.mu.Unlock()
+func (ps *P2PStream) finshHandshake() {
+	ps.finshedHandshake <- true
+	ps.mu.Lock()
+	ps.isFinishedHandshake = true
+	ps.mu.Unlock()
 }
