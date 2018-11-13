@@ -16,9 +16,12 @@ type Message struct {
 	Payload []byte
 }
 
-func NewRLPMessage(code uint64, payload interface{}) (msg Message) {
+func NewRLPMessage(code uint64, payload interface{}) (msg Message, err error) {
 	msg.Code = code
-	encodedBytes, _ := rlp.EncodeToBytes(payload)
-	msg.Payload = encodedBytes
-	return msg
+	if encodedBytes, err := rlp.EncodeToBytes(payload); err != nil {
+		return msg, err
+	} else {
+		msg.Payload = encodedBytes
+	}
+	return msg, nil
 }

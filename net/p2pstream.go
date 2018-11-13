@@ -3,8 +3,6 @@ package net
 import (
 	"bufio"
 	"context"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -70,14 +68,6 @@ func (P2PStream *P2PStream) readData(rw *bufio.ReadWriter) {
 			log.Warning("client closed")
 			return
 		}
-		// if len(b) < 2 {
-		// 	continue
-		// }
-		// if err != nil {
-		// 	//return err
-		// }
-		// var message Message
-		// message.Unmarshal(b)
 
 		switch message.Code {
 		case CMD_HELLO:
@@ -97,14 +87,7 @@ func (P2PStream *P2PStream) readData(rw *bufio.ReadWriter) {
 			P2PStream.onPeers(&message)
 		case CMD_PEERS_ACK:
 			P2PStream.onPeersAck(&message)
-			// case "BLOCKS":
-			// 	fmt.Println("Blocks")
-			// case "BLOCKS-ACK":
-			// 	fmt.Println("Blocks")
-			// case "BYE":
-			// 	fmt.Println("Bye")
-			// case "BYE-ACK":
-			// 	fmt.Println("Bye")
+
 		}
 	}
 }
@@ -125,26 +108,28 @@ func (P2PStream *P2PStream) WaitFinshedHandshake() {
 //send Hello
 func (P2PStream *P2PStream) SendHello() error {
 	P2PStream.prevSendMsgType = HELLO
-	// fmt.Println(P2PStream.node.maddr.String())
-	//msg :=  Message{Code: CMD_HELLO, Payload: P2PStream.node.maddr.String()}
-	msg := NewRLPMessage(CMD_HELLO, P2PStream.node.maddr.String())
-	log.Info("SendHello")
-	return P2PStream.sendMessage(&msg)
+	if msg, err := NewRLPMessage(CMD_HELLO, P2PStream.node.maddr.String()); err != nil {
+		return err
+	} else {
+		log.Info("SendHello")
+		return P2PStream.sendMessage(&msg)
+	}
 }
 
 func (P2PStream *P2PStream) SendHelloAck() error {
 	P2PStream.prevSendMsgType = HELLO
-	//msg := Message{CMD_HELLO_ACK, P2PStream.node.maddr.String()}
-	msg := NewRLPMessage(CMD_HELLO_ACK, P2PStream.node.maddr.String())
-	log.Info("SendHelloAck")
-	return P2PStream.sendMessage(&msg)
+	if msg, err := NewRLPMessage(CMD_HELLO_ACK, P2PStream.node.maddr.String()); err != nil {
+		return err
+	} else {
+		log.Info("SendHelloAck")
+		return P2PStream.sendMessage(&msg)
+	}
 }
 
 func (P2PStream *P2PStream) onHello(message *Message) error {
 	defer P2PStream.finshHandshake()
 	data := string("")
 	rlp.DecodeBytes(message.Payload, &data)
-	// fmt.Println((message.Payload).(string))
 	log.WithFields(log.Fields{
 		"Command": message.Code,
 		"Data":    data,
@@ -178,10 +163,12 @@ func (P2PStream *P2PStream) onHelloAck(message *Message) error {
 //send request peers
 func (P2PStream *P2PStream) SendPeers() error {
 	P2PStream.prevSendMsgType = PEERS
-	//msg := Message{CMD_PEERS, "version 0.1"}
-	msg := NewRLPMessage(CMD_PEERS, "version 0.1")
-	log.Info("SendPeers")
-	return P2PStream.sendMessage(&msg)
+	if msg, err := NewRLPMessage(CMD_PEERS, "version 0.1"); err != nil {
+		return err
+	} else {
+		log.Info("SendPeers")
+		return P2PStream.sendMessage(&msg)
+	}
 }
 
 func (P2PStream *P2PStream) SendPeersAck() error {
@@ -189,25 +176,19 @@ func (P2PStream *P2PStream) SendPeersAck() error {
 	node := P2PStream.node
 
 	peers := node.nodeRoute.NearestPeers(P2PStream.peerID, 10)
-	var m map[string]string
-	m = make(map[string]string)
+	payload := make([][]string, 0)
 	for k, addr := range peers {
-		m[k.Pretty()] = addr.String()
+		payload = append(payload, []string{k.Pretty(), addr.String()})
 	}
-	b, err := json.Marshal(m)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	var m2 map[string]string
-	m2 = make(map[string]string)
-	json.Unmarshal(b, &m2)
 
 	P2PStream.prevSendMsgType = PEERS
 	//msg := Message{CMD_PEERS_ACK, hex.EncodeToString(b)}
-	msg := NewRLPMessage(CMD_PEERS_ACK, hex.EncodeToString(b))
-	log.Info("<<<<<SendPeersAck")
-	return P2PStream.sendMessage(&msg)
+	if msg, err := NewRLPMessage(CMD_PEERS_ACK, &payload); err != nil {
+		return err
+	} else {
+		log.Info("<<<<<SendPeersAck")
+		return P2PStream.sendMessage(&msg)
+	}
 }
 
 func (P2PStream *P2PStream) onPeers(message *Message) error {
@@ -222,27 +203,23 @@ func (P2PStream *P2PStream) onPeers(message *Message) error {
 }
 
 func (P2PStream *P2PStream) onPeersAck(message *Message) error {
-	// log.WithFields(log.Fields{
-	// 	"Command": message.Command,
-	// 	"Data":    message.Data,
-	// }).Info("onPeersAck>>>>>")
 	log.Info("onPeersAck>>>>>")
-	data := string("")
-	rlp.DecodeBytes(message.Payload, &data)
-	b, err := hex.DecodeString(data)
+	payload := make([][]string, 0)
+
+	err := rlp.DecodeBytes(message.Payload, &payload)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
-	var m map[string]string
-	m = make(map[string]string)
-	json.Unmarshal(b, &m)
 
 	node := P2PStream.node
-	for k, addr := range m {
-		id, _ := peer.IDB58Decode(k)
-		addr2, _ := ma.NewMultiaddr(addr)
-		node.nodeRoute.Update(id, addr2)
+	for _, addr := range payload {
+		fmt.Printf("%v\n", addr)
+		id, _ := peer.IDB58Decode(addr[0])
+		maddr, _ := ma.NewMultiaddr(addr[1])
+		node.nodeRoute.Update(id, maddr)
 	}
+
 	node.nodeRoute.NearestPeers(node.host.ID(), 10)
 	log.Info("<<<<<onPeersAck")
 	return nil
@@ -272,17 +249,3 @@ func (P2PStream *P2PStream) finshHandshake() {
 	P2PStream.isFinishedHandshake = true
 	P2PStream.mu.Unlock()
 }
-
-// func receiveMessage(s libnet.Stream) (*Message, error) {
-// 	// buf := bufio.NewReader(s)
-// 	// out, err := buf.ReadBytes('\n')
-// 	// fmt.Println(len(out))
-// 	// // out, err := ioutil.ReadAll(s)
-// 	// if err != nil {
-// 	// 	//log.Fatalln(err)
-// 	// 	return nil, err
-// 	// }
-// 	// var message Message
-// 	// message.Unmarshal(out)
-// 	// return &message, nil
-// }
