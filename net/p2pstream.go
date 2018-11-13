@@ -13,13 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
-	HELLO = iota + 1
-	PEERS
-	BLOCKS
-	BYE
-)
-
 type P2PStream struct {
 	mu                  sync.RWMutex //sync.Mutex
 	peerID              peer.ID
