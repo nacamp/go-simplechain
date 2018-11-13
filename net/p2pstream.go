@@ -21,7 +21,7 @@ const (
 )
 
 type P2PStream struct {
-	mu                  sync.Mutex
+	mu                  sync.RWMutex //sync.Mutex
 	peerID              peer.ID
 	addr                ma.Multiaddr
 	stream              libnet.Stream
@@ -29,6 +29,7 @@ type P2PStream struct {
 	isFinishedHandshake bool
 	isClosed            bool
 	finshedHandshake    chan bool
+	messageCh           chan *Message
 	prevSendMsgType     int8
 }
 
@@ -38,19 +39,39 @@ func NewP2PStream(node *Node, peerID peer.ID) (*P2PStream, error) {
 		log.Warning("NewP2PStream : ", err)
 		return nil, err
 	}
-	P2PStream := &P2PStream{node: node, stream: s, peerID: peerID, addr: s.Conn().RemoteMultiaddr(), finshedHandshake: make(chan bool, 1)}
+	P2PStream := &P2PStream{
+		node:             node,
+		stream:           s,
+		peerID:           peerID,
+		addr:             s.Conn().RemoteMultiaddr(),
+		finshedHandshake: make(chan bool),
+		messageCh:        make(chan *Message),
+	}
 	return P2PStream, nil
 }
 
 func NewP2PStreamWithStream(node *Node, s libnet.Stream) (*P2PStream, error) {
 	fmt.Println(s.Conn().RemoteMultiaddr())
-	P2PStream := &P2PStream{node: node, stream: s, peerID: s.Conn().RemotePeer(), addr: s.Conn().RemoteMultiaddr(), finshedHandshake: make(chan bool, 1)}
+	P2PStream := &P2PStream{
+		node:             node,
+		stream:           s,
+		peerID:           s.Conn().RemotePeer(),
+		addr:             s.Conn().RemoteMultiaddr(),
+		finshedHandshake: make(chan bool),
+		messageCh:        make(chan *Message),
+	}
 	return P2PStream, nil
 }
 
-func (ps *P2PStream) Start() {
+func (ps *P2PStream) Start(isHost bool) {
+	log.Info("P2PStream.start")
 	rw := bufio.NewReadWriter(bufio.NewReader(ps.stream), bufio.NewWriter(ps.stream))
 	go ps.readData(rw)
+	go ps.writeData(rw)
+	if !isHost {
+		ps.SendHello()
+	}
+
 }
 
 func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
@@ -60,15 +81,16 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 		if err != nil {
 			//time.Sleep(30 * time.Second)
 			ps.stream.Close()
+			log.Debug("readData  lock before")
 			ps.mu.Lock()
 			ps.isClosed = true
 			ps.mu.Unlock()
+			log.Debug("readData  Unlock after")
 			ps.node.host.Peerstore().ClearAddrs(ps.peerID)
 			//P2PStream.node.host.Peerstore().AddAddr(P2PStream.peerID, P2PStream.addr, 0)
 			log.Warning("client closed")
 			return
 		}
-
 		switch message.Code {
 		case CMD_HELLO:
 			ps.onHello(&message)
@@ -81,7 +103,6 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 			}
 			fmt.Println("unlock...")
 		}
-
 		switch message.Code {
 		case CMD_PEERS:
 			ps.onPeers(&message)
@@ -92,20 +113,18 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 	}
 }
 
-func writeData(rw *bufio.ReadWriter) {
+func (ps *P2PStream) writeData(rw *bufio.ReadWriter) {
+	<-ps.finshedHandshake
 	for {
+		select {
+		case message := <-ps.messageCh:
+			ps.sendMessage(message)
+			// continue
+		default:
+		}
 	}
 }
 
-func (ps *P2PStream) WaitFinshedHandshake() {
-	ps.mu.Lock()
-	if !ps.isFinishedHandshake {
-		<-ps.finshedHandshake
-	}
-	ps.mu.Unlock()
-}
-
-//send Hello
 func (ps *P2PStream) SendHello() error {
 	ps.prevSendMsgType = HELLO
 	if msg, err := NewRLPMessage(CMD_HELLO, ps.node.maddr.String()); err != nil {
@@ -150,7 +169,7 @@ func (ps *P2PStream) onHelloAck(message *Message) error {
 	log.WithFields(log.Fields{
 		"Command": message.Code,
 		"Data":    data,
-	}).Info("onHello")
+	}).Info("onHelloAck")
 	node := ps.node
 	addr, err := ma.NewMultiaddr(data)
 	if err != nil {
@@ -167,8 +186,9 @@ func (ps *P2PStream) SendPeers() error {
 		return err
 	} else {
 		log.Info("SendPeers")
-		return ps.sendMessage(&msg)
+		ps.messageCh <- &msg
 	}
+	return nil
 }
 
 func (ps *P2PStream) SendPeersAck() error {
@@ -187,8 +207,9 @@ func (ps *P2PStream) SendPeersAck() error {
 		return err
 	} else {
 		log.Info("<<<<<SendPeersAck")
-		return ps.sendMessage(&msg)
+		ps.messageCh <- &msg
 	}
+	return nil
 }
 
 func (ps *P2PStream) onPeers(message *Message) error {
@@ -232,9 +253,11 @@ func (ps *P2PStream) sendMessage(message *Message) error {
 		//test host입장에서 muliple stream인건지
 		//time.Sleep(30 * time.Second)
 		ps.stream.Close()
+		log.Debug("sendMessage lock before")
 		ps.mu.Lock()
 		ps.isClosed = true
 		ps.mu.Unlock()
+		log.Debug("sendMessage Unlock after")
 		ps.node.host.Peerstore().ClearAddrs(ps.peerID)
 		//ps.node.host.Peerstore().AddAddr(ps.peerID, ps.addr, 0)
 		log.Warning("sendMessage: client closed")
@@ -244,8 +267,11 @@ func (ps *P2PStream) sendMessage(message *Message) error {
 }
 
 func (ps *P2PStream) finshHandshake() {
+	log.Debug("finshHandshake lock before")
 	ps.finshedHandshake <- true
 	ps.mu.Lock()
 	ps.isFinishedHandshake = true
 	ps.mu.Unlock()
+	log.Debug("finshHandshake Unlock after")
+	log.Info("finshHandshake")
 }

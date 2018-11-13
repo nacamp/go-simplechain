@@ -29,10 +29,12 @@ func NewNodeRoute(node *Node) *NodeRoute {
 }
 
 func (nodeRoute *NodeRoute) Update(peerid peer.ID, addr ma.Multiaddr) {
+	log.Debug("Update lock before")
 	nodeRoute.mu.Lock()
 	nodeRoute.routingTable.Update(peerid)
 	nodeRoute.AddrMap[peerid] = addr
 	nodeRoute.mu.Unlock()
+	log.Debug("Update unlock after")
 
 	log.WithFields(log.Fields{
 		"ID":   peerid,
@@ -41,20 +43,24 @@ func (nodeRoute *NodeRoute) Update(peerid peer.ID, addr ma.Multiaddr) {
 }
 
 func (nodeRoute *NodeRoute) Remove(peerid peer.ID) {
+	log.Debug("Remove lock before")
 	nodeRoute.mu.Lock()
 	nodeRoute.routingTable.Remove(peerid)
 	delete(nodeRoute.AddrMap, peerid)
 	nodeRoute.mu.Unlock()
+	log.Debug("Remove unlock after")
 }
 
 func (nodeRoute *NodeRoute) NearestPeers(peerid peer.ID, count int) map[peer.ID]ma.Multiaddr {
 	AddrMap := make(map[peer.ID]ma.Multiaddr)
+	log.Debug("NearestPeers  lock before")
 	nodeRoute.mu.Lock()
 	peers := nodeRoute.routingTable.NearestPeers(kb.ConvertPeerID(peerid), count)
 	for i, p := range peers {
 		AddrMap[p] = nodeRoute.AddrMap[peers[i]]
 	}
 	nodeRoute.mu.Unlock()
+	log.Debug("NearestPeers unlock after")
 	log.WithFields(log.Fields{
 		"peers": peers,
 	}).Info("NearestPeers")
@@ -105,11 +111,13 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 		v, ok := node.p2pStreamMap.Load(peerid)
 		if ok {
 			p2pStream := v.(*P2PStream)
-			p2pStream.mu.Lock()
 			if !p2pStream.isClosed {
 				log.Info("reuse stream")
 				p2pStream.SendPeers()
 			} else {
+				log.Debug("FindNewNodes lock before")
+				p2pStream.mu.Lock()
+				log.Debug("FindNewNodes lock after")
 				log.Warning("p2pStream is closed")
 				node.p2pStreamMap.Delete(peerid)
 				node.host.Peerstore().ClearAddrs(peerid)
@@ -120,8 +128,10 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 					log.Warning("add seed node")
 					nodeRoute.Update(peerid, addr)
 				}
+				p2pStream.mu.Unlock()
+				log.Debug("FindNewNodes Unlock after")
 			}
-			p2pStream.mu.Unlock()
+
 		} else {
 			// Always firt add id and addr at Peerstore
 			node.host.Peerstore().AddAddr(peerid, addr, pstore.PermanentAddrTTL)
@@ -132,9 +142,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 			} else {
 				log.Info(p2pStream.addr, " new")
 				node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
-				p2pStream.Start()
-				p2pStream.SendHello()
-				p2pStream.WaitFinshedHandshake()
+				p2pStream.Start(false)
 				p2pStream.SendPeers()
 			}
 

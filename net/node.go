@@ -73,5 +73,5 @@ func (node *Node) HandleStream(s libnet.Stream) {
 		log.Fatal("HandleStream", err)
 	}
 
-	p2pStream.Start()
+	p2pStream.Start(true)
 }
