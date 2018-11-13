@@ -28,7 +28,7 @@ type P2PStream struct {
 	node                *Node
 	isFinishedHandshake bool
 	isClosed            bool
-	finshedHandshake    chan bool
+	finshedHandshakeCh  chan bool
 	messageCh           chan *Message
 	prevSendMsgType     int8
 }
@@ -40,12 +40,12 @@ func NewP2PStream(node *Node, peerID peer.ID) (*P2PStream, error) {
 		return nil, err
 	}
 	P2PStream := &P2PStream{
-		node:             node,
-		stream:           s,
-		peerID:           peerID,
-		addr:             s.Conn().RemoteMultiaddr(),
-		finshedHandshake: make(chan bool),
-		messageCh:        make(chan *Message),
+		node:               node,
+		stream:             s,
+		peerID:             peerID,
+		addr:               s.Conn().RemoteMultiaddr(),
+		finshedHandshakeCh: make(chan bool),
+		messageCh:          make(chan *Message),
 	}
 	return P2PStream, nil
 }
@@ -53,12 +53,12 @@ func NewP2PStream(node *Node, peerID peer.ID) (*P2PStream, error) {
 func NewP2PStreamWithStream(node *Node, s libnet.Stream) (*P2PStream, error) {
 	fmt.Println(s.Conn().RemoteMultiaddr())
 	P2PStream := &P2PStream{
-		node:             node,
-		stream:           s,
-		peerID:           s.Conn().RemotePeer(),
-		addr:             s.Conn().RemoteMultiaddr(),
-		finshedHandshake: make(chan bool),
-		messageCh:        make(chan *Message),
+		node:               node,
+		stream:             s,
+		peerID:             s.Conn().RemotePeer(),
+		addr:               s.Conn().RemoteMultiaddr(),
+		finshedHandshakeCh: make(chan bool),
+		messageCh:          make(chan *Message),
 	}
 	return P2PStream, nil
 }
@@ -114,7 +114,7 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 }
 
 func (ps *P2PStream) writeData(rw *bufio.ReadWriter) {
-	<-ps.finshedHandshake
+	<-ps.finshedHandshakeCh
 	for {
 		select {
 		case message := <-ps.messageCh:
@@ -268,7 +268,7 @@ func (ps *P2PStream) sendMessage(message *Message) error {
 
 func (ps *P2PStream) finshHandshake() {
 	log.Debug("finshHandshake lock before")
-	ps.finshedHandshake <- true
+	ps.finshedHandshakeCh <- true
 	ps.mu.Lock()
 	ps.isFinishedHandshake = true
 	ps.mu.Unlock()
