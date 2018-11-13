@@ -1,7 +1,6 @@
 package net
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"sync"
@@ -74,7 +73,5 @@ func (node *Node) HandleStream(s libnet.Stream) {
 		log.Fatal("HandleStream", err)
 	}
 
-	rw := bufio.NewReadWriter(bufio.NewReader(s), bufio.NewWriter(s))
-
-	go p2pStream.readData(rw)
+	p2pStream.Start()
 }
