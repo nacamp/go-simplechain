@@ -10,6 +10,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/rlp"
 	"github.com/najimmy/go-simplechain/storage"
 )
@@ -316,4 +317,34 @@ func encodeBlockHeight(number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
+}
+
+// func (bc *BlockChain) Start() {
+// 	//go bc.Loop()
+// }
+
+func (bc *BlockChain) HandleMessage(message *net.Message) error {
+	data := string("")
+	rlp.DecodeBytes(message.Payload, &data)
+	fmt.Println(message.Code)
+	fmt.Println(data)
+	return nil
+}
+
+// func (sp *SubsriberPool) handleMessage(message *Message) {
+// 	sp.messageCh <- message
+// }
+
+func (bc *BlockChain) Loop() {
+	for {
+		// 	message := <-sp.messageCh
+		// 	//TODO: v is sync.Map later
+		// 	v, ok := sp.subscribersMap.Load(message.Code)
+		// 	if ok {
+		// 		subscriber := v.(Subscriber)
+		// 		subscriber.HandleMessage(message)
+		// 	} else {
+		// 	}
+		// }
+	}
 }
