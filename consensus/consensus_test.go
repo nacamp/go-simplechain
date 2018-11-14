@@ -152,3 +152,31 @@ func TestMakeBlockChain(t *testing.T) {
 	dpos.UpdateLIB(remoteBc)
 	assert.Equal(t, uint64(7), remoteBc.Lib.Header.Height, "")
 }
+
+func TestDpos_MakeBlock(t *testing.T) {
+	dpos := consensus.NewDpos()
+	remoteBc, _ := core.NewBlockChain(dpos)
+	remoteBc.PutBlockByCoinbase(remoteBc.GenesisBlock)
+
+	dpos.Setup(remoteBc, nil, common.HexToAddress(GenesisCoinbaseAddress))
+	block := dpos.MakeBlock(uint64(3)) //0
+	assert.NotNil(t, block, "")
+	assert.NotEqual(t, block.Header.AccountHash, remoteBc.GenesisBlock.Header.AccountHash, "")
+	assert.Equal(t, block.Header.VoterHash, remoteBc.GenesisBlock.Header.VoterHash, "")
+	assert.Equal(t, block.Header.MinerHash, remoteBc.GenesisBlock.Header.MinerHash, "")
+	assert.Equal(t, block.Header.TransactionHash, remoteBc.GenesisBlock.Header.TransactionHash, "")
+}
+
+func TestDpos_MakeBlock2(t *testing.T) {
+	dpos := consensus.NewDpos()
+	remoteBc, _ := core.NewBlockChain(dpos)
+	remoteBc.PutBlockByCoinbase(remoteBc.GenesisBlock)
+
+	dpos.Setup(remoteBc, nil, common.HexToAddress(GenesisCoinbaseAddress))
+	block := dpos.MakeBlock(uint64(3 * 3 * 3)) //0
+	assert.NotNil(t, block, "")
+	assert.NotEqual(t, block.Header.AccountHash, remoteBc.GenesisBlock.Header.AccountHash, "")
+	assert.NotEqual(t, block.Header.MinerHash, remoteBc.GenesisBlock.Header.MinerHash, "")
+	assert.Equal(t, block.Header.VoterHash, remoteBc.GenesisBlock.Header.VoterHash, "")
+	assert.Equal(t, block.Header.TransactionHash, remoteBc.GenesisBlock.Header.TransactionHash, "")
+}

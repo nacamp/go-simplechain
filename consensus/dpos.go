@@ -1,27 +1,94 @@
 package consensus
 
 import (
-	// _ "fmt" // no more error
+	"fmt"
+	"time"
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
+	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/storage"
 	"github.com/najimmy/go-simplechain/trie"
 )
 
+//Demo 3 accounts
+var GenesisCoinbaseAddress = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")
+var keystore = map[string]string{
+	GenesisCoinbaseAddress: "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
+	"0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3": "0xf390e256b6ed8a1b283d3ea80b103b868c14c31e5b7114fc32fff21c4cb263eb",
+	"0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1": "0xb385aca81e134722cca902bf85443528c3d3a783cf54008cfc34a2ca563fc5b6",
+}
+
 type Dpos struct {
+	bc       *core.BlockChain
+	node     *net.Node
+	coinbase common.Address
 }
 
 func NewDpos() *Dpos {
 	return &Dpos{}
 }
 
-func (dpos *Dpos) MakeBlock() {
+func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address) {
+	dpos.bc = bc
+	dpos.node = node
+	dpos.coinbase = address
+}
 
+func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
+	bc := dpos.bc
+	turn := now % 3
+	block := bc.NewBlockFromParent(bc.Tail)
+	block.Header.Time = now
+	minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
+	if err != nil {
+		fmt.Println(err)
+	}
+	if minerGroup[turn] == dpos.coinbase {
+		fmt.Println("It is my turn")
+		block.Header.Coinbase = dpos.coinbase
+		block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
+		//because PutMinerState recall GetMinerGroup , here assign  bc.Tail.Header.SnapshotVoterTime , not voterBlock.Header.Time
+
+		//use transaction later
+		bc.RewardForCoinbase(block)
+		bc.ExecuteTransaction(block)
+		bc.PutMinerState(block)
+
+		block.Header.AccountHash = block.AccountState.RootHash()
+		block.Header.TransactionHash = block.TransactionState.RootHash()
+		block.Header.VoterHash = block.VoterState.RootHash()
+		block.Header.MinerHash = block.MinerState.RootHash()
+
+		block.MakeHash()
+
+		return block
+	} else {
+		fmt.Println("It is not my turn")
+		return nil
+	}
 }
 
 func (dpos *Dpos) Seal() {
 
+}
+
+func (dpos *Dpos) Start() {
+	go dpos.loop()
+}
+
+func (dpos *Dpos) loop() {
+	ticker := time.NewTicker(1 * time.Second)
+	for {
+		select {
+		case now := <-ticker.C:
+			block := dpos.MakeBlock(uint64(now.Unix()))
+			dpos.bc.PutBlockByCoinbase(block)
+			message, _ := net.NewRLPMessage(net.CMD_BLOCK, block)
+			dpos.node.SendMessage(&message)
+			fmt.Println("ticker")
+		}
+	}
 }
 
 //---------- Consensus
