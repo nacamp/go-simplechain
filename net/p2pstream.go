@@ -100,7 +100,9 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 			ps.onPeers(&message)
 		case CMD_PEERS_ACK:
 			ps.onPeersAck(&message)
-
+		default:
+			//subscribe
+			ps.node.subsriberPool.handleMessage(&message)
 		}
 	}
 }
@@ -237,8 +239,6 @@ func (ps *P2PStream) sendMessage(message *Message) error {
 	encodedBytes, _ := rlp.EncodeToBytes(message)
 	_, err := ps.stream.Write(encodedBytes)
 	if err != nil {
-		//test host입장에서 muliple stream인건지
-		//time.Sleep(30 * time.Second)
 		ps.stream.Close()
 		log.Debug("sendMessage lock before")
 		ps.mu.Lock()

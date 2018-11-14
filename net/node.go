@@ -15,13 +15,14 @@ import (
 )
 
 type Node struct {
-	seedID       peer.ID
-	done         chan bool
-	privKey      crypto.PrivKey
-	maddr        ma.Multiaddr
-	host         host.Host
-	nodeRoute    *NodeRoute
-	p2pStreamMap *sync.Map
+	seedID        peer.ID
+	done          chan bool
+	privKey       crypto.PrivKey
+	maddr         ma.Multiaddr
+	host          host.Host
+	nodeRoute     *NodeRoute
+	p2pStreamMap  *sync.Map
+	subsriberPool *SubsriberPool
 }
 
 //TODO: 127.0.0.1 from parameter
@@ -74,4 +75,21 @@ func (node *Node) HandleStream(s libnet.Stream) {
 	}
 
 	p2pStream.Start(true)
+}
+
+func (node *Node) SetSubsriberPool(pool *SubsriberPool) {
+	node.subsriberPool = pool
+}
+
+func (node *Node) GetSubsriberPool() *SubsriberPool {
+	return node.subsriberPool
+}
+
+//first send dummy
+func (node *Node) SendMessage(message *Message) {
+	node.p2pStreamMap.Range(func(key, value interface{}) bool {
+		p2pStream := value.(*P2PStream)
+		p2pStream.sendMessage(message)
+		return true
+	})
 }
