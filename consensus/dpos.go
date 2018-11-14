@@ -1,7 +1,7 @@
 package consensus
 
 import (
-	_ "fmt" // no more error
+	// _ "fmt" // no more error
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
