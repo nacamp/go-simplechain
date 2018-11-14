@@ -22,7 +22,7 @@ type Node struct {
 	host          host.Host
 	nodeRoute     *NodeRoute
 	p2pStreamMap  *sync.Map
-	subsriberPool *SubsriberPool
+	subsriberPool *SubscriberPool
 }
 
 //TODO: 127.0.0.1 from parameter
@@ -77,11 +77,11 @@ func (node *Node) HandleStream(s libnet.Stream) {
 	p2pStream.Start(true)
 }
 
-func (node *Node) SetSubsriberPool(pool *SubsriberPool) {
+func (node *Node) SetSubscriberPool(pool *SubscriberPool) {
 	node.subsriberPool = pool
 }
 
-func (node *Node) GetSubsriberPool() *SubsriberPool {
+func (node *Node) GetSubscriberPool() *SubscriberPool {
 	return node.subsriberPool
 }
 
