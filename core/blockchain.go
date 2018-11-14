@@ -120,7 +120,7 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	block.VoterState = vs
 	header.VoterHash = vs.RootHash()
 
-	// MinderState
+	// MinerState
 	//FIXME: current in NewBlockChain
 
 	//-------
@@ -317,6 +317,38 @@ func encodeBlockHeight(number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
+}
+
+func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
+	h := &Header{
+		ParentHash: parentBlock.Hash(),
+		//Coinbase        common.Address
+		Height: parentBlock.Header.Height + 1,
+		// Time              uint64
+		// Hash              common.Hash
+		// AccountHash       common.Hash
+		// TransactionHash   common.Hash
+		// MinerHash         common.Hash
+		// VoterHash         common.Hash
+		SnapshotVoterTime: parentBlock.Header.SnapshotVoterTime,
+	}
+	// h.ParentHash = parentBlock.Hash()
+	// h.Height = parentBlock.Header.Height + 1
+	// h.Time = time
+	block := &Block{
+		Header: h,
+		// Transactions []*Transaction
+		// AccountState     *AccountState
+		// TransactionState *TransactionState
+		// MinerState       MinerState
+		// VoterState       *AccountState
+	}
+	//state
+	block.VoterState, _ = parentBlock.VoterState.Clone()
+	block.MinerState, _ = parentBlock.MinerState.Clone()
+	block.AccountState, _ = parentBlock.AccountState.Clone()
+	block.TransactionState, _ = parentBlock.TransactionState.Clone()
+	return block
 }
 
 // func (bc *BlockChain) Start() {
