@@ -37,7 +37,7 @@ func NewP2PStream(node *Node, peerID peer.ID) (*P2PStream, error) {
 		peerID:             peerID,
 		addr:               s.Conn().RemoteMultiaddr(),
 		finshedHandshakeCh: make(chan bool),
-		messageCh:          make(chan *Message),
+		messageCh:          make(chan *Message, 100),
 	}
 	return P2PStream, nil
 }
