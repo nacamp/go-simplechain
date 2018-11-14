@@ -8,10 +8,12 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/najimmy/go-simplechain/consensus"
+	"github.com/najimmy/go-simplechain/core"
+	"github.com/najimmy/go-simplechain/net"
+	"github.com/najimmy/go-simplechain/rlp"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/core"
 )
 
 var GenesisCoinbaseAddress = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")
@@ -164,6 +166,59 @@ func TestMakeBlockChain(t *testing.T) {
 	assert.NotNil(t, b, "")
 
 	b, _ = bc.GetBlockByHash(block4.Hash())
+	assert.NotNil(t, b, "")
+
+}
+
+func rlpEncode(block *core.Block) *core.Block {
+	message, _ := net.NewRLPMessage(net.CMD_BLOCK, block)
+	block2 := core.Block{}
+	rlp.DecodeBytes(message.Payload, &block2)
+	return &block2
+}
+
+func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
+	dpos := consensus.NewDpos()
+	remoteBc, _ := core.NewBlockChain(dpos)
+	remoteBc.PutBlockByCoinbase(remoteBc.GenesisBlock)
+	block1 := makeBlock(remoteBc, remoteBc.GenesisBlock, GenesisCoinbaseAddress, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", new(big.Int).SetUint64(100))
+	remoteBc.PutBlockByCoinbase(block1)
+	block2 := makeBlock(remoteBc, block1, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
+	remoteBc.PutBlockByCoinbase(block2)
+	block3 := makeBlock(remoteBc, block2, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
+	remoteBc.PutBlockByCoinbase(block3)
+	block4 := makeBlock(remoteBc, block3, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", new(big.Int).SetUint64(10))
+	remoteBc.PutBlockByCoinbase(block4)
+	// fmt.Println(block4)
+
+	bc, _ := core.NewBlockChain(dpos)
+	bc.PutBlock(bc.GenesisBlock)
+	// fmt.Printf("%v\n", bc.GenesisBlock.Hash())
+
+	block11 := rlpEncode(block1)
+	bc.PutBlockIfParentExist(block11)
+	b, _ := bc.GetBlockByHash(block11.Hash())
+	assert.Equal(t, block11.Hash(), b.Hash(), "")
+
+	block44 := rlpEncode(block4)
+	bc.PutBlockIfParentExist(block44)
+	b, _ = bc.GetBlockByHash(block44.Hash())
+	assert.Nil(t, b, "")
+
+	block33 := rlpEncode(block3)
+	bc.PutBlockIfParentExist(block33)
+	b, _ = bc.GetBlockByHash(block33.Hash())
+	assert.Nil(t, b, "")
+
+	block22 := rlpEncode(block2)
+	bc.PutBlockIfParentExist(block22)
+	b, _ = bc.GetBlockByHash(block22.Hash())
+	assert.NotNil(t, b, "")
+
+	b, _ = bc.GetBlockByHash(block33.Hash())
+	assert.NotNil(t, b, "")
+
+	b, _ = bc.GetBlockByHash(block33.Hash())
 	assert.NotNil(t, b, "")
 
 }

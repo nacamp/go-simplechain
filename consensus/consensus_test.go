@@ -6,12 +6,15 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/najimmy/go-simplechain/rlp"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/consensus"
 	"github.com/najimmy/go-simplechain/core"
+	"github.com/najimmy/go-simplechain/net"
 )
 
 // import (
@@ -179,4 +182,13 @@ func TestDpos_MakeBlock2(t *testing.T) {
 	assert.NotEqual(t, block.Header.MinerHash, remoteBc.GenesisBlock.Header.MinerHash, "")
 	assert.Equal(t, block.Header.VoterHash, remoteBc.GenesisBlock.Header.VoterHash, "")
 	assert.Equal(t, block.Header.TransactionHash, remoteBc.GenesisBlock.Header.TransactionHash, "")
+
+	message, _ := net.NewRLPMessage(net.CMD_BLOCK, block)
+	block2 := core.Block{}
+	rlp.DecodeBytes(message.Payload, &block2)
+	assert.Equal(t, block.Header.AccountHash, block2.Header.AccountHash, "")
+	assert.Equal(t, block.Header.MinerHash, block2.Header.MinerHash, "")
+	assert.Equal(t, block.Header.VoterHash, block2.Header.VoterHash, "")
+	assert.Equal(t, block.Header.TransactionHash, block2.Header.TransactionHash, "")
+
 }
