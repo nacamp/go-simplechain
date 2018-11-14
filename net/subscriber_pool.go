@@ -5,35 +5,35 @@ import (
 	"sync"
 )
 
-type SubsriberPool struct {
+type SubscriberPool struct {
 	subscribersMap *sync.Map
 	messageCh      chan *Message
 }
 
-func NewSubsriberPool() *SubsriberPool {
-	sp := &SubsriberPool{
+func NewSubsriberPool() *SubscriberPool {
+	sp := &SubscriberPool{
 		subscribersMap: new(sync.Map),
 		messageCh:      make(chan *Message),
 	}
 	return sp
 }
 
-func (sp *SubsriberPool) Register(code uint64, subscriber Subscriber) {
+func (sp *SubscriberPool) Register(code uint64, subscriber Subscriber) {
 	sp.subscribersMap.Store(code, subscriber)
 }
 
-func (sp *SubsriberPool) Deregister() {
+func (sp *SubscriberPool) Deregister() {
 }
 
-func (sp *SubsriberPool) Start() {
+func (sp *SubscriberPool) Start() {
 	go sp.Loop()
 }
 
-func (sp *SubsriberPool) handleMessage(message *Message) {
+func (sp *SubscriberPool) handleMessage(message *Message) {
 	sp.messageCh <- message
 }
 
-func (sp *SubsriberPool) Loop() {
+func (sp *SubscriberPool) Loop() {
 	for {
 		message := <-sp.messageCh
 		//TODO: v is sync.Map later
