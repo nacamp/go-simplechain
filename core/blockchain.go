@@ -330,7 +330,7 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 		// TransactionHash   common.Hash
 		// MinerHash         common.Hash
 		// VoterHash         common.Hash
-		SnapshotVoterTime: parentBlock.Header.SnapshotVoterTime,
+		// SnapshotVoterTime: parentBlock.Header.SnapshotVoterTime,
 	}
 	// h.ParentHash = parentBlock.Hash()
 	// h.Height = parentBlock.Header.Height + 1
