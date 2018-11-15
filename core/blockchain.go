@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sort"
 	"time"
 
@@ -192,6 +193,11 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if block.VoterState.RootHash() != block.Header.VoterHash {
 		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
 	}
+	if block.Header.Height == 1 {
+		fmt.Println("22222222222")
+		fmt.Printf("%v\n", block.MinerState.RootHash())
+		fmt.Printf("%v\n", block.Header.MinerHash)
+	}
 	if block.MinerState.RootHash() != block.Header.MinerHash {
 		return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
 	}
@@ -206,14 +212,38 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 	if err != nil {
 		return err
 	}
+	if block.Header.Height == 1 {
+		fmt.Println("")
+	}
 	//TODO: we need to test  when voter transaction make
 	//make new miner group
 	if voterBlock.Header.Height == block.Header.Height {
+		if block.Header.Height == 1 {
+			fmt.Println("11111111111")
+			fmt.Printf("%v\n", minerGroup)
+			fmt.Printf("%v\n", block.Header.VoterHash)
+		}
 		ms.Put(minerGroup, block.Header.VoterHash) //TODO voterhash
 	}
-	//else use parent miner group
+	// if voterBlock.Header.Height == block.Header.Height {
+	// 	// x, _ := bc.GetBlockByHeight(0)
 
-	index := block.Header.Height % 3
+	// 	if block.Header.Height == 1 {
+	// 		fmt.Println("11111111111")
+	// 		fmt.Printf("%v\n", minerGroup)
+	// 		fmt.Printf("%v\n", block.Header.VoterHash)
+	// 	}
+	// 	ms.Put(minerGroup, block.Header.VoterHash) //TODO voterhash
+	// }
+
+	//else use parent miner group
+	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
+	// curre
+	if block.Header.Height == 1 {
+		fmt.Println("test")
+	}
+	index := (block.Header.Time % 9) / 3
+	// index := block.Header.Height % 3
 	if minerGroup[index] != block.Header.Coinbase {
 		return errors.New("minerGroup[index] != block.Header.Coinbase")
 	}
@@ -279,12 +309,16 @@ func (bc *BlockChain) PutBlock(block *Block) {
 		return
 	}
 
-	//5. todo signer확인
+	//5. TODO: signer check
 
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
 	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
+	log.CLog().WithFields(logrus.Fields{
+		"height": block.Header.Height,
+		"hash":   common.Hash2Hex(block.Hash()),
+	}).Info("Block inserted Blockchain")
 
 	//set tail
 	bc.Tail = block
@@ -322,6 +356,9 @@ func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
 }
 
 func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
+	log.CLog().WithFields(logrus.Fields{
+		"height": block.Header.Height,
+	}).Info("xxxxxxxxxxxxxxxxxxxx")
 	if bc.HasParentInBlockChain(block) {
 		bc.PutBlock(block)
 		bc.putBlockIfParentExistInFutureBlocks(block)
@@ -373,13 +410,18 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 // }
 
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
-	log.CLog().WithFields(logrus.Fields{
-		"Code": message.Code,
-	}).Info("Message arrived")
-
 	if message.Code == net.MSG_NEW_BLOCK {
 		block := &Block{}
 		rlp.DecodeBytes(message.Payload, block)
+		log.CLog().WithFields(logrus.Fields{
+			"height": block.Header.Height,
+		}).Info("new block arrrived")
+
+		if block.Header.Height == 1 {
+			log.CLog().WithFields(logrus.Fields{
+				"height": block.Header.Height,
+			}).Info("new block arrrived")
+		}
 		bc.PutBlockIfParentExist(block)
 	} else if message.Code == net.MSG_MISSING_BLOCK {
 		height := uint64(0)
@@ -387,6 +429,7 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
 		}).Info("missing block request arrived")
+		bc.SendMissingBlock(height)
 	}
 	return nil
 }
@@ -417,6 +460,21 @@ func (bc *BlockChain) RequestMissingBlock() {
 		log.CLog().WithFields(logrus.Fields{
 			"Height": i,
 		}).Info("request missing block")
+	}
+}
+
+func (bc *BlockChain) SendMissingBlock(height uint64) {
+	block, _ := bc.GetBlockByHeight(height)
+	if block != nil {
+		message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
+		bc.node.SendMessage(&message)
+		log.CLog().WithFields(logrus.Fields{
+			"Height": height,
+		}).Info("missing block send")
+	} else {
+		log.CLog().WithFields(logrus.Fields{
+			"Height": height,
+		}).Info("We don't have missing block")
 	}
 }
 
