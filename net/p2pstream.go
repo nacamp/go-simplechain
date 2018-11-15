@@ -3,7 +3,6 @@ package net
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"sync"
 
 	libnet "github.com/libp2p/go-libp2p-net"
@@ -44,7 +43,6 @@ func NewP2PStream(node *Node, peerID peer.ID) (*P2PStream, error) {
 }
 
 func NewP2PStreamWithStream(node *Node, s libnet.Stream) (*P2PStream, error) {
-	fmt.Println(s.Conn().RemoteMultiaddr())
 	P2PStream := &P2PStream{
 		node:               node,
 		stream:             s,
@@ -90,11 +88,9 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 		case MSG_HELLO_ACK:
 			ps.onHelloAck(&message)
 		default:
-			fmt.Println("lock...")
 			if !ps.isFinishedHandshake {
 				continue
 			}
-			fmt.Println("unlock...")
 		}
 		switch message.Code {
 		case MSG_PEERS:
@@ -225,7 +221,6 @@ func (ps *P2PStream) onPeersAck(message *Message) error {
 
 	node := ps.node
 	for _, addr := range payload {
-		fmt.Printf("%v\n", addr)
 		id, _ := peer.IDB58Decode(addr[0])
 		maddr, _ := ma.NewMultiaddr(addr[1])
 		node.nodeRoute.Update(id, maddr)

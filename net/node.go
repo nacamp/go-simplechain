@@ -81,7 +81,6 @@ func (node *Node) GetSubscriberPool() *SubscriberPool {
 //first send dummy
 func (node *Node) SendMessage(message *Message) {
 	node.p2pStreamMap.Range(func(key, value interface{}) bool {
-		fmt.Println("SendMessage")
 		p2pStream := value.(*P2PStream)
 		p2pStream.sendMessage(message)
 		return true

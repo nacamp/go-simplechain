@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"math/big"
@@ -37,6 +37,7 @@ var keystore = map[string]string{
 }
 
 type BlockChain struct {
+	mu              sync.RWMutex
 	GenesisBlock    *Block
 	futureBlocks    *lru.Cache
 	Storage         storage.Storage
@@ -193,11 +194,7 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if block.VoterState.RootHash() != block.Header.VoterHash {
 		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
 	}
-	if block.Header.Height == 1 {
-		fmt.Println("22222222222")
-		fmt.Printf("%v\n", block.MinerState.RootHash())
-		fmt.Printf("%v\n", block.Header.MinerHash)
-	}
+
 	if block.MinerState.RootHash() != block.Header.MinerHash {
 		return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
 	}
@@ -212,38 +209,15 @@ func (bc *BlockChain) PutMinerState(block *Block) error {
 	if err != nil {
 		return err
 	}
-	if block.Header.Height == 1 {
-		fmt.Println("")
-	}
 	//TODO: we need to test  when voter transaction make
 	//make new miner group
 	if voterBlock.Header.Height == block.Header.Height {
-		if block.Header.Height == 1 {
-			fmt.Println("11111111111")
-			fmt.Printf("%v\n", minerGroup)
-			fmt.Printf("%v\n", block.Header.VoterHash)
-		}
+
 		ms.Put(minerGroup, block.Header.VoterHash) //TODO voterhash
 	}
-	// if voterBlock.Header.Height == block.Header.Height {
-	// 	// x, _ := bc.GetBlockByHeight(0)
-
-	// 	if block.Header.Height == 1 {
-	// 		fmt.Println("11111111111")
-	// 		fmt.Printf("%v\n", minerGroup)
-	// 		fmt.Printf("%v\n", block.Header.VoterHash)
-	// 	}
-	// 	ms.Put(minerGroup, block.Header.VoterHash) //TODO voterhash
-	// }
-
 	//else use parent miner group
 	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
-	// curre
-	if block.Header.Height == 1 {
-		fmt.Println("test")
-	}
 	index := (block.Header.Time % 9) / 3
-	// index := block.Header.Height % 3
 	if minerGroup[index] != block.Header.Coinbase {
 		return errors.New("minerGroup[index] != block.Header.Coinbase")
 	}
@@ -285,10 +259,6 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 }
 
 func (bc *BlockChain) PutBlock(block *Block) {
-	log.CLog().WithFields(logrus.Fields{
-		"seed": block.Header.Height,
-		"port": common.Hash2Hex(block.Hash()),
-	}).Info("PutBlock...")
 	//1. verify transaction
 	err := block.VerifyTransacion()
 	if err != nil {
@@ -318,18 +288,19 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	log.CLog().WithFields(logrus.Fields{
 		"height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
-	}).Info("Block inserted Blockchain")
+	}).Info("New Block was inserted at Blockchain")
 
 	//set tail
 	bc.Tail = block
-	//fmt.Printf("%v-%v block save", block.Header.Height, block.Header.Hash)
 }
 
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
+	bc.mu.Lock()
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
 	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
 	bc.Tail = block
+	bc.mu.Unlock()
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
@@ -356,9 +327,6 @@ func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
 }
 
 func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
-	log.CLog().WithFields(logrus.Fields{
-		"height": block.Header.Height,
-	}).Info("xxxxxxxxxxxxxxxxxxxx")
 	if bc.HasParentInBlockChain(block) {
 		bc.PutBlock(block)
 		bc.putBlockIfParentExistInFutureBlocks(block)

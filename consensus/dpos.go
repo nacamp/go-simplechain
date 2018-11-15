@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/najimmy/go-simplechain/common"
@@ -73,13 +72,6 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		block.Header.VoterHash = block.VoterState.RootHash()
 		bc.PutMinerState(block)
 		block.Header.MinerHash = block.MinerState.RootHash()
-		if block.Header.Height == 1 {
-			fmt.Printf("%v\n", block.Header.AccountHash)
-			fmt.Printf("%v\n", block.Header.TransactionHash)
-			fmt.Printf("%v\n", block.Header.VoterHash)
-			fmt.Printf("%v\n", block.Header.MinerHash)
-		}
-
 		block.MakeHash()
 		return block
 	} else {

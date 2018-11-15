@@ -19,6 +19,8 @@ func NewSubsriberPool() *SubscriberPool {
 
 func (sp *SubscriberPool) Register(code uint64, subscriber Subscriber) {
 	sp.subscribersMap.Store(code, subscriber)
+	// may be later
+	//m, _ := sp.subscribersMap.LoadOrStore(ode, new(sync.Map))
 }
 
 func (sp *SubscriberPool) Deregister() {
