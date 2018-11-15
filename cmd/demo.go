@@ -33,8 +33,12 @@ func main() {
 	sp := node.GetSubscriberPool()
 	dpos := consensus.NewDpos()
 	bc, _ := core.NewBlockChain(dpos)
+	bc.PutBlockByCoinbase(bc.GenesisBlock)
+	bc.SetNode(node)
 	sp.Register(net.MSG_NEW_BLOCK, bc)
+	sp.Register(net.MSG_MISSING_BLOCK, bc)
 	sp.Start()
+	bc.Start()
 
 	if *port == 9990 {
 		dpos.Setup(bc, node, common.HexToAddress("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"))
