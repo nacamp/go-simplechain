@@ -39,7 +39,9 @@ func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Addr
 
 func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	bc := dpos.bc
-	turn := now % 3
+	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
+	//Fix: when ticker is 1 second, server mining...
+	turn := (now % 9) / 3
 	block := bc.NewBlockFromParent(bc.Tail)
 	block.Header.Time = now
 	minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
@@ -47,6 +49,11 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		fmt.Println(err)
 	}
 	if minerGroup[turn] == dpos.coinbase {
+		fmt.Println(now)
+		fmt.Println(turn)
+		if block.Header.Height == 1 {
+			fmt.Println("MakeBlock start......")
+		}
 		log.CLog().WithFields(logrus.Fields{
 			"address": common.Bytes2Hex(dpos.coinbase[:]),
 		}).Debug("my turn")
@@ -57,15 +64,23 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		//use transaction later
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
-		bc.PutMinerState(block)
-
 		block.Header.AccountHash = block.AccountState.RootHash()
 		block.Header.TransactionHash = block.TransactionState.RootHash()
+		// need voterHash at PutMinerState(GetMinerGroup)
 		block.Header.VoterHash = block.VoterState.RootHash()
+		bc.PutMinerState(block)
 		block.Header.MinerHash = block.MinerState.RootHash()
+		if block.Header.Height == 1 {
+			fmt.Printf("%v\n", block.Header.AccountHash)
+			fmt.Printf("%v\n", block.Header.TransactionHash)
+			fmt.Printf("%v\n", block.Header.VoterHash)
+			fmt.Printf("%v\n", block.Header.MinerHash)
+		}
 
 		block.MakeHash()
-
+		if block.Header.Height == 1 {
+			fmt.Println("MakeBlock end......")
+		}
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
@@ -84,7 +99,7 @@ func (dpos *Dpos) Start() {
 }
 
 func (dpos *Dpos) loop() {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(3 * time.Second)
 	for {
 		select {
 		case now := <-ticker.C:
