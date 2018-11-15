@@ -9,8 +9,9 @@ import (
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
+	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/rlp"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 type P2PStream struct {
@@ -28,7 +29,7 @@ type P2PStream struct {
 func NewP2PStream(node *Node, peerID peer.ID) (*P2PStream, error) {
 	s, err := node.host.NewStream(context.Background(), peerID, "/simplechain/0.0.1")
 	if err != nil {
-		log.Warning("NewP2PStream : ", err)
+		log.CLog().Warning(err)
 		return nil, err
 	}
 	P2PStream := &P2PStream{
@@ -56,7 +57,7 @@ func NewP2PStreamWithStream(node *Node, s libnet.Stream) (*P2PStream, error) {
 }
 
 func (ps *P2PStream) Start(isHost bool) {
-	log.Info("P2PStream.start")
+	log.CLog().Info("Start")
 	rw := bufio.NewReadWriter(bufio.NewReader(ps.stream), bufio.NewWriter(ps.stream))
 	go ps.readData(rw)
 	go ps.writeData(rw)
@@ -73,14 +74,14 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 		if err != nil {
 			//time.Sleep(30 * time.Second)
 			ps.stream.Close()
-			log.Debug("readData  lock before")
+			log.CLog().Debug("readData  lock before")
 			ps.mu.Lock()
 			ps.isClosed = true
 			ps.mu.Unlock()
-			log.Debug("readData  Unlock after")
+			log.CLog().Debug("readData  Unlock after")
 			ps.node.host.Peerstore().ClearAddrs(ps.peerID)
 			//P2PStream.node.host.Peerstore().AddAddr(P2PStream.peerID, P2PStream.addr, 0)
-			log.Warning("client closed")
+			log.CLog().Debug("client closed")
 			return
 		}
 		switch message.Code {
@@ -123,7 +124,7 @@ func (ps *P2PStream) SendHello() error {
 	if msg, err := NewRLPMessage(CMD_HELLO, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
-		log.Info("SendHello")
+		log.CLog().Info("SendHello")
 		return ps.sendMessage(&msg)
 	}
 }
@@ -132,7 +133,7 @@ func (ps *P2PStream) SendHelloAck() error {
 	if msg, err := NewRLPMessage(CMD_HELLO_ACK, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
-		log.Info("SendHelloAck")
+		log.CLog().Info("SendHelloAck")
 		return ps.sendMessage(&msg)
 	}
 }
@@ -141,10 +142,11 @@ func (ps *P2PStream) onHello(message *Message) error {
 	defer ps.finshHandshake()
 	data := string("")
 	rlp.DecodeBytes(message.Payload, &data)
-	log.WithFields(log.Fields{
+	log.CLog().WithFields(logrus.Fields{
 		"Command": message.Code,
 		"Data":    data,
 	}).Info("onHello")
+
 	node := ps.node
 	addr, err := ma.NewMultiaddr(data)
 	if err != nil {
@@ -158,10 +160,11 @@ func (ps *P2PStream) onHelloAck(message *Message) error {
 	defer ps.finshHandshake()
 	data := string("")
 	rlp.DecodeBytes(message.Payload, &data)
-	log.WithFields(log.Fields{
+	log.CLog().WithFields(logrus.Fields{
 		"Command": message.Code,
 		"Data":    data,
 	}).Info("onHelloAck")
+
 	node := ps.node
 	addr, err := ma.NewMultiaddr(data)
 	if err != nil {
@@ -176,14 +179,14 @@ func (ps *P2PStream) RequestPeers() error {
 	if msg, err := NewRLPMessage(CMD_PEERS, "version 0.1"); err != nil {
 		return err
 	} else {
-		log.Info("RequestPeers")
+		log.CLog().Info("RequestPeers")
 		ps.messageCh <- &msg
 	}
 	return nil
 }
 
 func (ps *P2PStream) RequestPeersAck() error {
-	log.Info("RequestPeersAck>>>>>")
+	log.CLog().Info("RequestPeersAck>>>>>")
 	node := ps.node
 
 	peers := node.nodeRoute.NearestPeers(ps.peerID, 10)
@@ -195,7 +198,7 @@ func (ps *P2PStream) RequestPeersAck() error {
 	if msg, err := NewRLPMessage(CMD_PEERS_ACK, &payload); err != nil {
 		return err
 	} else {
-		log.Info("<<<<<RequestPeersAck")
+		log.CLog().Info("<<<<<RequestPeersAck")
 		ps.messageCh <- &msg
 	}
 	return nil
@@ -204,21 +207,20 @@ func (ps *P2PStream) RequestPeersAck() error {
 func (ps *P2PStream) onPeers(message *Message) error {
 	data := string("")
 	rlp.DecodeBytes(message.Payload, &data)
-	log.WithFields(log.Fields{
+	log.CLog().WithFields(logrus.Fields{
 		"Command": message.Code,
 		"Data":    data,
-	}).Info("onPeers>>>>>")
-	log.Info("<<<<<onPeers")
+	}).Info("onPeers")
 	return ps.RequestPeersAck()
 }
 
 func (ps *P2PStream) onPeersAck(message *Message) error {
-	log.Info("onPeersAck>>>>>")
+	log.CLog().Info("onPeersAck>>>>>")
 	payload := make([][]string, 0)
 
 	err := rlp.DecodeBytes(message.Payload, &payload)
 	if err != nil {
-		log.Warning(err)
+		log.CLog().Warning(err)
 		return err
 	}
 
@@ -231,7 +233,7 @@ func (ps *P2PStream) onPeersAck(message *Message) error {
 	}
 
 	node.nodeRoute.NearestPeers(node.host.ID(), 10)
-	log.Info("<<<<<onPeersAck")
+	log.CLog().Info("<<<<<onPeersAck")
 	return nil
 }
 
@@ -240,25 +242,25 @@ func (ps *P2PStream) sendMessage(message *Message) error {
 	_, err := ps.stream.Write(encodedBytes)
 	if err != nil {
 		ps.stream.Close()
-		log.Debug("sendMessage lock before")
+		log.CLog().Debug("sendMessage lock before")
 		ps.mu.Lock()
 		ps.isClosed = true
 		ps.mu.Unlock()
-		log.Debug("sendMessage Unlock after")
+		log.CLog().Debug("sendMessage Unlock after")
 		ps.node.host.Peerstore().ClearAddrs(ps.peerID)
 		//ps.node.host.Peerstore().AddAddr(ps.peerID, ps.addr, 0)
-		log.Warning("sendMessage: client closed")
+		log.CLog().Warning("sendMessage: client closed")
 		return err
 	}
 	return nil
 }
 
 func (ps *P2PStream) finshHandshake() {
-	log.Debug("finshHandshake lock before")
+	log.CLog().Debug("finshHandshake lock before")
 	ps.finshedHandshakeCh <- true
 	ps.mu.Lock()
 	ps.isFinishedHandshake = true
 	ps.mu.Unlock()
-	log.Debug("finshHandshake Unlock after")
-	log.Info("finshHandshake")
+	log.CLog().Debug("finshHandshake Unlock after")
+	log.CLog().Info("finshHandshake")
 }

@@ -6,9 +6,11 @@ import (
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
+	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/storage"
 	"github.com/najimmy/go-simplechain/trie"
+	"github.com/sirupsen/logrus"
 )
 
 //Demo 3 accounts
@@ -45,7 +47,9 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		fmt.Println(err)
 	}
 	if minerGroup[turn] == dpos.coinbase {
-		fmt.Println("It is my turn")
+		log.CLog().WithFields(logrus.Fields{
+			"address": common.Bytes2Hex(dpos.coinbase[:]),
+		}).Info("my turn")
 		block.Header.Coinbase = dpos.coinbase
 		block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
 		//because PutMinerState recall GetMinerGroup , here assign  bc.Tail.Header.SnapshotVoterTime , not voterBlock.Header.Time
@@ -64,7 +68,9 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 
 		return block
 	} else {
-		fmt.Println("It is not my turn")
+		log.CLog().WithFields(logrus.Fields{
+			"address": common.Bytes2Hex(dpos.coinbase[:]),
+		}).Debug("not my turn")
 		return nil
 	}
 }
@@ -83,10 +89,11 @@ func (dpos *Dpos) loop() {
 		select {
 		case now := <-ticker.C:
 			block := dpos.MakeBlock(uint64(now.Unix()))
-			dpos.bc.PutBlockByCoinbase(block)
-			message, _ := net.NewRLPMessage(net.CMD_BLOCK, block)
-			dpos.node.SendMessage(&message)
-			fmt.Println("ticker")
+			if block != nil {
+				dpos.bc.PutBlockByCoinbase(block)
+				message, _ := net.NewRLPMessage(net.CMD_BLOCK, block)
+				dpos.node.SendMessage(&message)
+			}
 		}
 	}
 }

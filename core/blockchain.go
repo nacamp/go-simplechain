@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 
 	"math/big"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/rlp"
 	"github.com/najimmy/go-simplechain/storage"
@@ -166,7 +166,7 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	err := bc.PutMinerState(block)
 	if err != nil {
-		fmt.Println(err)
+		log.CLog().Info(err)
 		return err
 	}
 
@@ -250,20 +250,20 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	//1. verify transaction
 	err := block.VerifyTransacion()
 	if err != nil {
-		fmt.Println("Error VerifyTransacion")
+		log.CLog().Info("Error VerifyTransacion")
 		return
 	}
 
 	//2. save status and verify hash
 	err = bc.PutState(block)
 	if err != nil {
-		fmt.Println("Error PutState")
+		log.CLog().Info("Error PutState")
 		return
 	}
 
 	//4. verify block.hash
 	if block.Hash() != block.CalcHash() {
-		fmt.Println("block.Hash() != block.CalcHash()")
+		log.CLog().Info("block.Hash() != block.CalcHash()")
 		return
 	}
 
@@ -276,6 +276,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 
 	//set tail
 	bc.Tail = block
+	//fmt.Printf("%v-%v block save", block.Header.Height, block.Header.Hash)
 }
 
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
@@ -356,10 +357,12 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 // }
 
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
-	data := string("")
-	rlp.DecodeBytes(message.Payload, &data)
-	fmt.Println(message.Code)
-	fmt.Println(data)
+	// log.CLog().Info(err)
+	// fmt.Println("HandleMessage")
+	block := &Block{}
+	rlp.DecodeBytes(message.Payload, block)
+	bc.PutBlockIfParentExist(block)
+	// fmt.Println(block.Header.Height)
 	return nil
 }
 

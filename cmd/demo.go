@@ -2,25 +2,26 @@ package main
 
 import (
 	"flag"
-	"fmt"
 
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/consensus"
 	"github.com/najimmy/go-simplechain/core"
+	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+	// log "github.com/sirupsen/logrus"
 )
 
 func main() {
+	log.Init("", log.InfoLevel, 0)
 	privHexString := flag.String("pv", "08021220a178bc3f8ee6738af0139d9784519e5aa1cb256c12c54444bd63296502f29e94", "privatekey")
 	seed := flag.String("s", "", "ipfs")
 	port := flag.Int("p", 9990, "port")
 	flag.Parse()
-
-	log.WithFields(log.Fields{
+	log.CLog().WithFields(logrus.Fields{
 		"seed": *seed,
 		"port": *port,
-	}).Info("args")
+	}).Info("flas ")
 	privKey, err := net.HexStringToPrivkeyTo(*privHexString)
 	if err != nil {
 	}
@@ -43,10 +44,6 @@ func main() {
 		dpos.Setup(bc, node, common.HexToAddress("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"))
 	}
 	dpos.Start()
-
-	if *seed == "" {
-		fmt.Println("I am seeder")
-	}
 	select {}
 }
 

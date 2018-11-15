@@ -10,7 +10,9 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
-	log "github.com/sirupsen/logrus"
+	"github.com/najimmy/go-simplechain/log"
+	"github.com/sirupsen/logrus"
+	// log "github.com/sirupsen/logrus"
 )
 
 type NodeRoute struct {
@@ -29,41 +31,41 @@ func NewNodeRoute(node *Node) *NodeRoute {
 }
 
 func (nodeRoute *NodeRoute) Update(peerid peer.ID, addr ma.Multiaddr) {
-	log.Debug("Update lock before")
+	log.CLog().Debug("Update lock before")
 	nodeRoute.mu.Lock()
 	nodeRoute.routingTable.Update(peerid)
 	nodeRoute.AddrMap[peerid] = addr
 	nodeRoute.mu.Unlock()
-	log.Debug("Update unlock after")
+	log.CLog().Debug("Update unlock after")
 
-	log.WithFields(log.Fields{
+	log.CLog().WithFields(logrus.Fields{
 		"ID":   peerid,
 		"addr": addr,
-	}).Info("Update")
+	}).Debug("")
 }
 
 func (nodeRoute *NodeRoute) Remove(peerid peer.ID) {
-	log.Debug("Remove lock before")
+	log.CLog().Debug("Remove lock before")
 	nodeRoute.mu.Lock()
 	nodeRoute.routingTable.Remove(peerid)
 	delete(nodeRoute.AddrMap, peerid)
 	nodeRoute.mu.Unlock()
-	log.Debug("Remove unlock after")
+	log.CLog().Debug("Remove unlock after")
 }
 
 func (nodeRoute *NodeRoute) NearestPeers(peerid peer.ID, count int) map[peer.ID]ma.Multiaddr {
 	AddrMap := make(map[peer.ID]ma.Multiaddr)
-	log.Debug("NearestPeers  lock before")
+	log.CLog().Debug("NearestPeers  lock before")
 	nodeRoute.mu.Lock()
 	peers := nodeRoute.routingTable.NearestPeers(kb.ConvertPeerID(peerid), count)
 	for i, p := range peers {
 		AddrMap[p] = nodeRoute.AddrMap[peers[i]]
 	}
 	nodeRoute.mu.Unlock()
-	log.Debug("NearestPeers unlock after")
-	log.WithFields(log.Fields{
+	log.CLog().Debug("NearestPeers unlock after")
+	log.CLog().WithFields(logrus.Fields{
 		"peers": peers,
-	}).Info("NearestPeers")
+	}).Debug("")
 	return AddrMap
 }
 
@@ -72,23 +74,23 @@ func (nodeRoute *NodeRoute) AddNodeFromSeedString(seed string) {
 
 	ipfsaddr, err := ma.NewMultiaddr(seed)
 	if err != nil {
-		log.Fatalln(err)
+		log.CLog().Warning(err)
 	}
 
 	pid, err := ipfsaddr.ValueForProtocol(ma.P_IPFS)
 	if err != nil {
-		log.Fatalln(err)
+		log.CLog().Warning(err)
 	}
 
 	peerid, err := peer.IDB58Decode(pid)
 	if err != nil {
-		log.Fatalln(err)
+		log.CLog().Warning(err)
 	}
-	log.WithFields(log.Fields{
+	log.CLog().WithFields(logrus.Fields{
 		"ipfsaddr": ipfsaddr,
 		"pid":      pid,
 		"peerid":   peerid,
-	}).Info("peer info")
+	}).Debug("")
 
 	targetPeerAddr, _ := ma.NewMultiaddr(
 		fmt.Sprintf("/ipfs/%s", peer.IDB58Encode(peerid)))
@@ -99,10 +101,10 @@ func (nodeRoute *NodeRoute) AddNodeFromSeedString(seed string) {
 }
 
 func (nodeRoute *NodeRoute) FindNewNodes() {
-	log.Info("FindNewNodes>>>>>")
+	log.CLog().Info("FindNewNodes>>>>>")
 	node := nodeRoute.node
 	peers := nodeRoute.NearestPeers(nodeRoute.node.host.ID(), 20)
-	log.Info(peers, "peers")
+	log.CLog().Info(peers, "peers")
 	for peerid, addr := range peers {
 		if peerid == node.host.ID() {
 			continue
@@ -112,24 +114,24 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 		if ok {
 			p2pStream := v.(*P2PStream)
 			if !p2pStream.isClosed {
-				log.Info("reuse stream")
+				log.CLog().Info("reuse stream")
 				p2pStream.RequestPeers()
 			} else {
-				log.Debug("FindNewNodes lock before")
+				log.CLog().Debug("FindNewNodes lock before")
 				p2pStream.mu.Lock()
-				log.Debug("FindNewNodes lock after")
-				log.Warning("p2pStream is closed")
+				log.CLog().Debug("FindNewNodes lock after")
+				log.CLog().Warning("p2pStream is closed")
 				node.p2pStreamMap.Delete(peerid)
 				node.host.Peerstore().ClearAddrs(peerid)
 				nodeRoute.Remove(p2pStream.peerID)
-				log.Warning("p2pStream is removed")
+				log.CLog().Warning("p2pStream is removed")
 
 				if node.seedID == peerid {
-					log.Warning("add seed node")
+					log.CLog().Warning("add seed node")
 					nodeRoute.Update(peerid, addr)
 				}
 				p2pStream.mu.Unlock()
-				log.Debug("FindNewNodes Unlock after")
+				log.CLog().Debug("FindNewNodes Unlock after")
 			}
 
 		} else {
@@ -140,7 +142,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 				node.host.Peerstore().ClearAddrs(peerid)
 				nodeRoute.Remove(peerid)
 			} else {
-				log.Info(p2pStream.addr, " new")
+				log.CLog().Info(p2pStream.addr, " new")
 				node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
 				p2pStream.Start(false)
 				p2pStream.RequestPeers()
@@ -148,7 +150,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 
 		}
 	}
-	log.Info("<<<<<FindNewNodes")
+	log.CLog().Info("<<<<<FindNewNodes")
 }
 
 func (nodeRoute *NodeRoute) Start() {
@@ -156,9 +158,9 @@ func (nodeRoute *NodeRoute) Start() {
 	for {
 		select {
 		case <-ticker.C:
-			log.WithFields(log.Fields{
+			log.CLog().WithFields(logrus.Fields{
 				"count": runtime.NumGoroutine(),
-			}).Info("NumGoroutine")
+			}).Debug("NumGoroutine")
 			nodeRoute.FindNewNodes()
 		}
 	}

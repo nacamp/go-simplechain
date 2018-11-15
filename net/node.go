@@ -11,7 +11,8 @@ import (
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
-	log "github.com/sirupsen/logrus"
+	"github.com/najimmy/go-simplechain/log"
+	"github.com/sirupsen/logrus"
 )
 
 type Node struct {
@@ -42,13 +43,9 @@ func (node *Node) Start(seed string) {
 	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
 	addr := host.Addrs()[0]
 	fullAddr := addr.Encapsulate(hostAddr).String()
-	log.WithFields(log.Fields{
+	log.CLog().WithFields(logrus.Fields{
 		"fullAddr": fullAddr,
 	}).Info("I am ")
-
-	log.WithFields(log.Fields{
-		"maddr": node.maddr,
-	}).Info("node.Start")
 	node.host = host
 	node.nodeRoute = NewNodeRoute(node)
 	if seed != "" {
@@ -56,22 +53,18 @@ func (node *Node) Start(seed string) {
 	}
 	go node.nodeRoute.Start()
 
-	log.WithFields(log.Fields{
-		"host.id": host.ID(),
-	}).Info("regisiter my hostid")
-
 	node.host.SetStreamHandler("/simplechain/0.0.1", node.HandleStream)
 }
 
 func (node *Node) HandleStream(s libnet.Stream) {
-	log.WithFields(log.Fields{
+	log.CLog().WithFields(logrus.Fields{
 		"RemotePeer": s.Conn().RemotePeer().Pretty(),
 	}).Info("Got a new stream!")
 
 	p2pStream, err := NewP2PStreamWithStream(node, s)
 	node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
 	if err != nil {
-		log.Fatal("HandleStream", err)
+		log.CLog().Warning(err)
 	}
 
 	p2pStream.Start(true)
@@ -88,6 +81,7 @@ func (node *Node) GetSubscriberPool() *SubscriberPool {
 //first send dummy
 func (node *Node) SendMessage(message *Message) {
 	node.p2pStreamMap.Range(func(key, value interface{}) bool {
+		fmt.Println("SendMessage")
 		p2pStream := value.(*P2PStream)
 		p2pStream.sendMessage(message)
 		return true

@@ -2,7 +2,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/najimmy/go-simplechain/common"
@@ -60,12 +59,10 @@ func (b *Block) CalcHash() (hash common.Hash) {
 func (b *Block) VerifyTransacion() error {
 	for _, tx := range b.Transactions {
 		if tx.Hash != tx.CalcHash() {
-			fmt.Println("tx.Hash != tx.CalcHash()")
 			return errors.New("tx.Hash != tx.CalcHash()")
 		}
 		status, err := tx.VerifySign()
 		if status != true || err != nil {
-			fmt.Println("tx.VerifySign")
 			return errors.New("tx.VerifySign")
 		}
 	}
