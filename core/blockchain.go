@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"sort"
+	"time"
 
 	"math/big"
 
@@ -41,6 +43,7 @@ type BlockChain struct {
 	Consensus       Consensus
 	Lib             *Block
 	Tail            *Block
+	node            *net.Node
 }
 
 func NewBlockChain(consensus Consensus) (*BlockChain, error) {
@@ -128,6 +131,10 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 
 	// block.MakeHash()
 	return block, nil
+}
+
+func (bc *BlockChain) SetNode(node *net.Node) {
+	bc.node = node
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
@@ -366,16 +373,21 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 // }
 
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
-	// log.CLog().Info(err)
-	// fmt.Println("HandleMessage")
 	log.CLog().WithFields(logrus.Fields{
 		"Code": message.Code,
 	}).Info("Message arrived")
 
-	block := &Block{}
-	rlp.DecodeBytes(message.Payload, block)
-	bc.PutBlockIfParentExist(block)
-	// fmt.Println(block.Header.Height)
+	if message.Code == net.MSG_NEW_BLOCK {
+		block := &Block{}
+		rlp.DecodeBytes(message.Payload, block)
+		bc.PutBlockIfParentExist(block)
+	} else if message.Code == net.MSG_MISSING_BLOCK {
+		height := uint64(0)
+		rlp.DecodeBytes(message.Payload, &height)
+		log.CLog().WithFields(logrus.Fields{
+			"Height": height,
+		}).Info("missing block request arrived")
+	}
 	return nil
 }
 
@@ -383,16 +395,41 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 // 	sp.messageCh <- message
 // }
 
-func (bc *BlockChain) Loop() {
+//TODO: use code temporarily
+func (bc *BlockChain) RequestMissingBlock() {
+	missigBlock := make(map[uint64]bool)
+	for _, k := range bc.futureBlocks.Keys() {
+		v, _ := bc.futureBlocks.Peek(k)
+		block := v.(*Block)
+		missigBlock[block.Header.Height] = true
+	}
+	var keys []int
+	for k := range missigBlock {
+		keys = append(keys, int(k))
+	}
+	sort.Ints(keys)
+	if len(keys) == 0 {
+		return
+	}
+	for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
+		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, uint64(i))
+		bc.node.SendMessage(&msg)
+		log.CLog().WithFields(logrus.Fields{
+			"Height": i,
+		}).Info("request missing block")
+	}
+}
+
+func (bc *BlockChain) Start() {
+	go bc.loop()
+}
+
+func (bc *BlockChain) loop() {
+	ticker := time.NewTicker(5 * time.Second)
 	for {
-		// 	message := <-sp.messageCh
-		// 	//TODO: v is sync.Map later
-		// 	v, ok := sp.subscribersMap.Load(message.Code)
-		// 	if ok {
-		// 		subscriber := v.(Subscriber)
-		// 		subscriber.HandleMessage(message)
-		// 	} else {
-		// 	}
-		// }
+		select {
+		case <-ticker.C:
+			bc.RequestMissingBlock()
+		}
 	}
 }
