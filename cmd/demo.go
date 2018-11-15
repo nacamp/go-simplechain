@@ -33,7 +33,7 @@ func main() {
 	sp := node.GetSubscriberPool()
 	dpos := consensus.NewDpos()
 	bc, _ := core.NewBlockChain(dpos)
-	sp.Register(net.CMD_BLOCK, bc)
+	sp.Register(net.MSG_NEW_BLOCK, bc)
 	sp.Start()
 
 	if *port == 9990 {

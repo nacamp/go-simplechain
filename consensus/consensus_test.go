@@ -183,7 +183,7 @@ func TestDpos_MakeBlock2(t *testing.T) {
 	assert.Equal(t, block.Header.VoterHash, remoteBc.GenesisBlock.Header.VoterHash, "")
 	assert.Equal(t, block.Header.TransactionHash, remoteBc.GenesisBlock.Header.TransactionHash, "")
 
-	message, _ := net.NewRLPMessage(net.CMD_BLOCK, block)
+	message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
 	block2 := core.Block{}
 	rlp.DecodeBytes(message.Payload, &block2)
 	assert.Equal(t, block.Header.AccountHash, block2.Header.AccountHash, "")

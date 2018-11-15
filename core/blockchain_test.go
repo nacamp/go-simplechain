@@ -171,7 +171,7 @@ func TestMakeBlockChain(t *testing.T) {
 }
 
 func rlpEncode(block *core.Block) *core.Block {
-	message, _ := net.NewRLPMessage(net.CMD_BLOCK, block)
+	message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
 	block2 := core.Block{}
 	rlp.DecodeBytes(message.Payload, &block2)
 	return &block2

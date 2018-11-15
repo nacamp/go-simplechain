@@ -85,9 +85,9 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 			return
 		}
 		switch message.Code {
-		case CMD_HELLO:
+		case MSG_HELLO:
 			ps.onHello(&message)
-		case CMD_HELLO_ACK:
+		case MSG_HELLO_ACK:
 			ps.onHelloAck(&message)
 		default:
 			fmt.Println("lock...")
@@ -97,9 +97,9 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 			fmt.Println("unlock...")
 		}
 		switch message.Code {
-		case CMD_PEERS:
+		case MSG_PEERS:
 			ps.onPeers(&message)
-		case CMD_PEERS_ACK:
+		case MSG_PEERS_ACK:
 			ps.onPeersAck(&message)
 		default:
 			//subscribe
@@ -121,7 +121,7 @@ func (ps *P2PStream) writeData(rw *bufio.ReadWriter) {
 }
 
 func (ps *P2PStream) SendHello() error {
-	if msg, err := NewRLPMessage(CMD_HELLO, ps.node.maddr.String()); err != nil {
+	if msg, err := NewRLPMessage(MSG_HELLO, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
 		log.CLog().Info("SendHello")
@@ -130,7 +130,7 @@ func (ps *P2PStream) SendHello() error {
 }
 
 func (ps *P2PStream) SendHelloAck() error {
-	if msg, err := NewRLPMessage(CMD_HELLO_ACK, ps.node.maddr.String()); err != nil {
+	if msg, err := NewRLPMessage(MSG_HELLO_ACK, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
 		log.CLog().Info("SendHelloAck")
@@ -176,7 +176,7 @@ func (ps *P2PStream) onHelloAck(message *Message) error {
 
 //send request peers
 func (ps *P2PStream) RequestPeers() error {
-	if msg, err := NewRLPMessage(CMD_PEERS, "version 0.1"); err != nil {
+	if msg, err := NewRLPMessage(MSG_PEERS, "version 0.1"); err != nil {
 		return err
 	} else {
 		log.CLog().Info("RequestPeers")
@@ -195,7 +195,7 @@ func (ps *P2PStream) RequestPeersAck() error {
 		payload = append(payload, []string{k.Pretty(), addr.String()})
 	}
 
-	if msg, err := NewRLPMessage(CMD_PEERS_ACK, &payload); err != nil {
+	if msg, err := NewRLPMessage(MSG_PEERS_ACK, &payload); err != nil {
 		return err
 	} else {
 		ps.messageCh <- &msg

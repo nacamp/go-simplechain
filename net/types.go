@@ -5,12 +5,14 @@ import (
 )
 
 const (
-	CMD_HELLO     = 0x00
-	CMD_HELLO_ACK = 0x01
-	CMD_PEERS     = 0x02
-	CMD_PEERS_ACK = 0x03
+	MSG_HELLO     = 0x00
+	MSG_HELLO_ACK = 0x01
+	MSG_PEERS     = 0x02
+	MSG_PEERS_ACK = 0x03
 
-	CMD_BLOCK = 0x10
+	MSG_NEW_BLOCK         = 0x10
+	MSG_MISSING_BLOCK     = 0x12
+	MSG_MISSING_BLOCK_ACK = 0x13
 )
 
 type Message struct {

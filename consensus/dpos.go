@@ -91,7 +91,7 @@ func (dpos *Dpos) loop() {
 			block := dpos.MakeBlock(uint64(now.Unix()))
 			if block != nil {
 				dpos.bc.PutBlockByCoinbase(block)
-				message, _ := net.NewRLPMessage(net.CMD_BLOCK, block)
+				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
 				dpos.node.SendMessage(&message)
 			}
 		}
