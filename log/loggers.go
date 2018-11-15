@@ -91,7 +91,7 @@ func Init(path string, level string, age uint32) {
 	}
 	clog.Out = os.Stdout
 	clog.Formatter = &logrus.TextFormatter{FullTimestamp: true}
-	clog.Level = convertLevel("debug")
+	clog.Level = convertLevel(level) //convertLevel("debug")
 
 	vlog = logrus.New()
 	LoadFunctionHooker(vlog)
