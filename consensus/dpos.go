@@ -43,17 +43,20 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	//Fix: when ticker is 1 second, server mining...
 	turn := (now % 9) / 3
 	block := bc.NewBlockFromParent(bc.Tail)
+	parent, _ := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
+
+	if (parent != nil) && (now-parent.Header.Time <= (3 * 3)) {
+		log.CLog().WithFields(logrus.Fields{
+			"address": common.Bytes2Hex(dpos.coinbase[:]),
+		}).Info("not my turn(Interval is short)")
+		return nil
+	}
 	block.Header.Time = now
 	minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
-		fmt.Println(err)
+		log.CLog().Warning(err)
 	}
 	if minerGroup[turn] == dpos.coinbase {
-		fmt.Println(now)
-		fmt.Println(turn)
-		if block.Header.Height == 1 {
-			fmt.Println("MakeBlock start......")
-		}
 		log.CLog().WithFields(logrus.Fields{
 			"address": common.Bytes2Hex(dpos.coinbase[:]),
 		}).Debug("my turn")
@@ -78,9 +81,6 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		}
 
 		block.MakeHash()
-		if block.Header.Height == 1 {
-			fmt.Println("MakeBlock end......")
-		}
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
