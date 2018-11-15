@@ -2,8 +2,6 @@ package net
 
 import (
 	"sync"
-
-	"github.com/najimmy/go-simplechain/log"
 )
 
 type SubscriberPool struct {
@@ -41,7 +39,7 @@ func (sp *SubscriberPool) Loop() {
 		v, ok := sp.subscribersMap.Load(message.Code)
 		if ok {
 			subscriber := v.(Subscriber)
-			log.CLog().Info("%v", message)
+			// log.CLog().Info("%v", message)
 			subscriber.HandleMessage(message)
 		} else {
 		}

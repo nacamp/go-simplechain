@@ -13,6 +13,7 @@ import (
 	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/rlp"
 	"github.com/najimmy/go-simplechain/storage"
+	"github.com/sirupsen/logrus"
 )
 
 /*
@@ -247,6 +248,10 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 }
 
 func (bc *BlockChain) PutBlock(block *Block) {
+	log.CLog().WithFields(logrus.Fields{
+		"seed": block.Header.Height,
+		"port": common.Hash2Hex(block.Hash()),
+	}).Info("PutBlock...")
 	//1. verify transaction
 	err := block.VerifyTransacion()
 	if err != nil {
@@ -284,6 +289,10 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
 	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
 	bc.Tail = block
+	log.CLog().WithFields(logrus.Fields{
+		"Height": block.Header.Height,
+		"hash":   common.Hash2Hex(block.Hash()),
+	}).Info("Block was created")
 }
 
 func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
@@ -359,6 +368,10 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
 	// log.CLog().Info(err)
 	// fmt.Println("HandleMessage")
+	log.CLog().WithFields(logrus.Fields{
+		"Code": message.Code,
+	}).Info("Message arrived")
+
 	block := &Block{}
 	rlp.DecodeBytes(message.Payload, block)
 	bc.PutBlockIfParentExist(block)

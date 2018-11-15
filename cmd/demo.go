@@ -21,7 +21,7 @@ func main() {
 	log.CLog().WithFields(logrus.Fields{
 		"seed": *seed,
 		"port": *port,
-	}).Info("flas ")
+	}).Info("flags ")
 	privKey, err := net.HexStringToPrivkeyTo(*privHexString)
 	if err != nil {
 	}
@@ -38,12 +38,12 @@ func main() {
 
 	if *port == 9990 {
 		dpos.Setup(bc, node, common.HexToAddress("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"))
+		dpos.Start()
 	} else if *port == 9991 {
 		dpos.Setup(bc, node, common.HexToAddress("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"))
 	} else {
 		dpos.Setup(bc, node, common.HexToAddress("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"))
 	}
-	dpos.Start()
 	select {}
 }
 

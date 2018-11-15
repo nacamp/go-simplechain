@@ -45,7 +45,7 @@ func (node *Node) Start(seed string) {
 	fullAddr := addr.Encapsulate(hostAddr).String()
 	log.CLog().WithFields(logrus.Fields{
 		"fullAddr": fullAddr,
-	}).Info("I am ")
+	}).Info("My address")
 	node.host = host
 	node.nodeRoute = NewNodeRoute(node)
 	if seed != "" {

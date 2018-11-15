@@ -49,7 +49,7 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	if minerGroup[turn] == dpos.coinbase {
 		log.CLog().WithFields(logrus.Fields{
 			"address": common.Bytes2Hex(dpos.coinbase[:]),
-		}).Info("my turn")
+		}).Debug("my turn")
 		block.Header.Coinbase = dpos.coinbase
 		block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
 		//because PutMinerState recall GetMinerGroup , here assign  bc.Tail.Header.SnapshotVoterTime , not voterBlock.Header.Time

@@ -12,7 +12,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/najimmy/go-simplechain/log"
 	"github.com/sirupsen/logrus"
-	// log "github.com/sirupsen/logrus"
 )
 
 type NodeRoute struct {
@@ -101,10 +100,9 @@ func (nodeRoute *NodeRoute) AddNodeFromSeedString(seed string) {
 }
 
 func (nodeRoute *NodeRoute) FindNewNodes() {
-	log.CLog().Info("FindNewNodes>>>>>")
+	log.CLog().Debug("FindNewNodes")
 	node := nodeRoute.node
 	peers := nodeRoute.NearestPeers(nodeRoute.node.host.ID(), 20)
-	log.CLog().Info(peers, "peers")
 	for peerid, addr := range peers {
 		if peerid == node.host.ID() {
 			continue
@@ -119,15 +117,15 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 			} else {
 				log.CLog().Debug("FindNewNodes lock before")
 				p2pStream.mu.Lock()
-				log.CLog().Debug("FindNewNodes lock after")
-				log.CLog().Warning("p2pStream is closed")
 				node.p2pStreamMap.Delete(peerid)
 				node.host.Peerstore().ClearAddrs(peerid)
 				nodeRoute.Remove(p2pStream.peerID)
-				log.CLog().Warning("p2pStream is removed")
+				log.CLog().WithFields(logrus.Fields{
+					"ID": p2pStream.peerID,
+				}).Info("P2PStream removed")
 
 				if node.seedID == peerid {
-					log.CLog().Warning("add seed node")
+					log.CLog().Debug("add seed node")
 					nodeRoute.Update(peerid, addr)
 				}
 				p2pStream.mu.Unlock()
@@ -142,7 +140,9 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 				node.host.Peerstore().ClearAddrs(peerid)
 				nodeRoute.Remove(peerid)
 			} else {
-				log.CLog().Info(p2pStream.addr, " new")
+				log.CLog().WithFields(logrus.Fields{
+					"ID": p2pStream.peerID,
+				}).Info("P2PStream added")
 				node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
 				p2pStream.Start(false)
 				p2pStream.RequestPeers()
@@ -150,7 +150,9 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 
 		}
 	}
-	log.CLog().Info("<<<<<FindNewNodes")
+	log.CLog().WithFields(logrus.Fields{
+		"size": len(peers),
+	}).Info("Peer size")
 }
 
 func (nodeRoute *NodeRoute) Start() {
