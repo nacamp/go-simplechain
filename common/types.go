@@ -1,5 +1,7 @@
 package common
 
+import "encoding/hex"
+
 //first naive publickey
 const (
 	HashLength    = 32
@@ -52,4 +54,12 @@ func HashToBytes(hash Hash) []byte {
 		return hash[:]
 	}
 
+}
+
+func Hash2Hex(hash Hash) string {
+	return hex.EncodeToString(hash[:])
+}
+
+func Address2Hex(address Address) string {
+	return hex.EncodeToString(address[:])
 }
