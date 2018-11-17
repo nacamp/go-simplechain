@@ -280,11 +280,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	}
 
 	//5. TODO: signer check
-
-	encodedBytes, _ := rlp.EncodeToBytes(block)
-	//TODO: change height , hash
-	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
-	bc.Storage.Put(encodeBlockHeight(block.Header.Height), block.Header.Hash[:])
+	bc.putBlockToStorage(block)
 	log.CLog().WithFields(logrus.Fields{
 		"height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
@@ -300,9 +296,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.mu.Lock()
-	encodedBytes, _ := rlp.EncodeToBytes(block)
-	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
-	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
+	bc.putBlockToStorage(block)
 	bc.Tail = block
 	bc.mu.Unlock()
 	log.CLog().WithFields(logrus.Fields{
@@ -477,4 +471,10 @@ func (bc *BlockChain) loop() {
 			bc.RequestMissingBlock()
 		}
 	}
+}
+
+func (bc *BlockChain) putBlockToStorage(block *Block) {
+	encodedBytes, _ := rlp.EncodeToBytes(block)
+	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
+	bc.Storage.Put(encodeBlockHeight(block.Header.Height), block.Header.Hash[:])
 }
