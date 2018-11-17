@@ -46,6 +46,7 @@ type BlockChain struct {
 	Lib             *Block
 	Tail            *Block
 	node            *net.Node
+	tailGroup       *sync.Map
 }
 
 func NewBlockChain(consensus Consensus) (*BlockChain, error) {
@@ -57,6 +58,7 @@ func NewBlockChain(consensus Consensus) (*BlockChain, error) {
 	bc, err := BlockChain{
 		Storage:      storage,
 		futureBlocks: futureBlocks,
+		tailGroup:    new(sync.Map),
 	}, nil
 
 	bc.GenesisBlock, err = GetGenesisBlock(storage)
@@ -292,6 +294,10 @@ func (bc *BlockChain) PutBlock(block *Block) {
 
 	//set tail
 	bc.Tail = block
+
+	bc.tailGroup.Store(block.Hash(), block)
+	//if parent exist
+	bc.tailGroup.Delete(block.Header.ParentHash)
 }
 
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
