@@ -74,7 +74,7 @@ func NewBlockChain(consensus Consensus) (*BlockChain, error) {
 
 	bc.GenesisBlock.MakeHash()
 	bc.Lib = bc.GenesisBlock
-	bc.Tail = bc.GenesisBlock
+	bc.SetTail(bc.GenesisBlock)
 	return &bc, err
 }
 
@@ -287,7 +287,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	}).Info("New Block was inserted at Blockchain")
 
 	//set tail
-	bc.Tail = block
+	bc.SetTail(block)
 
 	bc.tailGroup.Store(block.Hash(), block)
 	//if parent exist
@@ -297,7 +297,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.mu.Lock()
 	bc.putBlockToStorage(block)
-	bc.Tail = block
+	bc.SetTail(block)
 	bc.mu.Unlock()
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,
@@ -457,6 +457,12 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 		}
 		return true
 	})
+}
+
+func (bc *BlockChain) SetTail(block *Block) {
+	bc.Tail = block
+	//TODO: if tail change , orphan block created  then  GetBlockByHeight may return  orphan block height
+	//      so must rebuild height  from LIB to tail
 }
 
 func (bc *BlockChain) Start() {
