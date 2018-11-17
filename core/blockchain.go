@@ -286,6 +286,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
+	//TODO: change encodedBytes to height in  value
 	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
 	log.CLog().WithFields(logrus.Fields{
 		"height": block.Header.Height,
@@ -450,6 +451,22 @@ func (bc *BlockChain) SendMissingBlock(height uint64) {
 			"Height": height,
 		}).Info("We don't have missing block")
 	}
+}
+
+func (bc *BlockChain) RemoveOrphanBlock() {
+	bc.tailGroup.Range(func(key, value interface{}) bool {
+		orphanBlock := value.(*Block)
+		if bc.Lib.Header.Height >= orphanBlock.Header.Height {
+			validBlock, _ := bc.GetBlockByHeight(orphanBlock.Header.Height)
+			orphanBlockHash := orphanBlock.Hash()
+			for validBlock.Hash() != orphanBlock.Hash() {
+				validBlock, _ = bc.GetBlockByHash(validBlock.Header.ParentHash)
+				orphanBlock, _ = bc.GetBlockByHash(orphanBlock.Header.ParentHash)
+				bc.Storage.Del(orphanBlockHash[:])
+			}
+		}
+		return true
+	})
 }
 
 func (bc *BlockChain) Start() {
