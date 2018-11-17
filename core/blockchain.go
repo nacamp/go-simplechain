@@ -152,14 +152,12 @@ func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
 }
 
 func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
-	encodedBytes, err := bc.Storage.Get(encodeBlockHeight(height))
-	if err != nil {
-		return nil, err
-	}
 
-	block := Block{}
-	rlp.NewStream(bytes.NewReader(encodedBytes), 0).Decode(&block)
-	return &block, nil
+	hash, err := bc.Storage.Get(encodeBlockHeight(height))
+	if err != nil {
+		return nil, nil
+	}
+	return bc.GetBlockByHash(common.BytesToHash(hash))
 }
 
 func (bc *BlockChain) PutState(block *Block) error {
@@ -286,8 +284,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	//TODO: change height , hash
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
-	//TODO: change encodedBytes to height in  value
-	bc.Storage.Put(encodeBlockHeight(block.Header.Height), encodedBytes)
+	bc.Storage.Put(encodeBlockHeight(block.Header.Height), block.Header.Hash[:])
 	log.CLog().WithFields(logrus.Fields{
 		"height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
@@ -315,7 +312,6 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 }
 
 func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
-	//TODO: check  block.Header.ParentHash[:] != nil
 	if block.Header.ParentHash[:] != nil {
 		b, _ := bc.GetBlockByHash(block.Header.ParentHash)
 		if b != nil {
