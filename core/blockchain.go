@@ -292,6 +292,10 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	bc.tailGroup.Store(block.Hash(), block)
 	//if parent exist
 	bc.tailGroup.Delete(block.Header.ParentHash)
+
+	bc.Consensus.UpdateLIB(bc)
+	bc.RemoveOrphanBlock()
+
 }
 
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
@@ -303,6 +307,8 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 		"Height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
 	}).Info("Block was created")
+	bc.Consensus.UpdateLIB(bc)
+	bc.RemoveOrphanBlock()
 }
 
 func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
