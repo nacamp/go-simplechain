@@ -459,10 +459,24 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 	})
 }
 
+func (bc *BlockChain) RebuildBlockHeight() {
+	block := bc.Tail
+	if block.Header.Height == 0 {
+		return
+	}
+	for {
+		block, _ := bc.GetBlockByHash(block.Header.ParentHash)
+		block2, _ := bc.GetBlockByHeight(block.Header.Height)
+		if block.Hash() == block2.Hash() {
+			break
+		}
+		bc.Storage.Put(encodeBlockHeight(block.Header.Height), block.Header.Hash[:])
+	}
+}
+
 func (bc *BlockChain) SetTail(block *Block) {
 	bc.Tail = block
-	//TODO: if tail change , orphan block created  then  GetBlockByHeight may return  orphan block height
-	//      so must rebuild height  from LIB to tail
+	bc.RebuildBlockHeight()
 }
 
 func (bc *BlockChain) Start() {
