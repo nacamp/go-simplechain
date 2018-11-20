@@ -11,6 +11,7 @@ import (
 	"github.com/najimmy/go-simplechain/core"
 	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/rlp"
+	"github.com/najimmy/go-simplechain/tests"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/najimmy/go-simplechain/common"
@@ -221,4 +222,87 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 	b, _ = bc.GetBlockByHash(block33.Hash())
 	assert.NotNil(t, b, "")
 
+}
+
+/*
+     N0  LIB
+   /   \
+N1       N2
+|        |
+N4		 N3
+|        |
+N5       N6
+|
+N7
+*/
+// At PutBlockByCoinbase SetTail call RebuildBlockHeight
+func TestRebuildBlockHeight(t *testing.T) {
+	dpos := consensus.NewDpos()
+	bc, _ := core.NewBlockChain(dpos)
+	bc.PutBlockByCoinbase(bc.GenesisBlock)
+	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block1)
+	b1, _ := bc.GetBlockByHash(block1.Hash())
+	b2, _ := bc.GetBlockByHeight(block1.Header.Height)
+	assert.Equal(t, b1.Hash(), b2.Hash(), "")
+	assert.Equal(t, uint64(1), block1.Header.Height, "")
+
+	block2 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(2), tests.None, nil)
+	bc.PutBlockByCoinbase(block2)
+	b1, _ = bc.GetBlockByHash(block2.Hash())
+	b2, _ = bc.GetBlockByHeight(block2.Header.Height)
+	assert.Equal(t, b1.Hash(), b2.Hash(), "")
+	assert.Equal(t, uint64(1), block2.Header.Height, "")
+
+	block3 := tests.MakeBlock(bc, block2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(3), tests.None, nil)
+	bc.PutBlockByCoinbase(block3)
+	b1, _ = bc.GetBlockByHash(block3.Hash())
+	b2, _ = bc.GetBlockByHeight(block3.Header.Height)
+	assert.Equal(t, b1.Hash(), b2.Hash(), "")
+	assert.Equal(t, uint64(2), block3.Header.Height, "")
+	b, _ := bc.GetBlockByHeight(uint64(1))
+	assert.Equal(t, block2.Hash(), b.Hash(), "")
+
+	block4 := tests.MakeBlock(bc, block1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(4), tests.None, nil)
+	bc.PutBlockByCoinbase(block4)
+	b1, _ = bc.GetBlockByHash(block4.Hash())
+	b2, _ = bc.GetBlockByHeight(block4.Header.Height)
+	assert.Equal(t, uint64(2), block4.Header.Height, "")
+	assert.Equal(t, b1.Hash(), b2.Hash(), "")
+	b, _ = bc.GetBlockByHeight(uint64(1))
+	assert.Equal(t, block1.Hash(), b.Hash(), "")
+
+	block5 := tests.MakeBlock(bc, block4, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(5), tests.None, nil)
+	bc.PutBlockByCoinbase(block5)
+	b1, _ = bc.GetBlockByHash(block5.Hash())
+	b2, _ = bc.GetBlockByHeight(block5.Header.Height)
+	assert.Equal(t, b1.Hash(), b2.Hash(), "")
+	assert.Equal(t, uint64(3), block5.Header.Height, "")
+	b, _ = bc.GetBlockByHeight(uint64(2))
+	assert.Equal(t, block4.Hash(), b.Hash(), "")
+
+	block6 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(6), tests.None, nil)
+	bc.PutBlockByCoinbase(block6)
+	b1, _ = bc.GetBlockByHash(block6.Hash())
+	b2, _ = bc.GetBlockByHeight(block6.Header.Height)
+	assert.Equal(t, b1.Hash(), b2.Hash(), "")
+	assert.Equal(t, uint64(3), block6.Header.Height, "")
+	b, _ = bc.GetBlockByHeight(uint64(2))
+	assert.Equal(t, block3.Hash(), b.Hash(), "")
+
+	block7 := tests.MakeBlock(bc, block5, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(7), tests.None, nil)
+	bc.PutBlockByCoinbase(block7)
+	b1, _ = bc.GetBlockByHash(block7.Hash())
+	b2, _ = bc.GetBlockByHeight(block7.Header.Height)
+	assert.Equal(t, b1.Hash(), b2.Hash(), "")
+	assert.Equal(t, uint64(4), block7.Header.Height, "")
+
+	b, _ = bc.GetBlockByHeight(uint64(1))
+	assert.Equal(t, block1.Hash(), b.Hash(), "")
+	b, _ = bc.GetBlockByHeight(uint64(2))
+	assert.Equal(t, block4.Hash(), b.Hash(), "")
+	b, _ = bc.GetBlockByHeight(uint64(3))
+	assert.Equal(t, block5.Hash(), b.Hash(), "")
+	b, _ = bc.GetBlockByHeight(uint64(4))
+	assert.Equal(t, block7.Hash(), b.Hash(), "")
 }
