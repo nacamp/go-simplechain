@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/najimmy/go-simplechain/rlp"
+	"github.com/najimmy/go-simplechain/tests"
 
 	"github.com/stretchr/testify/assert"
 
@@ -191,4 +192,114 @@ func TestDpos_MakeBlock2(t *testing.T) {
 	assert.Equal(t, block.Header.VoterHash, block2.Header.VoterHash, "")
 	assert.Equal(t, block.Header.TransactionHash, block2.Header.TransactionHash, "")
 
+}
+
+/*
+At N+3, LIB set N1
+N+1		N+2		N+3
+addr0   addr1   addr2
+*/
+func TestUpdateLIB1(t *testing.T) {
+	dpos := consensus.NewDpos()
+	bc, _ := core.NewBlockChain(dpos)
+	bc.PutBlockByCoinbase(bc.GenesisBlock)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block1)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block2)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block3 := tests.MakeBlock(bc, block2, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block3)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, block1.Hash(), bc.Lib.Hash(), "")
+}
+
+/*
+At N+5, LIB set N+3
+N+1		N+2		N+3     N+4		N+5
+addr0	addr1	addr2
+				addr0	addr1	addr2
+*/
+func TestUpdateLIB2(t *testing.T) {
+	dpos := consensus.NewDpos()
+	bc, _ := core.NewBlockChain(dpos)
+	bc.PutBlockByCoinbase(bc.GenesisBlock)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block1)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block2)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block3 := tests.MakeBlock(bc, block2, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block3)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block4 := tests.MakeBlock(bc, block3, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block4)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block5 := tests.MakeBlock(bc, block4, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block5)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, block3.Hash(), bc.Lib.Hash(), "")
+}
+
+/*
+At N+5, LIB set N+5
+At N+4, LIB set N+2
+At N+3, LIB set N+1
+N+1		N+2		N+3     N+4		N+5
+addr0	addr1	addr2   addr0	addr2
+				addr0
+*/
+func TestUpdateLIB3(t *testing.T) {
+	dpos := consensus.NewDpos()
+	bc, _ := core.NewBlockChain(dpos)
+	bc.PutBlockByCoinbase(bc.GenesisBlock)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block1)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block2)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+
+	block3 := tests.MakeBlock(bc, block2, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block3)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, block1.Hash(), bc.Lib.Hash(), "")
+
+	block4 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block4)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, block2.Hash(), bc.Lib.Hash(), "")
+
+	block5 := tests.MakeBlock(bc, block4, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block5)
+	dpos.UpdateLIB(bc)
+	assert.Equal(t, block3.Hash(), bc.Lib.Hash(), "")
 }
