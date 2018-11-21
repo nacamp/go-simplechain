@@ -298,6 +298,12 @@ func (bc *BlockChain) PutBlock(block *Block) {
 
 }
 
+func (bc *BlockChain) AddTailToGroup(block *Block) {
+	bc.tailGroup.Store(block.Hash(), block)
+	//if parent exist
+	bc.tailGroup.Delete(block.Header.ParentHash)
+}
+
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.mu.Lock()
 	bc.putBlockToStorage(block)
@@ -307,6 +313,7 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 		"Height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
 	}).Info("Block was created")
+	bc.AddTailToGroup(block)
 	// bc.Consensus.UpdateLIB(bc)
 	// bc.RemoveOrphanBlock()
 }
@@ -451,14 +458,19 @@ func (bc *BlockChain) SendMissingBlock(height uint64) {
 
 func (bc *BlockChain) RemoveOrphanBlock() {
 	bc.tailGroup.Range(func(key, value interface{}) bool {
-		orphanBlock := value.(*Block)
-		if bc.Lib.Header.Height >= orphanBlock.Header.Height {
-			validBlock, _ := bc.GetBlockByHeight(orphanBlock.Header.Height)
-			orphanBlockHash := orphanBlock.Hash()
-			for validBlock.Hash() != orphanBlock.Hash() {
+		tail := value.(*Block)
+		var err error
+		if bc.Lib.Header.Height >= tail.Header.Height {
+			validBlock, _ := bc.GetBlockByHeight(tail.Header.Height)
+			for validBlock.Hash() != tail.Hash() {
+				childHash := tail.Hash()
 				validBlock, _ = bc.GetBlockByHash(validBlock.Header.ParentHash)
-				orphanBlock, _ = bc.GetBlockByHash(orphanBlock.Header.ParentHash)
-				bc.Storage.Del(orphanBlockHash[:])
+				tail, err = bc.GetBlockByHash(tail.Header.ParentHash)
+				bc.Storage.Del(childHash[:])
+				//already removed during for loop
+				if err != nil {
+					break
+				}
 			}
 		}
 		return true

@@ -307,16 +307,53 @@ func TestRebuildBlockHeight(t *testing.T) {
 	assert.Equal(t, block7.Hash(), b.Hash(), "")
 }
 
+/*
+	N0
+	|
+	N1
+   /    \
+N2        N3
+|        /  \
+N6(LIB)	N4  N5
+|
+N7
+|
+N8
+*/
 func TestRemoveOrphanBlock(t *testing.T) {
-	// bc.Consensus.UpdateLIB(bc)
-	// bc.RemoveOrphanBlock()
-	// dpos := consensus.NewDpos()
-	// bc, _ := core.NewBlockChain(dpos)
-	// bc.PutBlockByCoinbase(bc.GenesisBlock)
-	// block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	// bc.PutBlockByCoinbase(block1)
-	// b1, _ := bc.GetBlockByHash(block1.Hash())
-	// b2, _ := bc.GetBlockByHeight(block1.Header.Height)
-	// assert.Equal(t, b1.Hash(), b2.Hash(), "")
-	// assert.Equal(t, uint64(1), block1.Header.Height, "")
+	dpos := consensus.NewDpos()
+	bc, _ := core.NewBlockChain(dpos)
+	bc.PutBlockByCoinbase(bc.GenesisBlock)
+
+	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+	bc.PutBlockByCoinbase(block1)
+
+	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(2), tests.None, nil)
+	bc.PutBlockByCoinbase(block2)
+
+	block3 := tests.MakeBlock(bc, block1, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(3), tests.None, nil)
+	bc.PutBlockByCoinbase(block3)
+
+	block4 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(4), tests.None, nil)
+	bc.PutBlockByCoinbase(block4)
+
+	block5 := tests.MakeBlock(bc, block3, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(5), tests.None, nil)
+	bc.PutBlockByCoinbase(block5)
+
+	block6 := tests.MakeBlock(bc, block2, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(6), tests.None, nil)
+	bc.PutBlockByCoinbase(block6)
+
+	block7 := tests.MakeBlock(bc, block6, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(7), tests.None, nil)
+	bc.PutBlockByCoinbase(block7)
+
+	block8 := tests.MakeBlock(bc, block7, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(8), tests.None, nil)
+	bc.PutBlockByCoinbase(block8)
+
+	bc.Lib = block6
+	bc.SetTail(block6)
+	bc.RemoveOrphanBlock()
+	b, err := bc.GetBlockByHash(block4.Hash())
+	assert.NotNil(t, err, "")
+	assert.Nil(t, b, "")
+
 }
