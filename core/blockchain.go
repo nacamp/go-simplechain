@@ -49,19 +49,43 @@ type BlockChain struct {
 	tailGroup       *sync.Map
 }
 
-func NewBlockChain(consensus Consensus) (*BlockChain, error) {
-	storage, err := storage.NewMemoryStorage()
-	if err != nil {
-		return nil, err
-	}
+// func NewBlockChain(consensus Consensus) (*BlockChain, error) {
+// 	storage, err := storage.NewMemoryStorage()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	futureBlocks, _ := lru.New(maxFutureBlocks)
+// 	bc, err := BlockChain{
+// 		Storage:      storage,
+// 		futureBlocks: futureBlocks,
+// 		tailGroup:    new(sync.Map),
+// 	}, nil
+
+// 	bc.GenesisBlock, err = GetGenesisBlock(storage)
+// 	bc.Consensus = consensus
+
+// 	//MinerState
+// 	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, storage)
+// 	bc.GenesisBlock.MinerState = ms
+// 	minerGroup, _, _ := ms.GetMinerGroup(&bc, bc.GenesisBlock)
+// 	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
+// 	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
+// 	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
+
+// 	bc.GenesisBlock.MakeHash()
+// 	bc.Lib = bc.GenesisBlock
+// 	bc.SetTail(bc.GenesisBlock)
+// 	return &bc, err
+// }
+
+func NewBlockChain(consensus Consensus, storage storage.Storage, voters []Account) (*BlockChain, error) {
 	futureBlocks, _ := lru.New(maxFutureBlocks)
-	bc, err := BlockChain{
+	bc := BlockChain{
 		Storage:      storage,
 		futureBlocks: futureBlocks,
 		tailGroup:    new(sync.Map),
-	}, nil
-
-	bc.GenesisBlock, err = GetGenesisBlock(storage)
+	}
+	bc.GenesisBlock, _ = GetGenesisBlock(storage, voters)
 	bc.Consensus = consensus
 
 	//MinerState
@@ -75,11 +99,69 @@ func NewBlockChain(consensus Consensus) (*BlockChain, error) {
 	bc.GenesisBlock.MakeHash()
 	bc.Lib = bc.GenesisBlock
 	bc.SetTail(bc.GenesisBlock)
-	return &bc, err
+	return &bc, nil
 }
 
-//make genesisblock and save state
-func GetGenesisBlock(storage storage.Storage) (*Block, error) {
+// //make genesisblock and save state
+// func GetGenesisBlock(storage storage.Storage) (*Block, error) {
+// 	//TODO: load genesis block from config or db
+// 	// var coinbaseAddress = "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
+// 	common.Hex2Bytes(GenesisCoinbaseAddress)
+// 	header := &Header{
+// 		Coinbase: common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress)),
+// 		Height:   0,
+// 		Time:     0,
+// 	}
+// 	block := &Block{
+// 		Header: header,
+// 	}
+// 	//FIXME: change location to save genesis state
+// 	//-------
+// 	//AccountState
+// 	accs, _ := NewAccountState(storage)
+// 	account := Account{}
+// 	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
+// 	account.AddBalance(new(big.Int).SetUint64(100))
+// 	accs.PutAccount(&account)
+// 	block.AccountState = accs
+// 	header.AccountHash = accs.RootHash()
+
+// 	//TransactionState
+// 	txs, _ := NewTransactionState(storage)
+// 	txs.PutTransaction(&Transaction{})
+// 	block.TransactionState = txs
+// 	header.TransactionHash = txs.RootHash()
+
+// 	//VoterState
+// 	vs, _ := NewAccountState(storage)
+// 	account1 := Account{}
+// 	copy(account1.Address[:], common.FromHex(GenesisCoinbaseAddress))
+// 	account1.AddBalance(new(big.Int).SetUint64(100))
+// 	vs.PutAccount(&account1)
+
+// 	account2 := Account{}
+// 	copy(account2.Address[:], common.FromHex("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"))
+// 	account2.AddBalance(new(big.Int).SetUint64(20))
+// 	vs.PutAccount(&account2)
+
+// 	account3 := Account{}
+// 	copy(account3.Address[:], common.FromHex("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"))
+// 	account3.AddBalance(new(big.Int).SetUint64(50))
+// 	vs.PutAccount(&account3)
+
+// 	block.VoterState = vs
+// 	header.VoterHash = vs.RootHash()
+
+// 	// MinerState
+// 	//FIXME: current in NewBlockChain
+
+// 	//-------
+
+// 	// block.MakeHash()
+// 	return block, nil
+// }
+
+func GetGenesisBlock(storage storage.Storage, voters []Account) (*Block, error) {
 	//TODO: load genesis block from config or db
 	// var coinbaseAddress = "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	common.Hex2Bytes(GenesisCoinbaseAddress)
@@ -97,7 +179,7 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 	accs, _ := NewAccountState(storage)
 	account := Account{}
 	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
-	account.AddBalance(new(big.Int).SetUint64(100))
+	account.AddBalance(new(big.Int).SetUint64(100)) //FIXME: amount 0
 	accs.PutAccount(&account)
 	block.AccountState = accs
 	header.AccountHash = accs.RootHash()
@@ -110,21 +192,9 @@ func GetGenesisBlock(storage storage.Storage) (*Block, error) {
 
 	//VoterState
 	vs, _ := NewAccountState(storage)
-	account1 := Account{}
-	copy(account1.Address[:], common.FromHex(GenesisCoinbaseAddress))
-	account1.AddBalance(new(big.Int).SetUint64(100))
-	vs.PutAccount(&account1)
-
-	account2 := Account{}
-	copy(account2.Address[:], common.FromHex("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"))
-	account2.AddBalance(new(big.Int).SetUint64(20))
-	vs.PutAccount(&account2)
-
-	account3 := Account{}
-	copy(account3.Address[:], common.FromHex("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"))
-	account3.AddBalance(new(big.Int).SetUint64(50))
-	vs.PutAccount(&account3)
-
+	for _, account := range voters {
+		vs.PutAccount(&account)
+	}
 	block.VoterState = vs
 	header.VoterHash = vs.RootHash()
 
