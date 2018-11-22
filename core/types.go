@@ -29,6 +29,8 @@ type Config struct {
 	DBPath          string          `json:"db_path"`
 	MinerAddress    string          `json:"miner_address"`
 	MinerPrivateKey string          `json:"miner_private_key"`
+	NodePrivateKey  string          `json:"node_private_key"`
+	Port            int             `json:"port"`
 	Seeds           []string        `json:"seeds"`
 	Voters          []ConfigAccount `json:"voters"`
 }
