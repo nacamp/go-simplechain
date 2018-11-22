@@ -30,11 +30,6 @@ const (
 )
 
 var GenesisCoinbaseAddress = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")
-var keystore = map[string]string{
-	GenesisCoinbaseAddress: "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
-	"0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3": "0xf390e256b6ed8a1b283d3ea80b103b868c14c31e5b7114fc32fff21c4cb263eb",
-	"0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1": "0xb385aca81e134722cca902bf85443528c3d3a783cf54008cfc34a2ca563fc5b6",
-}
 
 type BlockChain struct {
 	mu              sync.RWMutex
@@ -49,121 +44,19 @@ type BlockChain struct {
 	tailGroup       *sync.Map
 }
 
-// func NewBlockChain(consensus Consensus) (*BlockChain, error) {
-// 	storage, err := storage.NewMemoryStorage()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	futureBlocks, _ := lru.New(maxFutureBlocks)
-// 	bc, err := BlockChain{
-// 		Storage:      storage,
-// 		futureBlocks: futureBlocks,
-// 		tailGroup:    new(sync.Map),
-// 	}, nil
-
-// 	bc.GenesisBlock, err = GetGenesisBlock(storage)
-// 	bc.Consensus = consensus
-
-// 	//MinerState
-// 	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, storage)
-// 	bc.GenesisBlock.MinerState = ms
-// 	minerGroup, _, _ := ms.GetMinerGroup(&bc, bc.GenesisBlock)
-// 	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
-// 	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
-// 	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
-
-// 	bc.GenesisBlock.MakeHash()
-// 	bc.Lib = bc.GenesisBlock
-// 	bc.SetTail(bc.GenesisBlock)
-// 	return &bc, err
-// }
-
-func NewBlockChain(consensus Consensus, storage storage.Storage, voters []Account) (*BlockChain, error) {
+func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
 	futureBlocks, _ := lru.New(maxFutureBlocks)
 	bc := BlockChain{
 		Storage:      storage,
 		futureBlocks: futureBlocks,
 		tailGroup:    new(sync.Map),
 	}
-	bc.GenesisBlock, _ = GetGenesisBlock(storage, voters)
+
 	bc.Consensus = consensus
-
-	//MinerState
-	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, storage)
-	bc.GenesisBlock.MinerState = ms
-	minerGroup, _, _ := ms.GetMinerGroup(&bc, bc.GenesisBlock)
-	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
-	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
-	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
-
-	bc.GenesisBlock.MakeHash()
-	bc.Lib = bc.GenesisBlock
-	bc.SetTail(bc.GenesisBlock)
-	return &bc, nil
+	return &bc
 }
 
-// //make genesisblock and save state
-// func GetGenesisBlock(storage storage.Storage) (*Block, error) {
-// 	//TODO: load genesis block from config or db
-// 	// var coinbaseAddress = "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
-// 	common.Hex2Bytes(GenesisCoinbaseAddress)
-// 	header := &Header{
-// 		Coinbase: common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress)),
-// 		Height:   0,
-// 		Time:     0,
-// 	}
-// 	block := &Block{
-// 		Header: header,
-// 	}
-// 	//FIXME: change location to save genesis state
-// 	//-------
-// 	//AccountState
-// 	accs, _ := NewAccountState(storage)
-// 	account := Account{}
-// 	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
-// 	account.AddBalance(new(big.Int).SetUint64(100))
-// 	accs.PutAccount(&account)
-// 	block.AccountState = accs
-// 	header.AccountHash = accs.RootHash()
-
-// 	//TransactionState
-// 	txs, _ := NewTransactionState(storage)
-// 	txs.PutTransaction(&Transaction{})
-// 	block.TransactionState = txs
-// 	header.TransactionHash = txs.RootHash()
-
-// 	//VoterState
-// 	vs, _ := NewAccountState(storage)
-// 	account1 := Account{}
-// 	copy(account1.Address[:], common.FromHex(GenesisCoinbaseAddress))
-// 	account1.AddBalance(new(big.Int).SetUint64(100))
-// 	vs.PutAccount(&account1)
-
-// 	account2 := Account{}
-// 	copy(account2.Address[:], common.FromHex("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"))
-// 	account2.AddBalance(new(big.Int).SetUint64(20))
-// 	vs.PutAccount(&account2)
-
-// 	account3 := Account{}
-// 	copy(account3.Address[:], common.FromHex("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"))
-// 	account3.AddBalance(new(big.Int).SetUint64(50))
-// 	vs.PutAccount(&account3)
-
-// 	block.VoterState = vs
-// 	header.VoterHash = vs.RootHash()
-
-// 	// MinerState
-// 	//FIXME: current in NewBlockChain
-
-// 	//-------
-
-// 	// block.MakeHash()
-// 	return block, nil
-// }
-
-func GetGenesisBlock(storage storage.Storage, voters []Account) (*Block, error) {
-	//TODO: load genesis block from config or db
-	// var coinbaseAddress = "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
+func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	common.Hex2Bytes(GenesisCoinbaseAddress)
 	header := &Header{
 		Coinbase: common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress)),
@@ -173,10 +66,9 @@ func GetGenesisBlock(storage storage.Storage, voters []Account) (*Block, error) 
 	block := &Block{
 		Header: header,
 	}
-	//FIXME: change location to save genesis state
-	//-------
+
 	//AccountState
-	accs, _ := NewAccountState(storage)
+	accs, _ := NewAccountState(bc.Storage)
 	account := Account{}
 	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
 	account.AddBalance(new(big.Int).SetUint64(100)) //FIXME: amount 0
@@ -185,26 +77,33 @@ func GetGenesisBlock(storage storage.Storage, voters []Account) (*Block, error) 
 	header.AccountHash = accs.RootHash()
 
 	//TransactionState
-	txs, _ := NewTransactionState(storage)
+	txs, _ := NewTransactionState(bc.Storage)
 	txs.PutTransaction(&Transaction{})
 	block.TransactionState = txs
 	header.TransactionHash = txs.RootHash()
 
 	//VoterState
-	vs, _ := NewAccountState(storage)
+	vs, _ := NewAccountState(bc.Storage)
 	for _, account := range voters {
-		vs.PutAccount(&account)
+		vs.PutAccount(account)
 	}
 	block.VoterState = vs
 	header.VoterHash = vs.RootHash()
+	bc.GenesisBlock = block
 
 	// MinerState
-	//FIXME: current in NewBlockChain
+	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
+	bc.GenesisBlock.MinerState = ms
+	minerGroup, _, _ := ms.GetMinerGroup(bc, block)
+	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
 
-	//-------
+	bc.GenesisBlock = block
+	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
+	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
+	bc.GenesisBlock.MakeHash()
 
-	// block.MakeHash()
-	return block, nil
+	bc.Lib = bc.GenesisBlock
+	bc.SetTail(bc.GenesisBlock)
 }
 
 func (bc *BlockChain) SetNode(node *net.Node) {
