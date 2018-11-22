@@ -25,9 +25,10 @@ type ConfigAccount struct {
 	Balance *big.Int `json:"balance"`
 }
 type Config struct {
-	HostId          string          `json:"hostId"`
-	MinerAddress    string          `json:"minerAddress"`
-	MinerPrivateKey string          `json:"minerPrivateKey"`
+	HostId          string          `json:"host_id"`
+	DBPath          string          `json:"db_path"`
+	MinerAddress    string          `json:"miner_address"`
+	MinerPrivateKey string          `json:"miner_private_key"`
 	Seeds           []string        `json:"seeds"`
 	Voters          []ConfigAccount `json:"voters"`
 }
