@@ -1,4 +1,4 @@
-package main
+package cmd_test
 
 import (
 	"fmt"
@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/core"
 	"github.com/stretchr/testify/assert"
 )
@@ -51,7 +52,7 @@ func TestConfig(t *testing.T) {
 	}
 
 	config = &core.Config{}
-	config = NewConfigFromFile(tmpfile.Name())
+	config = cmd.NewConfigFromFile(tmpfile.Name())
 	// fmt.Println(config.HostId)
 	// fmt.Println(config.MinerAddress)
 	// fmt.Println(config.MinerPrivateKey)

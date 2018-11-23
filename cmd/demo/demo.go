@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/consensus"
 	"github.com/najimmy/go-simplechain/core"
@@ -18,7 +19,7 @@ func run(c *cli.Context) {
 		log.CLog().Fatal("not found config")
 		return
 	}
-	config := NewConfigFromFile(c.String("config"))
+	config := cmd.NewConfigFromFile(c.String("config"))
 
 	log.Init("", log.InfoLevel, 0)
 	//TODO change node private key
