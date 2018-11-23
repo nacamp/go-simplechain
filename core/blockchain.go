@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -43,6 +42,7 @@ type BlockChain struct {
 	Tail            *Block
 	node            *net.Node
 	tailGroup       *sync.Map
+	TEST            bool
 }
 
 func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
@@ -55,6 +55,21 @@ func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
 
 	bc.Consensus = consensus
 	return &bc
+}
+
+func (bc *BlockChain) LoadBlockChainFromStorage() error {
+	block, err := bc.GetBlockByHeight(0)
+	if err != nil {
+		return err
+	}
+	//status
+	block.AccountState, _ = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
+	block.TransactionState, _ = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
+	block.VoterState, _ = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	bc.GenesisBlock = block
+	return nil
+
 }
 
 func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
@@ -125,7 +140,7 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 
 	hash, err := bc.Storage.Get(encodeBlockHeight(height))
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	return bc.GetBlockByHash(common.BytesToHash(hash))
 }
@@ -323,13 +338,14 @@ func (bc *BlockChain) AddFutureBlock(block *Block) {
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
 	//FIXME: temporarily, must send hash
 	if block.Header.Height > uint64(1) {
-		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
-		bc.node.SendMessage(&msg)
-		log.CLog().WithFields(logrus.Fields{
-			"Height": block.Header.Height - uint64(1),
-		}).Info("request missing block")
-	} else {
-		fmt.Println("xxxxxxxxxxxxxxxxxx")
+		//FIXME: temporarily consider how to test
+		if !bc.TEST {
+			msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
+			bc.node.SendMessage(&msg)
+			log.CLog().WithFields(logrus.Fields{
+				"Height": block.Header.Height - uint64(1),
+			}).Info("request missing block")
+		}
 	}
 
 }

@@ -33,6 +33,43 @@ func TestGenesisBlock(t *testing.T) {
 	assert.Equal(t, voters[1].Address, minerGroup[2], "")
 }
 
+/*
+func (bc *BlockChain) LoadBlockChainFromStorage() error {
+	block, err := bc.GetBlockByHeight(0)
+	if err != nil {
+		return err
+	}
+	//status
+	block.AccountState, _ = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
+	block.TransactionState, _ = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
+	block.VoterState, _ = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	bc.GenesisBlock = block
+	return nil
+
+}
+*/
+
+func TestLoadBlockChainFromStorage(t *testing.T) {
+	config := tests.MakeConfig()
+	voters := tests.MakeVoterAccountsFromConfig(config)
+	storage1, _ := storage.NewMemoryStorage()
+
+	dpos := consensus.NewDpos()
+	remoteBc := core.NewBlockChain(dpos, storage1)
+	remoteBc.MakeGenesisBlock(voters)
+	remoteBc.PutBlock(remoteBc.GenesisBlock)
+
+	dpos2 := consensus.NewDpos()
+	bc := core.NewBlockChain(dpos2, storage1)
+	bc.LoadBlockChainFromStorage()
+
+	assert.Equal(t, remoteBc.GenesisBlock.Hash(), bc.GenesisBlock.Hash(), "")
+	assert.Equal(t, remoteBc.GenesisBlock.AccountState.RootHash(), bc.GenesisBlock.AccountState.RootHash(), "")
+	assert.Equal(t, remoteBc.GenesisBlock.TransactionState.RootHash(), bc.GenesisBlock.TransactionState.RootHash(), "")
+	assert.Equal(t, remoteBc.GenesisBlock.VoterState.RootHash(), bc.GenesisBlock.VoterState.RootHash(), "")
+}
+
 func TestStorage(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := tests.MakeVoterAccountsFromConfig(config)
@@ -90,6 +127,8 @@ func TestMakeBlockChain(t *testing.T) {
 
 	dpos2 := consensus.NewDpos()
 	bc := core.NewBlockChain(dpos2, storage2)
+	//FIXME: how to test
+	bc.TEST = true
 	bc.MakeGenesisBlock(voters)
 	bc.PutBlockByCoinbase(bc.GenesisBlock)
 	// fmt.Printf("%v\n", bc.GenesisBlock.Hash())
