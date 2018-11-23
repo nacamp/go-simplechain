@@ -467,8 +467,16 @@ func (bc *BlockChain) RebuildBlockHeight() {
 }
 
 func (bc *BlockChain) SetTail(block *Block) {
-	bc.Tail = block
-	bc.RebuildBlockHeight()
+	if bc.Tail == nil {
+		bc.Tail = block
+	}
+	if block.Header.Height >= bc.Tail.Header.Height {
+		bc.Tail = block
+		log.CLog().WithFields(logrus.Fields{
+			"Height": block.Header.Height,
+		}).Info("Tail")
+		bc.RebuildBlockHeight()
+	}
 }
 
 func (bc *BlockChain) Start() {
