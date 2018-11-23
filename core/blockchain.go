@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -310,12 +311,27 @@ func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
 		bc.PutBlock(block)
 		bc.putBlockIfParentExistInFutureBlocks(block)
 	} else {
-		log.CLog().WithFields(logrus.Fields{
-			"Height": block.Header.Height,
-			"hash":   common.Hash2Hex(block.Hash()),
-		}).Info("At future blocks block inserted ")
-		bc.futureBlocks.Add(block.Header.ParentHash, block)
+		bc.AddFutureBlock(block)
 	}
+}
+
+func (bc *BlockChain) AddFutureBlock(block *Block) {
+	log.CLog().WithFields(logrus.Fields{
+		"Height": block.Header.Height,
+		"hash":   common.Hash2Hex(block.Hash()),
+	}).Info("At future blocks block inserted ")
+	bc.futureBlocks.Add(block.Header.ParentHash, block)
+	//FIXME: temporarily, must send hash
+	if block.Header.Height > uint64(1) {
+		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
+		bc.node.SendMessage(&msg)
+		log.CLog().WithFields(logrus.Fields{
+			"Height": block.Header.Height - uint64(1),
+		}).Info("request missing block")
+	} else {
+		fmt.Println("xxxxxxxxxxxxxxxxxx")
+	}
+
 }
 
 func encodeBlockHeight(number uint64) []byte {
