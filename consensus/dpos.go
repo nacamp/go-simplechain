@@ -98,6 +98,8 @@ func (dpos *Dpos) loop() {
 			block := dpos.MakeBlock(uint64(now.Unix()))
 			if block != nil {
 				dpos.bc.PutBlockByCoinbase(block)
+				dpos.bc.Consensus.UpdateLIB(dpos.bc)
+				dpos.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
 				dpos.node.SendMessage(&message)
 			}
@@ -124,6 +126,10 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 		if turn == 3 {
 			if len(miners) == 3 {
 				bc.Lib = block
+				log.CLog().WithFields(logrus.Fields{
+					"height":  block.Header.Height,
+					"address": common.Hash2Hex(block.Hash()),
+				}).Info("New Lib")
 				return
 			}
 			miners = make(map[common.Address]bool)

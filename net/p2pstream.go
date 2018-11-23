@@ -55,7 +55,7 @@ func NewP2PStreamWithStream(node *Node, s libnet.Stream) (*P2PStream, error) {
 }
 
 func (ps *P2PStream) Start(isHost bool) {
-	log.CLog().Info("Start")
+	log.CLog().Debug("Start")
 	rw := bufio.NewReadWriter(bufio.NewReader(ps.stream), bufio.NewWriter(ps.stream))
 	go ps.readData(rw)
 	go ps.writeData(rw)
@@ -120,7 +120,7 @@ func (ps *P2PStream) SendHello() error {
 	if msg, err := NewRLPMessage(MSG_HELLO, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
-		log.CLog().Info("SendHello")
+		log.CLog().Debug("SendHello")
 		return ps.sendMessage(&msg)
 	}
 }
@@ -129,7 +129,7 @@ func (ps *P2PStream) SendHelloAck() error {
 	if msg, err := NewRLPMessage(MSG_HELLO_ACK, ps.node.maddr.String()); err != nil {
 		return err
 	} else {
-		log.CLog().Info("SendHelloAck")
+		log.CLog().Debug("SendHelloAck")
 		return ps.sendMessage(&msg)
 	}
 }
@@ -141,7 +141,7 @@ func (ps *P2PStream) onHello(message *Message) error {
 	log.CLog().WithFields(logrus.Fields{
 		"Command": message.Code,
 		"Data":    data,
-	}).Info("onHello")
+	}).Debug("onHello")
 
 	node := ps.node
 	addr, err := ma.NewMultiaddr(data)
@@ -159,7 +159,7 @@ func (ps *P2PStream) onHelloAck(message *Message) error {
 	log.CLog().WithFields(logrus.Fields{
 		"Command": message.Code,
 		"Data":    data,
-	}).Info("onHelloAck")
+	}).Debug("onHelloAck")
 
 	node := ps.node
 	addr, err := ma.NewMultiaddr(data)
@@ -175,14 +175,14 @@ func (ps *P2PStream) RequestPeers() error {
 	if msg, err := NewRLPMessage(MSG_PEERS, "version 0.1"); err != nil {
 		return err
 	} else {
-		log.CLog().Info("RequestPeers")
+		log.CLog().Debug("RequestPeers")
 		ps.messageCh <- &msg
 	}
 	return nil
 }
 
 func (ps *P2PStream) RequestPeersAck() error {
-	log.CLog().Info("RequestPeersAck")
+	log.CLog().Debug("RequestPeersAck")
 	node := ps.node
 
 	peers := node.nodeRoute.NearestPeers(ps.peerID, 10)
@@ -205,12 +205,12 @@ func (ps *P2PStream) onPeers(message *Message) error {
 	log.CLog().WithFields(logrus.Fields{
 		"Command": message.Code,
 		"Data":    data,
-	}).Info("onPeers")
+	}).Debug("onPeers")
 	return ps.RequestPeersAck()
 }
 
 func (ps *P2PStream) onPeersAck(message *Message) error {
-	log.CLog().Info("onPeersAck")
+	log.CLog().Debug("onPeersAck")
 	payload := make([][]string, 0)
 
 	err := rlp.DecodeBytes(message.Payload, &payload)
@@ -255,5 +255,5 @@ func (ps *P2PStream) finshHandshake() {
 	ps.isFinishedHandshake = true
 	ps.mu.Unlock()
 	log.CLog().Debug("finshHandshake Unlock after")
-	log.CLog().Info("finshHandshake")
+	log.CLog().Debug("finshHandshake")
 }

@@ -112,7 +112,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 		if ok {
 			p2pStream := v.(*P2PStream)
 			if !p2pStream.isClosed {
-				log.CLog().Info("reuse stream")
+				log.CLog().Debug("reuse stream")
 				p2pStream.RequestPeers()
 			} else {
 				log.CLog().Debug("FindNewNodes lock before")
@@ -122,7 +122,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 				nodeRoute.Remove(p2pStream.peerID)
 				log.CLog().WithFields(logrus.Fields{
 					"ID": p2pStream.peerID,
-				}).Info("P2PStream removed")
+				}).Debug("P2PStream removed")
 
 				if node.seedID == peerid {
 					log.CLog().Debug("add seed node")
@@ -142,7 +142,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 			} else {
 				log.CLog().WithFields(logrus.Fields{
 					"ID": p2pStream.peerID,
-				}).Info("P2PStream added")
+				}).Debug("P2PStream added")
 				node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
 				p2pStream.Start(false)
 				p2pStream.RequestPeers()
@@ -152,7 +152,7 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 	}
 	log.CLog().WithFields(logrus.Fields{
 		"size": len(peers),
-	}).Info("Peer size")
+	}).Debug("Peer size")
 }
 
 func (nodeRoute *NodeRoute) Start() {

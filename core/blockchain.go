@@ -310,6 +310,10 @@ func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
 		bc.PutBlock(block)
 		bc.putBlockIfParentExistInFutureBlocks(block)
 	} else {
+		log.CLog().WithFields(logrus.Fields{
+			"Height": block.Header.Height,
+			"hash":   common.Hash2Hex(block.Hash()),
+		}).Info("At future blocks block inserted ")
 		bc.futureBlocks.Add(block.Header.ParentHash, block)
 	}
 }
@@ -370,6 +374,8 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 			}).Info("new block arrrived")
 		}
 		bc.PutBlockIfParentExist(block)
+		bc.Consensus.UpdateLIB(bc)
+		bc.RemoveOrphanBlock()
 	} else if message.Code == net.MSG_MISSING_BLOCK {
 		height := uint64(0)
 		rlp.DecodeBytes(message.Payload, &height)

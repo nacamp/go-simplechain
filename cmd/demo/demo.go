@@ -33,6 +33,7 @@ func run(c *cli.Context) {
 
 	sp := node.GetSubscriberPool()
 
+	//storage, _ := storage.NewLevelDBStorage(config.DBPath)
 	storage, _ := storage.NewMemoryStorage()
 	voters := tests.MakeVoterAccountsFromConfig(config)
 
@@ -49,14 +50,8 @@ func run(c *cli.Context) {
 
 	dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress))
 	dpos.Start()
-
-	// if config.Port == 9990 {
-	// 	dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress))
+	// if config.Port == 9991 {
 	// 	dpos.Start()
-	// } else if config.Port == 9991 {
-	// 	dpos.Setup(bc, node, common.HexToAddress("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"))
-	// } else {
-	// 	dpos.Setup(bc, node, common.HexToAddress("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1"))
 	// }
 	select {}
 

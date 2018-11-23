@@ -59,7 +59,7 @@ func (node *Node) Start(seed string) {
 func (node *Node) HandleStream(s libnet.Stream) {
 	log.CLog().WithFields(logrus.Fields{
 		"RemotePeer": s.Conn().RemotePeer().Pretty(),
-	}).Info("Got a new stream!")
+	}).Debug("Got a new stream!")
 
 	p2pStream, err := NewP2PStreamWithStream(node, s)
 	node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
