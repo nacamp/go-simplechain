@@ -57,6 +57,18 @@ func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
 	return &bc
 }
 
+func (bc *BlockChain) Setup(voters []*Account) {
+	err := bc.LoadBlockChainFromStorage()
+	if err != nil {
+		bc.MakeGenesisBlock(voters)
+		bc.PutBlockByCoinbase(bc.GenesisBlock)
+		return
+	}
+	bc.Lib = bc.GenesisBlock
+	bc.SetTail(bc.GenesisBlock)
+
+}
+
 func (bc *BlockChain) LoadBlockChainFromStorage() error {
 	block, err := bc.GetBlockByHeight(0)
 	if err != nil {
