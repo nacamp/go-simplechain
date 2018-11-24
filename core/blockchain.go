@@ -27,6 +27,7 @@ ignore block validity
 */
 const (
 	libKey          = "lib"
+	tailKey         = "tail"
 	maxFutureBlocks = 256
 )
 
@@ -66,8 +67,7 @@ func (bc *BlockChain) Setup(voters []*Account) {
 		return
 	} else {
 		bc.LoadLibFromStorage()
-		// bc.SetLib(bc.GenesisBlock)
-		bc.SetTail(bc.GenesisBlock)
+		bc.LoadTailFromStorage()
 	}
 
 }
@@ -513,19 +513,6 @@ func (bc *BlockChain) RebuildBlockHeight() {
 	}
 }
 
-func (bc *BlockChain) SetTail(block *Block) {
-	if bc.Tail == nil {
-		bc.Tail = block
-	}
-	if block.Header.Height >= bc.Tail.Header.Height {
-		bc.Tail = block
-		log.CLog().WithFields(logrus.Fields{
-			"Height": block.Header.Height,
-		}).Info("Tail")
-		bc.RebuildBlockHeight()
-	}
-}
-
 func (bc *BlockChain) Start() {
 	go bc.loop()
 }
@@ -558,5 +545,30 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 	}
 	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
 	bc.Lib = block
+	return nil
+}
+
+func (bc *BlockChain) SetTail(block *Block) {
+	if bc.Tail == nil {
+		bc.Tail = block
+		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
+	}
+	if block.Header.Height >= bc.Tail.Header.Height {
+		bc.Tail = block
+		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
+		log.CLog().WithFields(logrus.Fields{
+			"Height": block.Header.Height,
+		}).Info("Tail")
+		bc.RebuildBlockHeight()
+	}
+}
+
+func (bc *BlockChain) LoadTailFromStorage() error {
+	hash, err := bc.Storage.Get([]byte(tailKey))
+	if err != nil {
+		return err
+	}
+	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
+	bc.Tail = block
 	return nil
 }

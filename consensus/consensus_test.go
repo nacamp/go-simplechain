@@ -163,4 +163,6 @@ func TestUpdateLIB3(t *testing.T) {
 	bc2.Setup(voters)
 	assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
 
+	//test LoadTailFromStorage with same storage
+	assert.Equal(t, bc.Tail.Hash(), block5.Hash(), "")
 }
