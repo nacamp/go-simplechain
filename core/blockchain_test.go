@@ -190,9 +190,8 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 
 	dpos := consensus.NewDpos()
 	remoteBc := core.NewBlockChain(dpos, storage1)
-	remoteBc.MakeGenesisBlock(voters)
+	remoteBc.Setup(voters)
 
-	remoteBc.PutBlockByCoinbase(remoteBc.GenesisBlock)
 	block1 := tests.MakeBlock(remoteBc, remoteBc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 	remoteBc.PutBlockByCoinbase(block1)
 
@@ -209,9 +208,8 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 
 	dpos2 := consensus.NewDpos()
 	bc := core.NewBlockChain(dpos2, storage2)
-	bc.MakeGenesisBlock(voters)
-	bc.PutBlockByCoinbase(bc.GenesisBlock)
-	// fmt.Printf("%v\n", bc.GenesisBlock.Hash())
+	bc.Setup(voters)
+	bc.TEST = true
 
 	block11 := rlpEncode(block1)
 	bc.PutBlockIfParentExist(block11)
