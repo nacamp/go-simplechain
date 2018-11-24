@@ -377,7 +377,7 @@ func TestRemoveOrphanBlock(t *testing.T) {
 	block8 := tests.MakeBlock(bc, block7, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(8), tests.None, nil)
 	bc.PutBlockByCoinbase(block8)
 
-	bc.Lib = block6
+	bc.SetLib(block6)
 	bc.SetTail(block6)
 	bc.RemoveOrphanBlock()
 	b, err := bc.GetBlockByHash(block4.Hash())

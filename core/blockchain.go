@@ -26,6 +26,7 @@ add block
 ignore block validity
 */
 const (
+	libKey          = "lib"
 	maxFutureBlocks = 256
 )
 
@@ -63,9 +64,11 @@ func (bc *BlockChain) Setup(voters []*Account) {
 		bc.MakeGenesisBlock(voters)
 		bc.PutBlockByCoinbase(bc.GenesisBlock)
 		return
+	} else {
+		bc.LoadLibFromStorage()
+		// bc.SetLib(bc.GenesisBlock)
+		bc.SetTail(bc.GenesisBlock)
 	}
-	bc.Lib = bc.GenesisBlock
-	bc.SetTail(bc.GenesisBlock)
 
 }
 
@@ -130,7 +133,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
 	bc.GenesisBlock.MakeHash()
 
-	bc.Lib = bc.GenesisBlock
+	bc.SetLib(bc.GenesisBlock)
 	bc.SetTail(bc.GenesisBlock)
 }
 
@@ -541,4 +544,19 @@ func (bc *BlockChain) putBlockToStorage(block *Block) {
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
 	bc.Storage.Put(encodeBlockHeight(block.Header.Height), block.Header.Hash[:])
+}
+
+func (bc *BlockChain) SetLib(block *Block) {
+	bc.Lib = block
+	bc.Storage.Put([]byte(libKey), block.Header.Hash[:])
+}
+
+func (bc *BlockChain) LoadLibFromStorage() error {
+	hash, err := bc.Storage.Get([]byte(libKey))
+	if err != nil {
+		return err
+	}
+	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
+	bc.Lib = block
+	return nil
 }
