@@ -544,6 +544,10 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 		return err
 	}
 	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
+	block.AccountState, _ = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
+	block.TransactionState, _ = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
+	block.VoterState, _ = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
 	bc.Lib = block
 	return nil
 }
@@ -569,6 +573,10 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 		return err
 	}
 	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
+	block.AccountState, _ = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
+	block.TransactionState, _ = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
+	block.VoterState, _ = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
 	bc.Tail = block
 	return nil
 }
