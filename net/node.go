@@ -33,6 +33,14 @@ func NewNode(port int, privKey crypto.PrivKey) *Node {
 	return _node
 }
 
+func (node *Node) Setup() {
+	node.subsriberPool = NewSubsriberPool()
+}
+
+func (node *Node) RegisterSubscriber(code uint64, subscriber Subscriber) {
+	node.subsriberPool.Register(code, subscriber)
+}
+
 func (node *Node) Start(seed string) {
 	host, _ := libp2p.New(
 		context.Background(),
@@ -52,8 +60,8 @@ func (node *Node) Start(seed string) {
 		node.nodeRoute.AddNodeFromSeedString(seed)
 	}
 	go node.nodeRoute.Start()
-
 	node.host.SetStreamHandler("/simplechain/0.0.1", node.HandleStream)
+	node.subsriberPool.Start()
 }
 
 func (node *Node) HandleStream(s libnet.Stream) {

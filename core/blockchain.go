@@ -138,6 +138,8 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 
 func (bc *BlockChain) SetNode(node *net.Node) {
 	bc.node = node
+	node.RegisterSubscriber(net.MSG_NEW_BLOCK, bc)
+	node.RegisterSubscriber(net.MSG_MISSING_BLOCK, bc)
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
