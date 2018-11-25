@@ -86,6 +86,15 @@ func (node *Node) SendMessage(message *Message, peerID peer.ID) {
 	}
 }
 
+//TODO: Random, current send message at first node
+func (node *Node) SendMessageToRandomNode(message *Message) {
+	node.p2pStreamMap.Range(func(key, value interface{}) bool {
+		p2pStream := value.(*P2PStream)
+		p2pStream.sendMessage(message)
+		return false
+	})
+}
+
 func (node *Node) BroadcastMessage(message *Message) {
 	node.p2pStreamMap.Range(func(key, value interface{}) bool {
 		p2pStream := value.(*P2PStream)
