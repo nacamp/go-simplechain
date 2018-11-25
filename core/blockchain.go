@@ -141,6 +141,7 @@ func (bc *BlockChain) SetNode(node *net.Node) {
 	bc.node = node
 	node.RegisterSubscriber(net.MSG_NEW_BLOCK, bc)
 	node.RegisterSubscriber(net.MSG_MISSING_BLOCK, bc)
+	node.RegisterSubscriber(net.MSG_MISSING_BLOCK_ACK, bc)
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
@@ -403,7 +404,7 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 // }
 
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
-	if message.Code == net.MSG_NEW_BLOCK {
+	if message.Code == net.MSG_NEW_BLOCK || message.Code == net.MSG_MISSING_BLOCK_ACK {
 		block := &Block{}
 		rlp.DecodeBytes(message.Payload, block)
 		log.CLog().WithFields(logrus.Fields{
@@ -461,7 +462,7 @@ func (bc *BlockChain) RequestMissingBlock() {
 func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
 	block, _ := bc.GetBlockByHeight(height)
 	if block != nil {
-		message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
+		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block)
 		bc.node.SendMessage(&message, peerID)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
