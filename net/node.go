@@ -78,16 +78,15 @@ func (node *Node) HandleStream(s libnet.Stream) {
 	p2pStream.Start(true)
 }
 
-func (node *Node) SetSubscriberPool(pool *SubscriberPool) {
-	node.subsriberPool = pool
+func (node *Node) SendMessage(message *Message, peerID peer.ID) {
+	value, ok := node.p2pStreamMap.Load(peerID)
+	if ok {
+		p2pStream := value.(*P2PStream)
+		p2pStream.sendMessage(message)
+	}
 }
 
-func (node *Node) GetSubscriberPool() *SubscriberPool {
-	return node.subsriberPool
-}
-
-//first send dummy
-func (node *Node) SendMessage(message *Message) {
+func (node *Node) BroadcastMessage(message *Message) {
 	node.p2pStreamMap.Range(func(key, value interface{}) bool {
 		p2pStream := value.(*P2PStream)
 		p2pStream.sendMessage(message)
