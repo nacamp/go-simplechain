@@ -5,8 +5,20 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
 )
+
+func MakeVoterAccountsFromConfig(config *core.Config) (voters []*core.Account) {
+	voters = make([]*core.Account, 3)
+	for i, voter := range config.Voters {
+		account := &core.Account{}
+		copy(account.Address[:], common.FromHex(voter.Address))
+		account.Balance = voter.Balance
+		voters[i] = account
+	}
+	return voters
+}
 
 func NewConfigFromFile(file string) (config *core.Config) {
 	configFile, err := os.Open(file)

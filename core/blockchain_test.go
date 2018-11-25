@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/consensus"
 	"github.com/najimmy/go-simplechain/core"
@@ -16,7 +17,7 @@ import (
 
 func TestGenesisBlock(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -52,7 +53,7 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 
 func TestLoadBlockChainFromStorage(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -72,7 +73,7 @@ func TestLoadBlockChainFromStorage(t *testing.T) {
 
 func TestSetup(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -91,7 +92,7 @@ func TestSetup(t *testing.T) {
 
 func TestStorage(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -122,7 +123,7 @@ func TestStorage(t *testing.T) {
 
 func TestMakeBlockChain(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -185,7 +186,7 @@ func rlpEncode(block *core.Block) *core.Block {
 
 func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -253,7 +254,7 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 // At PutBlockByCoinbase SetTail call RebuildBlockHeight
 func TestRebuildBlockHeight(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -343,7 +344,7 @@ func TestRebuildBlockHeight(t *testing.T) {
 // */
 func TestRemoveOrphanBlock(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()

@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/storage"
 	"github.com/najimmy/go-simplechain/tests"
 
@@ -16,7 +17,7 @@ import (
 
 func TestDpos_MakeBlock(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -39,7 +40,7 @@ addr0   addr1   addr2
 */
 func TestUpdateLIB1(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -74,7 +75,7 @@ addr0	addr1	addr2
 */
 func TestUpdateLIB2(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -122,7 +123,7 @@ addr0	addr1	addr2   addr0	addr2
 func TestUpdateLIB3(t *testing.T) {
 
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
