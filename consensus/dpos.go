@@ -127,8 +127,8 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 			if len(miners) == 3 {
 				bc.SetLib(block)
 				log.CLog().WithFields(logrus.Fields{
-					"height":  block.Header.Height,
-					"address": common.Hash2Hex(block.Hash()),
+					"Height": block.Header.Height,
+					//"address": common.Hash2Hex(block.Hash()),
 				}).Info("Updated Lib")
 				return
 			}

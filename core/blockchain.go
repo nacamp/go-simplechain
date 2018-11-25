@@ -284,8 +284,8 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	//5. TODO: signer check
 	bc.putBlockToStorage(block)
 	log.CLog().WithFields(logrus.Fields{
-		"height": block.Header.Height,
-		"hash":   common.Hash2Hex(block.Hash()),
+		"Height": block.Header.Height,
+		//"hash":   common.Hash2Hex(block.Hash()),
 	}).Info("Imported block")
 
 	//set tail
@@ -309,7 +309,7 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.mu.Unlock()
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,
-		"hash":   common.Hash2Hex(block.Hash()),
+		//"hash":   common.Hash2Hex(block.Hash()),
 	}).Info("Mined block")
 	bc.AddTailToGroup(block)
 }
