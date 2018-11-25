@@ -64,7 +64,6 @@ func (bc *BlockChain) Setup(voters []*Account) {
 	if err != nil {
 		bc.MakeGenesisBlock(voters)
 		bc.PutBlockByCoinbase(bc.GenesisBlock)
-		return
 	} else {
 		bc.LoadLibFromStorage()
 		bc.LoadTailFromStorage()
@@ -176,7 +175,7 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	err := bc.PutMinerState(block)
 	if err != nil {
-		log.CLog().Info(err)
+		log.CLog().Warning(err)
 		return err
 	}
 
@@ -194,7 +193,6 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if block.VoterState.RootHash() != block.Header.VoterHash {
 		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
 	}
-
 	if block.MinerState.RootHash() != block.Header.MinerHash {
 		return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
 	}
@@ -262,14 +260,14 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	//1. verify transaction
 	err := block.VerifyTransacion()
 	if err != nil {
-		log.CLog().Info("Error VerifyTransacion")
+		log.CLog().Warning("Error VerifyTransacion")
 		return
 	}
 
 	//2. save status and verify hash
 	err = bc.PutState(block)
 	if err != nil {
-		log.CLog().Info("Error PutState")
+		log.CLog().Warning("Error PutState")
 		return
 	}
 
@@ -284,7 +282,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	log.CLog().WithFields(logrus.Fields{
 		"height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
-	}).Info("New Block was inserted at Blockchain")
+	}).Info("Imported block")
 
 	//set tail
 	bc.SetTail(block)
@@ -292,10 +290,6 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	bc.tailGroup.Store(block.Hash(), block)
 	//if parent exist
 	bc.tailGroup.Delete(block.Header.ParentHash)
-
-	// bc.Consensus.UpdateLIB(bc)
-	// bc.RemoveOrphanBlock()
-
 }
 
 func (bc *BlockChain) AddTailToGroup(block *Block) {
@@ -312,10 +306,8 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
-	}).Info("Block was created")
+	}).Info("Mined block")
 	bc.AddTailToGroup(block)
-	// bc.Consensus.UpdateLIB(bc)
-	// bc.RemoveOrphanBlock()
 }
 
 func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
@@ -349,7 +341,7 @@ func (bc *BlockChain) AddFutureBlock(block *Block) {
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
-	}).Info("At future blocks block inserted ")
+	}).Debug("Inserted block into  future blocks")
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
 	//FIXME: temporarily, must send hash
 	if block.Header.Height > uint64(1) {
@@ -359,7 +351,7 @@ func (bc *BlockChain) AddFutureBlock(block *Block) {
 			bc.node.SendMessage(&msg)
 			log.CLog().WithFields(logrus.Fields{
 				"Height": block.Header.Height - uint64(1),
-			}).Info("request missing block")
+			}).Info("Request missing block")
 		}
 	}
 
@@ -413,12 +405,12 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 		rlp.DecodeBytes(message.Payload, block)
 		log.CLog().WithFields(logrus.Fields{
 			"height": block.Header.Height,
-		}).Info("new block arrrived")
+		}).Debug("new block arrrived")
 
 		if block.Header.Height == 1 {
 			log.CLog().WithFields(logrus.Fields{
 				"height": block.Header.Height,
-			}).Info("new block arrrived")
+			}).Debug("new block arrrived")
 		}
 		bc.PutBlockIfParentExist(block)
 		bc.Consensus.UpdateLIB(bc)
@@ -428,7 +420,7 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 		rlp.DecodeBytes(message.Payload, &height)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
-		}).Info("missing block request arrived")
+		}).Debug("missing block request arrived")
 		bc.SendMissingBlock(height)
 	}
 	return nil
@@ -459,7 +451,7 @@ func (bc *BlockChain) RequestMissingBlock() {
 		bc.node.SendMessage(&msg)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": i,
-		}).Info("request missing block")
+		}).Info("Request missing block")
 	}
 }
 
@@ -470,7 +462,7 @@ func (bc *BlockChain) SendMissingBlock(height uint64) {
 		bc.node.SendMessage(&message)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
-		}).Info("missing block send")
+		}).Info("Send missing block")
 	} else {
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
@@ -562,7 +554,7 @@ func (bc *BlockChain) SetTail(block *Block) {
 		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
 		log.CLog().WithFields(logrus.Fields{
 			"Height": block.Header.Height,
-		}).Info("Tail")
+		}).Debug("Tail")
 		bc.RebuildBlockHeight()
 	}
 }

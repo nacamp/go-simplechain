@@ -33,14 +33,15 @@ func run(c *cli.Context) {
 
 	sp := node.GetSubscriberPool()
 
-	//storage, _ := storage.NewLevelDBStorage(config.DBPath)
-	storage, _ := storage.NewMemoryStorage()
+	storage, _ := storage.NewLevelDBStorage(config.DBPath)
+	// storage, _ := storage.NewMemoryStorage()
 	voters := tests.MakeVoterAccountsFromConfig(config)
 
 	dpos := consensus.NewDpos()
 	bc := core.NewBlockChain(dpos, storage)
-	bc.MakeGenesisBlock(voters)
-	bc.PutBlockByCoinbase(bc.GenesisBlock)
+	bc.Setup(voters)
+	// bc.MakeGenesisBlock(voters)
+	// bc.PutBlockByCoinbase(bc.GenesisBlock)
 
 	bc.SetNode(node)
 	sp.Register(net.MSG_NEW_BLOCK, bc)

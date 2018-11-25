@@ -47,7 +47,7 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	if (parent != nil) && (now-parent.Header.Time <= (3 * 3)) {
 		log.CLog().WithFields(logrus.Fields{
 			"address": common.Bytes2Hex(dpos.coinbase[:]),
-		}).Info("not my turn(Interval is short)")
+		}).Debug("not my turn(Interval is short)")
 		return nil
 	}
 	block.Header.Time = now
@@ -129,7 +129,7 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 				log.CLog().WithFields(logrus.Fields{
 					"height":  block.Header.Height,
 					"address": common.Hash2Hex(block.Hash()),
-				}).Info("New Lib")
+				}).Info("Updated Lib")
 				return
 			}
 			miners = make(map[common.Address]bool)

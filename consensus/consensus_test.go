@@ -162,7 +162,11 @@ func TestUpdateLIB3(t *testing.T) {
 	bc2 := core.NewBlockChain(dpos2, storage1)
 	bc2.Setup(voters)
 	assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
+	//check status loading
+	assert.NotNil(t, bc2.Lib.VoterState, "")
 
 	//test LoadTailFromStorage with same storage
 	assert.Equal(t, bc.Tail.Hash(), block5.Hash(), "")
+	//check status loading
+	assert.NotNil(t, bc2.Tail.VoterState, "")
 }
