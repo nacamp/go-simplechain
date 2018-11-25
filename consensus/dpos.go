@@ -101,7 +101,7 @@ func (dpos *Dpos) loop() {
 				dpos.bc.Consensus.UpdateLIB(dpos.bc)
 				dpos.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
-				dpos.node.SendMessage(&message)
+				dpos.node.BroadcastMessage(&message)
 			}
 		}
 	}

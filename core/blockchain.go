@@ -11,6 +11,7 @@ import (
 	"math/big"
 
 	lru "github.com/hashicorp/golang-lru"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
@@ -350,7 +351,7 @@ func (bc *BlockChain) AddFutureBlock(block *Block) {
 		//FIXME: temporarily consider how to test
 		if !bc.TEST {
 			msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
-			bc.node.SendMessage(&msg)
+			bc.node.SendMessageToRandomNode(&msg)
 			log.CLog().WithFields(logrus.Fields{
 				"Height": block.Header.Height - uint64(1),
 			}).Info("Request missing block")
@@ -423,7 +424,7 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
 		}).Debug("missing block request arrived")
-		bc.SendMissingBlock(height)
+		bc.SendMissingBlock(height, message.PeerID)
 	}
 	return nil
 }
@@ -450,18 +451,18 @@ func (bc *BlockChain) RequestMissingBlock() {
 	}
 	for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
 		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, uint64(i))
-		bc.node.SendMessage(&msg)
+		bc.node.SendMessageToRandomNode(&msg)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": i,
 		}).Info("Request missing block")
 	}
 }
 
-func (bc *BlockChain) SendMissingBlock(height uint64) {
+func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
 	block, _ := bc.GetBlockByHeight(height)
 	if block != nil {
 		message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
-		bc.node.SendMessage(&message)
+		bc.node.SendMessage(&message, peerID)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
 		}).Info("Send missing block")
