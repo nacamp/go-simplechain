@@ -10,7 +10,6 @@ import (
 	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/storage"
-	"github.com/najimmy/go-simplechain/tests"
 	"github.com/urfave/cli"
 )
 
@@ -28,32 +27,23 @@ func run(c *cli.Context) {
 	}
 
 	node := net.NewNode(config.Port, privKey)
-	node.Start(config.Seeds[0])
-	node.SetSubscriberPool(net.NewSubsriberPool())
+	node.Setup()
 
-	sp := node.GetSubscriberPool()
-
-	storage, _ := storage.NewLevelDBStorage(config.DBPath)
-	// storage, _ := storage.NewMemoryStorage()
-	voters := tests.MakeVoterAccountsFromConfig(config)
-
+	var db storage.Storage
+	if config.DBPath == "" {
+		db, _ = storage.NewMemoryStorage()
+	} else {
+		db, _ = storage.NewLevelDBStorage(config.DBPath)
+	}
 	dpos := consensus.NewDpos()
-	bc := core.NewBlockChain(dpos, storage)
-	bc.Setup(voters)
-	// bc.MakeGenesisBlock(voters)
-	// bc.PutBlockByCoinbase(bc.GenesisBlock)
-
+	bc := core.NewBlockChain(dpos, db)
+	bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
 	bc.SetNode(node)
-	sp.Register(net.MSG_NEW_BLOCK, bc)
-	sp.Register(net.MSG_MISSING_BLOCK, bc)
-	sp.Start()
-	bc.Start()
-
 	dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress))
+
+	bc.Start()
+	node.Start(config.Seeds[0])
 	dpos.Start()
-	// if config.Port == 9991 {
-	// 	dpos.Start()
-	// }
 	select {}
 
 }
