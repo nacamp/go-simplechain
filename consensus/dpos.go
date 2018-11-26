@@ -1,8 +1,11 @@
 package consensus
 
 import (
+	"crypto/ecdsa"
+	"errors"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
 	"github.com/najimmy/go-simplechain/log"
@@ -24,16 +27,28 @@ type Dpos struct {
 	bc       *core.BlockChain
 	node     *net.Node
 	coinbase common.Address
+	priv     *ecdsa.PrivateKey
 }
+
+// const
+var (
+	ErrAddressNotEqual = errors.New("address not equal")
+)
 
 func NewDpos() *Dpos {
 	return &Dpos{}
 }
 
-func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address) {
+func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) error {
 	dpos.bc = bc
 	dpos.node = node
-	dpos.coinbase = address
+	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
+	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
+	dpos.priv = (*ecdsa.PrivateKey)(priv)
+	if dpos.coinbase != address {
+		return ErrAddressNotEqual
+	}
+	return nil
 }
 
 func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
@@ -82,10 +97,6 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	}
 }
 
-func (dpos *Dpos) Seal() {
-
-}
-
 func (dpos *Dpos) Start() {
 	go dpos.loop()
 }
@@ -97,11 +108,12 @@ func (dpos *Dpos) loop() {
 		case now := <-ticker.C:
 			block := dpos.MakeBlock(uint64(now.Unix()))
 			if block != nil {
+				block.Sign(dpos.priv)
 				dpos.bc.PutBlockByCoinbase(block)
 				dpos.bc.Consensus.UpdateLIB(dpos.bc)
 				dpos.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
-				dpos.node.SendMessage(&message)
+				dpos.node.BroadcastMessage(&message)
 			}
 		}
 	}
@@ -127,8 +139,8 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 			if len(miners) == 3 {
 				bc.SetLib(block)
 				log.CLog().WithFields(logrus.Fields{
-					"height":  block.Header.Height,
-					"address": common.Hash2Hex(block.Hash()),
+					"Height": block.Header.Height,
+					//"address": common.Hash2Hex(block.Hash()),
 				}).Info("Updated Lib")
 				return
 			}

@@ -1,6 +1,7 @@
 package net
 
 import (
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/najimmy/go-simplechain/rlp"
 )
 
@@ -17,6 +18,7 @@ const (
 
 type Message struct {
 	Code    uint64
+	PeerID  peer.ID
 	Payload []byte
 }
 

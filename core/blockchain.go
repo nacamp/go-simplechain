@@ -11,6 +11,7 @@ import (
 	"math/big"
 
 	lru "github.com/hashicorp/golang-lru"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
@@ -138,6 +139,9 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 
 func (bc *BlockChain) SetNode(node *net.Node) {
 	bc.node = node
+	node.RegisterSubscriber(net.MSG_NEW_BLOCK, bc)
+	node.RegisterSubscriber(net.MSG_MISSING_BLOCK, bc)
+	node.RegisterSubscriber(net.MSG_MISSING_BLOCK_ACK, bc)
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
@@ -277,11 +281,20 @@ func (bc *BlockChain) PutBlock(block *Block) {
 		return
 	}
 
-	//5. TODO: signer check
+	//5.signer check
+	v, _ := block.VerifySign()
+	if !v || err != nil {
+		log.CLog().WithFields(logrus.Fields{
+			"Height": block.Header.Height,
+			"Err":    err,
+		}).Warning("Signature is invalid")
+		return
+	}
+
 	bc.putBlockToStorage(block)
 	log.CLog().WithFields(logrus.Fields{
-		"height": block.Header.Height,
-		"hash":   common.Hash2Hex(block.Hash()),
+		"Height": block.Header.Height,
+		//"hash":   common.Hash2Hex(block.Hash()),
 	}).Info("Imported block")
 
 	//set tail
@@ -305,7 +318,7 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.mu.Unlock()
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,
-		"hash":   common.Hash2Hex(block.Hash()),
+		//"hash":   common.Hash2Hex(block.Hash()),
 	}).Info("Mined block")
 	bc.AddTailToGroup(block)
 }
@@ -348,7 +361,7 @@ func (bc *BlockChain) AddFutureBlock(block *Block) {
 		//FIXME: temporarily consider how to test
 		if !bc.TEST {
 			msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
-			bc.node.SendMessage(&msg)
+			bc.node.SendMessageToRandomNode(&msg)
 			log.CLog().WithFields(logrus.Fields{
 				"Height": block.Header.Height - uint64(1),
 			}).Info("Request missing block")
@@ -400,7 +413,7 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 // }
 
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
-	if message.Code == net.MSG_NEW_BLOCK {
+	if message.Code == net.MSG_NEW_BLOCK || message.Code == net.MSG_MISSING_BLOCK_ACK {
 		block := &Block{}
 		rlp.DecodeBytes(message.Payload, block)
 		log.CLog().WithFields(logrus.Fields{
@@ -421,7 +434,7 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
 		}).Debug("missing block request arrived")
-		bc.SendMissingBlock(height)
+		bc.SendMissingBlock(height, message.PeerID)
 	}
 	return nil
 }
@@ -448,18 +461,18 @@ func (bc *BlockChain) RequestMissingBlock() {
 	}
 	for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
 		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, uint64(i))
-		bc.node.SendMessage(&msg)
+		bc.node.SendMessageToRandomNode(&msg)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": i,
 		}).Info("Request missing block")
 	}
 }
 
-func (bc *BlockChain) SendMissingBlock(height uint64) {
+func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
 	block, _ := bc.GetBlockByHeight(height)
 	if block != nil {
-		message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
-		bc.node.SendMessage(&message)
+		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block)
+		bc.node.SendMessage(&message, peerID)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
 		}).Info("Send missing block")

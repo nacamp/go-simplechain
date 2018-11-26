@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/storage"
 	"github.com/najimmy/go-simplechain/tests"
 
@@ -14,16 +15,25 @@ import (
 	"github.com/najimmy/go-simplechain/core"
 )
 
+func TestDpos_Setup(t *testing.T) {
+	dpos := consensus.NewDpos()
+	err := dpos.Setup(nil, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
+	assert.NoError(t, err, "")
+
+	err = dpos.Setup(nil, nil, common.HexToAddress(tests.Addr1), common.FromHex(tests.Keystore[tests.Addr0]))
+	assert.Error(t, err, "")
+}
+
 func TestDpos_MakeBlock(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
 	remoteBc := core.NewBlockChain(dpos, storage1)
 	remoteBc.Setup(voters)
 
-	dpos.Setup(remoteBc, nil, common.HexToAddress(tests.Addr0))
+	dpos.Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
 	block := dpos.MakeBlock(uint64(1)) // minerGroup[0]
 	assert.NotNil(t, block, "")
 	assert.NotEqual(t, block.Header.AccountHash, remoteBc.GenesisBlock.Header.AccountHash, "")
@@ -39,7 +49,7 @@ addr0   addr1   addr2
 */
 func TestUpdateLIB1(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -74,7 +84,7 @@ addr0	addr1	addr2
 */
 func TestUpdateLIB2(t *testing.T) {
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()
@@ -122,7 +132,7 @@ addr0	addr1	addr2   addr0	addr2
 func TestUpdateLIB3(t *testing.T) {
 
 	config := tests.MakeConfig()
-	voters := tests.MakeVoterAccountsFromConfig(config)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
 	dpos := consensus.NewDpos()

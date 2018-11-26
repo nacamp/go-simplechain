@@ -99,6 +99,7 @@ func (ps *P2PStream) readData(rw *bufio.ReadWriter) {
 			ps.onPeersAck(&message)
 		default:
 			//subscribe
+			message.PeerID = ps.peerID
 			ps.node.subsriberPool.handleMessage(&message)
 		}
 	}

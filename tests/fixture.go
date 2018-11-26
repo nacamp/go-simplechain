@@ -49,16 +49,6 @@ func MakeConfig() *core.Config {
 	json.Unmarshal([]byte(contents), config)
 	return config
 }
-func MakeVoterAccountsFromConfig(config *core.Config) (voters []*core.Account) {
-	voters = make([]*core.Account, 3)
-	for i, voter := range config.Voters {
-		account := &core.Account{}
-		copy(account.Address[:], common.FromHex(voter.Address))
-		account.Balance = voter.Balance
-		voters[i] = account
-	}
-	return voters
-}
 
 func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to string, amount *big.Int, trickId trick, trickValue interface{}) *core.Block {
 	h := &core.Header{}

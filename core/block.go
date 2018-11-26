@@ -1,10 +1,12 @@
 package core
 
 import (
+	"crypto/ecdsa"
 	"errors"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/crypto"
 	"github.com/najimmy/go-simplechain/rlp"
 )
 
@@ -20,6 +22,9 @@ type Header struct {
 	MinerHash         common.Hash
 	VoterHash         common.Hash
 	SnapshotVoterTime uint64
+	//not need signature at pow
+	//need signature, to prevent malicious behavior like to skip deliberately block in the previous turn
+	Sig common.Sig
 }
 
 // Simple Block
@@ -54,6 +59,19 @@ func (b *Block) CalcHash() (hash common.Hash) {
 	})
 	hasher.Sum(hash[:0])
 	return hash
+}
+
+func (b *Block) Sign(prv *ecdsa.PrivateKey) {
+	bytes, _ := crypto.Sign(common.HashToBytes(b.Hash()), prv)
+	copy(b.Header.Sig[:], bytes)
+}
+
+func (b *Block) VerifySign() (bool, error) {
+	pub, err := crypto.Ecrecover(common.HashToBytes(b.Hash()), b.Header.Sig[:])
+	if common.BytesToAddress(pub) == b.Header.Coinbase {
+		return true, nil
+	}
+	return false, err
 }
 
 func (b *Block) VerifyTransacion() error {

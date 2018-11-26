@@ -33,6 +33,14 @@ func NewNode(port int, privKey crypto.PrivKey) *Node {
 	return _node
 }
 
+func (node *Node) Setup() {
+	node.subsriberPool = NewSubsriberPool()
+}
+
+func (node *Node) RegisterSubscriber(code uint64, subscriber Subscriber) {
+	node.subsriberPool.Register(code, subscriber)
+}
+
 func (node *Node) Start(seed string) {
 	host, _ := libp2p.New(
 		context.Background(),
@@ -52,8 +60,8 @@ func (node *Node) Start(seed string) {
 		node.nodeRoute.AddNodeFromSeedString(seed)
 	}
 	go node.nodeRoute.Start()
-
 	node.host.SetStreamHandler("/simplechain/0.0.1", node.HandleStream)
+	node.subsriberPool.Start()
 }
 
 func (node *Node) HandleStream(s libnet.Stream) {
@@ -70,16 +78,24 @@ func (node *Node) HandleStream(s libnet.Stream) {
 	p2pStream.Start(true)
 }
 
-func (node *Node) SetSubscriberPool(pool *SubscriberPool) {
-	node.subsriberPool = pool
+func (node *Node) SendMessage(message *Message, peerID peer.ID) {
+	value, ok := node.p2pStreamMap.Load(peerID)
+	if ok {
+		p2pStream := value.(*P2PStream)
+		p2pStream.sendMessage(message)
+	}
 }
 
-func (node *Node) GetSubscriberPool() *SubscriberPool {
-	return node.subsriberPool
+//TODO: Random, current send message at first node
+func (node *Node) SendMessageToRandomNode(message *Message) {
+	node.p2pStreamMap.Range(func(key, value interface{}) bool {
+		p2pStream := value.(*P2PStream)
+		p2pStream.sendMessage(message)
+		return false
+	})
 }
 
-//first send dummy
-func (node *Node) SendMessage(message *Message) {
+func (node *Node) BroadcastMessage(message *Message) {
 	node.p2pStreamMap.Range(func(key, value interface{}) bool {
 		p2pStream := value.(*P2PStream)
 		p2pStream.sendMessage(message)
