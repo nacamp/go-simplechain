@@ -1,27 +1,31 @@
 package core
 
-import (
-	"github.com/najimmy/go-simplechain/common"
-)
-
 type TransactionPool struct {
-	all map[common.Hash]*Transaction
+	queue []*Transaction
 }
 
 func NewTransactionPool() *TransactionPool {
-	return &TransactionPool{all: make(map[common.Hash]*Transaction)}
+	return &TransactionPool{}
 }
 
 func (pool *TransactionPool) Put(tx *Transaction) {
-	//TODO: validate hash and sign before to put
-	pool.all[tx.Hash] = tx
+	pool.queue = append(pool.queue, tx)
 }
 
-// use this when make block in consensus
-func (pool *TransactionPool) Get(hash common.Hash) (tx *Transaction) {
-	return pool.all[hash]
+func (pool *TransactionPool) Pop() (tx *Transaction) {
+	if len(pool.queue) > 0 {
+		tx = pool.queue[0]
+		pool.queue = pool.queue[1:]
+		return tx
+	}
+	return nil
 }
 
-func (pool *TransactionPool) Del(hash common.Hash) {
-	delete(pool.all, hash)
+func (pool *TransactionPool) Peek() (tx *Transaction) {
+	if len(pool.queue) > 0 {
+		tx = pool.queue[0]
+		pool.queue = pool.queue[1:]
+		return tx
+	}
+	return nil
 }
