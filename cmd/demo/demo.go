@@ -39,8 +39,11 @@ func run(c *cli.Context) {
 	bc := core.NewBlockChain(dpos, db)
 	bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
 	bc.SetNode(node)
-	dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
-
+	if config.EnableMining {
+		dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
+	} else {
+		dpos.SetupNonMiner(bc, node)
+	}
 	bc.Start()
 	node.Start(config.Seeds[0])
 	dpos.Start()
