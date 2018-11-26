@@ -39,7 +39,7 @@ func run(c *cli.Context) {
 	bc := core.NewBlockChain(dpos, db)
 	bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
 	bc.SetNode(node)
-	dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress))
+	dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
 
 	bc.Start()
 	node.Start(config.Seeds[0])
@@ -51,6 +51,7 @@ func run(c *cli.Context) {
 func main() {
 	app := cli.NewApp()
 
+	//TODO: input passphrase, to decrypt  encryped privatekey
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "config, c",

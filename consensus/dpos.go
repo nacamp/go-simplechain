@@ -1,8 +1,11 @@
 package consensus
 
 import (
+	"crypto/ecdsa"
+	"errors"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
 	"github.com/najimmy/go-simplechain/log"
@@ -24,16 +27,28 @@ type Dpos struct {
 	bc       *core.BlockChain
 	node     *net.Node
 	coinbase common.Address
+	priv     *ecdsa.PrivateKey
 }
+
+// const
+var (
+	ErrAddressNotEqual = errors.New("address not equal")
+)
 
 func NewDpos() *Dpos {
 	return &Dpos{}
 }
 
-func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address) {
+func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) error {
 	dpos.bc = bc
 	dpos.node = node
-	dpos.coinbase = address
+	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
+	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
+	dpos.priv = (*ecdsa.PrivateKey)(priv)
+	if dpos.coinbase != address {
+		return ErrAddressNotEqual
+	}
+	return nil
 }
 
 func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
@@ -80,10 +95,6 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		}).Debug("not my turn")
 		return nil
 	}
-}
-
-func (dpos *Dpos) Seal() {
-
 }
 
 func (dpos *Dpos) Start() {
