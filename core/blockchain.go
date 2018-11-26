@@ -281,7 +281,16 @@ func (bc *BlockChain) PutBlock(block *Block) {
 		return
 	}
 
-	//5. TODO: signer check
+	//5.signer check
+	v, _ := block.VerifySign()
+	if !v || err != nil {
+		log.CLog().WithFields(logrus.Fields{
+			"Height": block.Header.Height,
+			"Err":    err,
+		}).Warning("Signature is invalid")
+		return
+	}
+
 	bc.putBlockToStorage(block)
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,

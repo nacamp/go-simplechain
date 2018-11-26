@@ -108,6 +108,7 @@ func (dpos *Dpos) loop() {
 		case now := <-ticker.C:
 			block := dpos.MakeBlock(uint64(now.Unix()))
 			if block != nil {
+				block.Sign(dpos.priv)
 				dpos.bc.PutBlockByCoinbase(block)
 				dpos.bc.Consensus.UpdateLIB(dpos.bc)
 				dpos.bc.RemoveOrphanBlock()
