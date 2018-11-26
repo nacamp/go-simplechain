@@ -14,6 +14,7 @@ const (
 	MSG_NEW_BLOCK         = 0x10
 	MSG_MISSING_BLOCK     = 0x12
 	MSG_MISSING_BLOCK_ACK = 0x13
+	MSG_NEW_TX            = 0x14
 )
 
 type Message struct {

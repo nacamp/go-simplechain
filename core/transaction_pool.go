@@ -8,6 +8,10 @@ type TransactionPool struct {
 	all map[common.Hash]*Transaction
 }
 
+func NewTransactionPool() *TransactionPool {
+	return &TransactionPool{all: make(map[common.Hash]*Transaction)}
+}
+
 func (pool *TransactionPool) Put(tx *Transaction) {
 	//TODO: validate hash and sign before to put
 	pool.all[tx.Hash] = tx

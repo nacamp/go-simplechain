@@ -35,17 +35,17 @@ const (
 var GenesisCoinbaseAddress = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")
 
 type BlockChain struct {
-	mu              sync.RWMutex
-	GenesisBlock    *Block
-	futureBlocks    *lru.Cache
-	Storage         storage.Storage
-	TransactionPool *TransactionPool
-	Consensus       Consensus
-	Lib             *Block
-	Tail            *Block
-	node            *net.Node
-	tailGroup       *sync.Map
-	TEST            bool
+	mu           sync.RWMutex
+	GenesisBlock *Block
+	futureBlocks *lru.Cache
+	Storage      storage.Storage
+	TxPool       *TransactionPool
+	Consensus    Consensus
+	Lib          *Block
+	Tail         *Block
+	node         *net.Node
+	tailGroup    *sync.Map
+	TEST         bool
 }
 
 func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
@@ -69,6 +69,7 @@ func (bc *BlockChain) Setup(voters []*Account) {
 		bc.LoadLibFromStorage()
 		bc.LoadTailFromStorage()
 	}
+	bc.TxPool = NewTransactionPool()
 
 }
 
@@ -142,6 +143,7 @@ func (bc *BlockChain) SetNode(node *net.Node) {
 	node.RegisterSubscriber(net.MSG_NEW_BLOCK, bc)
 	node.RegisterSubscriber(net.MSG_MISSING_BLOCK, bc)
 	node.RegisterSubscriber(net.MSG_MISSING_BLOCK_ACK, bc)
+	node.RegisterSubscriber(net.MSG_NEW_TX, bc)
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
@@ -435,6 +437,16 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 			"Height": height,
 		}).Debug("missing block request arrived")
 		bc.SendMissingBlock(height, message.PeerID)
+	} else if message.Code == net.MSG_NEW_TX {
+		tx := &Transaction{}
+		rlp.DecodeBytes(message.Payload, &tx)
+		log.CLog().WithFields(logrus.Fields{
+			"From":   common.Address2Hex(tx.From),
+			"To":     common.Address2Hex(tx.To),
+			"Amount": tx.Amount,
+		}).Info("Received tx")
+		bc.TxPool.Put(tx)
+
 	}
 	return nil
 }
