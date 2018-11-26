@@ -319,8 +319,8 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.SetTail(block)
 	bc.mu.Unlock()
 	log.CLog().WithFields(logrus.Fields{
-		"Height": block.Header.Height,
-		//"hash":   common.Hash2Hex(block.Hash()),
+		"Height":   block.Header.Height,
+		"Tx count": len(block.Transactions),
 	}).Info("Mined block")
 	bc.AddTailToGroup(block)
 }

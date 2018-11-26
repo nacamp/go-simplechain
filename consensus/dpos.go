@@ -84,8 +84,15 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		block.Header.Coinbase = dpos.coinbase
 		block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
 		//because PutMinerState recall GetMinerGroup , here assign  bc.Tail.Header.SnapshotVoterTime , not voterBlock.Header.Time
+		block.Transactions = make([]*core.Transaction, 0)
+		for {
+			tx := bc.TxPool.Pop()
+			if tx == nil {
+				break
+			}
+			block.Transactions = append(block.Transactions, tx)
+		}
 
-		//use transaction later
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
 		block.Header.AccountHash = block.AccountState.RootHash()
