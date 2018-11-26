@@ -1,6 +1,7 @@
 {
     "port"  : 9993,
     "db_path" : "",
+    "enable_mining": true,
     "miner_address" : "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1",
     "miner_private_key" : "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
     "node_private_key"  : "08021220114a228984dea82c6d7e6996a85fccc7ae6053249dbf5aa5698ffb14668d68f4",

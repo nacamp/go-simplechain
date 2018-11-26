@@ -24,10 +24,11 @@ var keystore = map[string]string{
 }
 
 type Dpos struct {
-	bc       *core.BlockChain
-	node     *net.Node
-	coinbase common.Address
-	priv     *ecdsa.PrivateKey
+	bc           *core.BlockChain
+	node         *net.Node
+	coinbase     common.Address
+	priv         *ecdsa.PrivateKey
+	enableMining bool
 }
 
 // const
@@ -42,6 +43,7 @@ func NewDpos() *Dpos {
 func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) error {
 	dpos.bc = bc
 	dpos.node = node
+	dpos.enableMining = true
 	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
 	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
 	dpos.priv = (*ecdsa.PrivateKey)(priv)
@@ -49,6 +51,11 @@ func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Addr
 		return ErrAddressNotEqual
 	}
 	return nil
+}
+
+func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
+	dpos.bc = bc
+	dpos.node = node
 }
 
 func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
@@ -98,7 +105,9 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 }
 
 func (dpos *Dpos) Start() {
-	go dpos.loop()
+	if dpos.enableMining {
+		go dpos.loop()
+	}
 }
 
 func (dpos *Dpos) loop() {

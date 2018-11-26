@@ -33,4 +33,5 @@ type Config struct {
 	Port            int             `json:"port"`
 	Seeds           []string        `json:"seeds"`
 	Voters          []ConfigAccount `json:"voters"`
+	EnableMining    bool            `json:"enable_mining"`
 }
