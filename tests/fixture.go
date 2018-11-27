@@ -123,10 +123,7 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 	h.MinerHash = block.MinerState.RootHash()
 
 	block.MakeHash()
-	//*ecdsa.PrivateKey
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[coinbase]))
-	// dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
-	// dpos.priv = (*ecdsa.PrivateKey)(priv)
 	block.Sign((*ecdsa.PrivateKey)(priv))
 	return block
 }

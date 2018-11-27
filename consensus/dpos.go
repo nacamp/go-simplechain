@@ -105,6 +105,10 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 			} else if fromAccount.Nonce+1 < tx.Nonce {
 				//use in future
 				bc.TxPool.Put(tx)
+			} else {
+				log.CLog().WithFields(logrus.Fields{
+					"Address": common.Address2Hex(tx.From),
+				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
 		bc.RewardForCoinbase(block)
