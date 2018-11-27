@@ -84,15 +84,24 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		block.Header.Coinbase = dpos.coinbase
 		block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
 		//because PutMinerState recall GetMinerGroup , here assign  bc.Tail.Header.SnapshotVoterTime , not voterBlock.Header.Time
+
+		//TODO: check double spending ?
 		block.Transactions = make([]*core.Transaction, 0)
+		accs := block.AccountState
 		for {
 			tx := bc.TxPool.Pop()
 			if tx == nil {
 				break
 			}
-			block.Transactions = append(block.Transactions, tx)
+			//TODO: remove code duplicattion in ExecuteTransaction
+			fromAccount := accs.GetAccount(tx.From)
+			if fromAccount.Nonce+1 == tx.Nonce {
+				block.Transactions = append(block.Transactions, tx)
+			} else if fromAccount.Nonce+1 < tx.Nonce {
+				//use in future
+				bc.TxPool.Put(tx)
+			}
 		}
-
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
 		block.Header.AccountHash = block.AccountState.RootHash()

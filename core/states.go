@@ -12,6 +12,7 @@ import (
 )
 
 var (
+	ErrTransactionNonce        = errors.New("cannot accept a transaction with wrong nonce")
 	ErrBalanceInsufficient     = errors.New("cannot subtract a value which is bigger than current balance")
 	ErrAccountNotFound         = errors.New("cannot found account in storage")
 	ErrContractAccountNotFound = errors.New("cannot found contract account in storage please check contract address is valid or deploy is success")
@@ -20,6 +21,7 @@ var (
 type Account struct {
 	Address common.Address
 	Balance *big.Int
+	Nonce   uint64
 	// Root    common.Hash // Before trie put
 }
 

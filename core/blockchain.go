@@ -184,7 +184,7 @@ func (bc *BlockChain) PutState(block *Block) error {
 		log.CLog().Warning(err)
 		return err
 	}
-
+	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return err
 	}
@@ -248,6 +248,10 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 
 	for _, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
+		if fromAccount.Nonce+1 == tx.Nonce {
+			return ErrTransactionNonce
+		}
+		fromAccount.Nonce += uint64(1)
 		toAccount := accs.GetAccount(tx.To)
 		if err := fromAccount.SubBalance(tx.Amount); err != nil {
 			return err
