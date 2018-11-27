@@ -96,20 +96,22 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 	coinbaseAccount := block.AccountState.GetAccount(h.Coinbase)
 	coinbaseAccount.AddBalance(new(big.Int).SetUint64(100))
 	block.AccountState.PutAccount(coinbaseAccount)
-	tx := MakeTransaction(from, to, new(big.Int).Div(amount, new(big.Int).SetUint64(2)))
-	block.TransactionState.PutTransaction(tx)
-	block.Transactions = make([]*core.Transaction, 2)
-	block.Transactions[0] = tx
-	block.Transactions[1] = tx
 
 	accs := block.AccountState
 	txs := block.TransactionState
-	fromAccount := accs.GetAccount(tx.From)
+
+	fromAccount := accs.GetAccount(common.HexToAddress(from))
+	tx := MakeTransaction(from, to, new(big.Int).Div(amount, new(big.Int).SetUint64(2)), fromAccount.Nonce+uint64(1))
+	block.TransactionState.PutTransaction(tx)
+	block.Transactions = make([]*core.Transaction, 1)
+	block.Transactions[0] = tx
+	fromAccount.Nonce += uint64(1)
+
 	toAccount := accs.GetAccount(tx.To)
 	fromAccount.SubBalance(tx.Amount)
 	toAccount.AddBalance(tx.Amount)
-	fromAccount.SubBalance(tx.Amount)
-	toAccount.AddBalance(tx.Amount)
+	// fromAccount.SubBalance(tx.Amount)
+	// toAccount.AddBalance(tx.Amount)
 
 	accs.PutAccount(fromAccount)
 	accs.PutAccount(toAccount)
@@ -121,11 +123,16 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 	h.MinerHash = block.MinerState.RootHash()
 
 	block.MakeHash()
+	//*ecdsa.PrivateKey
+	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[coinbase]))
+	// dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
+	// dpos.priv = (*ecdsa.PrivateKey)(priv)
+	block.Sign((*ecdsa.PrivateKey)(priv))
 	return block
 }
 
-func MakeTransaction(from, to string, amount *big.Int) *core.Transaction {
-	tx := core.NewTransaction(common.HexToAddress(from), common.HexToAddress(to), amount)
+func MakeTransaction(from, to string, amount *big.Int, nonce uint64) *core.Transaction {
+	tx := core.NewTransaction(common.HexToAddress(from), common.HexToAddress(to), amount, nonce)
 	tx.MakeHash()
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[from]))
 	tx.Sign((*ecdsa.PrivateKey)(priv))
