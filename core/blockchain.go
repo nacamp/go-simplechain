@@ -248,7 +248,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 
 	for _, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
-		if fromAccount.Nonce+1 == tx.Nonce {
+		if fromAccount.Nonce+1 != tx.Nonce {
 			return ErrTransactionNonce
 		}
 		fromAccount.Nonce += uint64(1)
