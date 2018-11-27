@@ -1,6 +1,7 @@
 package net
 
 import (
+	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/najimmy/go-simplechain/rlp"
 )
@@ -35,4 +36,12 @@ func NewRLPMessage(code uint64, payload interface{}) (msg Message, err error) {
 
 type Subscriber interface {
 	HandleMessage(message *Message) error
+}
+
+type INode interface {
+	RegisterSubscriber(code uint64, subscriber Subscriber)
+	HandleStream(s libnet.Stream)
+	SendMessage(message *Message, peerID peer.ID)
+	SendMessageToRandomNode(message *Message)
+	BroadcastMessage(message *Message)
 }

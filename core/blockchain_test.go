@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"testing"
 
+	libnet "github.com/libp2p/go-libp2p-net"
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/consensus"
@@ -104,6 +106,23 @@ func TestStorage(t *testing.T) {
 
 }
 
+type MockNode struct {
+}
+
+func (node *MockNode) RegisterSubscriber(code uint64, subscriber net.Subscriber) {
+
+}
+func (node *MockNode) HandleStream(s libnet.Stream) {
+
+}
+func (node *MockNode) SendMessage(message *net.Message, peerID peer.ID) {
+
+}
+func (node *MockNode) SendMessageToRandomNode(message *net.Message) {
+
+}
+func (node *MockNode) BroadcastMessage(message *net.Message) {}
+
 func TestMakeBlockChain(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
@@ -131,8 +150,8 @@ func TestMakeBlockChain(t *testing.T) {
 	dpos2 := consensus.NewDpos()
 	bc := core.NewBlockChain(dpos2, storage2)
 	//FIXME: how to test
-	bc.TEST = true
 	bc.Setup(voters)
+	bc.SetNode(new(MockNode))
 
 	bc.PutBlockIfParentExist(block1)
 	b, _ := bc.GetBlockByHash(block1.Hash())
@@ -191,7 +210,7 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 	dpos2 := consensus.NewDpos()
 	bc := core.NewBlockChain(dpos2, storage2)
 	bc.Setup(voters)
-	bc.TEST = true
+	bc.SetNode(new(MockNode))
 
 	block11 := rlpEncode(block1)
 	bc.PutBlockIfParentExist(block11)

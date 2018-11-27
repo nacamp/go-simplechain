@@ -43,9 +43,8 @@ type BlockChain struct {
 	Consensus    Consensus
 	Lib          *Block
 	Tail         *Block
-	node         *net.Node
+	node         net.INode
 	tailGroup    *sync.Map
-	TEST         bool
 }
 
 func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
@@ -138,7 +137,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	bc.SetTail(bc.GenesisBlock)
 }
 
-func (bc *BlockChain) SetNode(node *net.Node) {
+func (bc *BlockChain) SetNode(node net.INode) {
 	bc.node = node
 	node.RegisterSubscriber(net.MSG_NEW_BLOCK, bc)
 	node.RegisterSubscriber(net.MSG_MISSING_BLOCK, bc)
@@ -367,14 +366,11 @@ func (bc *BlockChain) AddFutureBlock(block *Block) {
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
 	//FIXME: temporarily, must send hash
 	if block.Header.Height > uint64(1) {
-		//FIXME: temporarily consider how to test
-		if !bc.TEST {
-			msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
-			bc.node.SendMessageToRandomNode(&msg)
-			log.CLog().WithFields(logrus.Fields{
-				"Height": block.Header.Height - uint64(1),
-			}).Info("Request missing block")
-		}
+		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
+		bc.node.SendMessageToRandomNode(&msg)
+		log.CLog().WithFields(logrus.Fields{
+			"Height": block.Header.Height - uint64(1),
+		}).Info("Request missing block")
 	}
 
 }
