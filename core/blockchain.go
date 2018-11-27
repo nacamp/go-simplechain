@@ -309,6 +309,9 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	bc.tailGroup.Store(block.Hash(), block)
 	//if parent exist
 	bc.tailGroup.Delete(block.Header.ParentHash)
+
+	//remove tx
+	bc.RemoveTxInPool(block)
 }
 
 func (bc *BlockChain) AddTailToGroup(block *Block) {
@@ -600,4 +603,9 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
 	bc.Tail = block
 	return nil
+}
+func (bc *BlockChain) RemoveTxInPool(block *Block) {
+	for _, tx := range block.Transactions {
+		bc.TxPool.Del(tx.Hash)
+	}
 }
