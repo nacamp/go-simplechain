@@ -95,7 +95,12 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 			}
 			//TODO: remove code duplicattion in ExecuteTransaction
 			fromAccount := accs.GetAccount(tx.From)
-			if fromAccount.Nonce+1 == tx.Nonce {
+			//TODO: check at txpool
+			if fromAccount == nil {
+				log.CLog().WithFields(logrus.Fields{
+					"Address": common.Address2Hex(tx.From),
+				}).Warning("Not found account")
+			} else if fromAccount.Nonce+1 == tx.Nonce {
 				block.Transactions = append(block.Transactions, tx)
 			} else if fromAccount.Nonce+1 < tx.Nonce {
 				//use in future
