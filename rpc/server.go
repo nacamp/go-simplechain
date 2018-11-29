@@ -16,12 +16,14 @@ type JsonHandler interface {
 }
 
 type RpcServer struct {
-	mr *jsonrpc.MethodRepository
+	mr      *jsonrpc.MethodRepository
+	address string
 }
 
-func NewRpcServer() *RpcServer {
+func NewRpcServer(address string) *RpcServer {
 	return &RpcServer{
-		mr: jsonrpc.NewMethodRepository(),
+		mr:      jsonrpc.NewMethodRepository(),
+		address: address,
 	}
 }
 
@@ -37,7 +39,7 @@ func (js *RpcServer) Start() {
 	http.Handle("/jrpc", js.mr)
 	// http.HandleFunc("/jrpc/debug", mr.ServeDebug)
 	go func() {
-		if err := http.ListenAndServe(":8080", http.DefaultServeMux); err != nil {
+		if err := http.ListenAndServe(js.address, http.DefaultServeMux); err != nil {
 			log.CLog().Warning(err)
 		}
 	}()

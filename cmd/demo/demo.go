@@ -3,6 +3,8 @@ package main
 import (
 	"os"
 
+	"github.com/najimmy/go-simplechain/rpc"
+
 	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/consensus"
@@ -47,6 +49,12 @@ func run(c *cli.Context) {
 	bc.Start()
 	node.Start(config.Seeds[0])
 	dpos.Start()
+
+	rpcServer := rpc.NewRpcServer(config.RpcAddress)
+	rpcService := &rpc.RpcService{}
+	rpcService.Setup(rpcServer, config, bc)
+	rpcServer.Start()
+
 	select {}
 
 }

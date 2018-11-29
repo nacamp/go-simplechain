@@ -1,5 +1,6 @@
 {
     "port"  : 9994,
+    "rpc_address" :"127.0.0.1:8080",
     "db_path" : "",
     "enable_mining": false,
     "miner_address" : "",
