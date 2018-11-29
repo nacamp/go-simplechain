@@ -144,6 +144,44 @@ func (h *SendTransactionHandler) Result() interface{} {
 
 // sendTransaction <<<<<<<<<<
 
+// getTransactionByHash >>>>>>>>>>>
+type GetTransactionByHashHandler struct {
+	bc *core.BlockChain
+}
+
+func NewGetTransactionByHashHandler(bc *core.BlockChain) *GetTransactionByHashHandler {
+
+	return &GetTransactionByHashHandler{bc: bc}
+}
+
+func (h *GetTransactionByHashHandler) Name() string {
+	return "getTransactionByHash"
+}
+
+func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+	p := []string{}
+	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+	tx := h.bc.Tail.TransactionState.GetTransaction(common.HexToHash(p[0]))
+
+	rtx := &TempTx{}
+	rtx.From = common.Address2Hex(tx.From)
+	rtx.To = common.Address2Hex(tx.To)
+	rtx.Nonce = strconv.FormatUint(tx.Nonce, 10)
+	rtx.Amount = tx.Amount.String()
+	return rtx, nil
+}
+
+func (h *GetTransactionByHashHandler) Params() interface{} {
+	return []string{}
+}
+func (h *GetTransactionByHashHandler) Result() interface{} {
+	return TempTx{}
+}
+
+// getTransactionByHash <<<<<<<<<<
+
 type RpcService struct {
 	server *RpcServer
 }
@@ -154,6 +192,7 @@ func (rs *RpcService) Setup(server *RpcServer, config *core.Config, bc *core.Blo
 	rs.server.RegisterHandler(NewGetBalanceHandler(bc))
 	rs.server.RegisterHandler(NewGetTransactionCountHandler(bc))
 	rs.server.RegisterHandler(NewSendTransactionHandler(bc))
+	rs.server.RegisterHandler(NewGetTransactionByHashHandler(bc))
 }
 
 /*
@@ -202,5 +241,28 @@ params: [{
   "id":1,
   "jsonrpc": "2.0",
   "result": "0xe670ec64341771606e55d6b4ca35a1a6b75ee3d5145a99d05921026d1527331"
+}
+
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "getTransactionByHash", "params":["0xb017e021b8b2deba156941f32ee2e6c53c767a13749fba2533c7a30616ff48c3"]}' http://localhost:8080/jrpc
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b"],"id":1}'
+{
+  "jsonrpc":"2.0",
+  "id":1,
+  "result":{
+    "blockHash":"0x1d59ff54b1eb26b013ce3cb5fc9dab3705b415a67127a003c3e61eb445bb8df2",
+    "blockNumber":"0x5daf3b", // 6139707
+    "from":"0xa7d9ddbe1f17865597fbd27ec712455208b6b76d",
+    "gas":"0xc350", // 50000
+    "gasPrice":"0x4a817c800", // 20000000000
+    "hash":"0x88df016429689c079f3b2f6ad39fa052532c56795b733da78a91ebe6a713944b",
+    "input":"0x68656c6c6f21",
+    "nonce":"0x15", // 21
+    "to":"0xf02c1c8e6114b1dbe8937a39260b5b0a374432bb",
+    "transactionIndex":"0x41", // 65
+    "value":"0xf3dbb76162000", // 4290000000000000
+    "v":"0x25", // 37
+    "r":"0x1b5e176d927f8e9ab405058b2d2457392da3e20f328b16ddabcebc33eaac5fea",
+    "s":"0x4ba69724e8f69de52f0125ad8b3c5c2cef33019bac3249e2c0a2192766d1721c"
+  }
 }
 */
