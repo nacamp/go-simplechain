@@ -605,3 +605,8 @@ func (bc *BlockChain) RemoveTxInPool(block *Block) {
 		bc.TxPool.Del(tx.Hash)
 	}
 }
+
+func (bc *BlockChain) BroadcastNewTXMessage(tx *Transaction) {
+	message, _ := net.NewRLPMessage(net.MSG_NEW_TX, tx)
+	bc.node.BroadcastMessage(&message)
+}
