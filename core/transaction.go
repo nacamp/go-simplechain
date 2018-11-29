@@ -43,7 +43,7 @@ func (tx *Transaction) CalcHash() (hash common.Hash) {
 		tx.From,
 		tx.To,
 		tx.Amount,
-		tx.Time,
+		tx.Nonce,
 	})
 	hasher.Sum(hash[:0])
 	return hash
