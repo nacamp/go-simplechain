@@ -24,10 +24,11 @@ var keystore = map[string]string{
 }
 
 type Dpos struct {
-	bc       *core.BlockChain
-	node     *net.Node
-	coinbase common.Address
-	priv     *ecdsa.PrivateKey
+	bc           *core.BlockChain
+	node         *net.Node
+	coinbase     common.Address
+	priv         *ecdsa.PrivateKey
+	enableMining bool
 }
 
 // const
@@ -42,6 +43,7 @@ func NewDpos() *Dpos {
 func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) error {
 	dpos.bc = bc
 	dpos.node = node
+	dpos.enableMining = true
 	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
 	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
 	dpos.priv = (*ecdsa.PrivateKey)(priv)
@@ -49,6 +51,11 @@ func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Addr
 		return ErrAddressNotEqual
 	}
 	return nil
+}
+
+func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
+	dpos.bc = bc
+	dpos.node = node
 }
 
 func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
@@ -78,7 +85,32 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
 		//because PutMinerState recall GetMinerGroup , here assign  bc.Tail.Header.SnapshotVoterTime , not voterBlock.Header.Time
 
-		//use transaction later
+		//TODO: check double spending ?
+		block.Transactions = make([]*core.Transaction, 0)
+		accs := block.AccountState
+		for {
+			tx := bc.TxPool.Pop()
+			if tx == nil {
+				break
+			}
+			//TODO: remove code duplicattion in ExecuteTransaction
+			fromAccount := accs.GetAccount(tx.From)
+			//TODO: check at txpool
+			if fromAccount == nil {
+				log.CLog().WithFields(logrus.Fields{
+					"Address": common.Address2Hex(tx.From),
+				}).Warning("Not found account")
+			} else if fromAccount.Nonce+1 == tx.Nonce {
+				block.Transactions = append(block.Transactions, tx)
+			} else if fromAccount.Nonce+1 < tx.Nonce {
+				//use in future
+				bc.TxPool.Put(tx)
+			} else {
+				log.CLog().WithFields(logrus.Fields{
+					"Address": common.Address2Hex(tx.From),
+				}).Warning("cannot accept a transaction with wrong nonce")
+			}
+		}
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
 		block.Header.AccountHash = block.AccountState.RootHash()
@@ -98,7 +130,9 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 }
 
 func (dpos *Dpos) Start() {
-	go dpos.loop()
+	if dpos.enableMining {
+		go dpos.loop()
+	}
 }
 
 func (dpos *Dpos) loop() {

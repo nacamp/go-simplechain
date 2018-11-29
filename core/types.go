@@ -26,6 +26,7 @@ type ConfigAccount struct {
 }
 type Config struct {
 	HostId          string          `json:"host_id"`
+	RpcAddress      string          `json:"rpc_address"`
 	DBPath          string          `json:"db_path"`
 	MinerAddress    string          `json:"miner_address"`
 	MinerPrivateKey string          `json:"miner_private_key"`
@@ -33,4 +34,5 @@ type Config struct {
 	Port            int             `json:"port"`
 	Seeds           []string        `json:"seeds"`
 	Voters          []ConfigAccount `json:"voters"`
+	EnableMining    bool            `json:"enable_mining"`
 }

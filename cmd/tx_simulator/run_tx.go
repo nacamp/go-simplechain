@@ -1,9 +1,25 @@
 package main
 
-import (
-	"os"
+// import (
+// 	"fmt"
+// 	"math/big"
+// 	"time"
 
-	"github.com/najimmy/go-simplechain/rpc"
+// 	"github.com/najimmy/go-simplechain/log"
+// 	"github.com/najimmy/go-simplechain/net"
+// 	"github.com/najimmy/go-simplechain/tests"
+// 	"github.com/sirupsen/logrus"
+// )
+
+// func main() {
+// 	start()
+// 	select {}
+// }
+
+import (
+	"math/big"
+	"os"
+	"time"
 
 	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/common"
@@ -12,6 +28,8 @@ import (
 	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/storage"
+	"github.com/najimmy/go-simplechain/tests"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -50,13 +68,35 @@ func run(c *cli.Context) {
 	node.Start(config.Seeds[0])
 	dpos.Start()
 
-	rpcServer := rpc.NewRpcServer(config.RpcAddress)
-	rpcService := &rpc.RpcService{}
-	rpcService.Setup(rpcServer, config, bc)
-	rpcServer.Start()
-
+	// add code for tx>>>>>>>>>
+	time.Sleep(10 * time.Second)
+	ticker := time.NewTicker(5 * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			send_tx(node)
+		}
+	}
 	select {}
+	// add code for tx<<<<<<<<
 
+}
+
+func send_tx(node *net.Node) {
+	tx1 := tests.MakeTransaction(tests.Addr0, tests.Addr1, new(big.Int).SetUint64(2))
+	tx2 := tests.MakeTransaction(tests.Addr1, tests.Addr2, new(big.Int).SetUint64(1))
+
+	message, _ := net.NewRLPMessage(net.MSG_NEW_TX, tx1)
+	node.BroadcastMessage(&message)
+	log.CLog().WithFields(logrus.Fields{
+		"Height": common.Hash2Hex(tx1.Hash),
+	}).Info("Send Tx")
+
+	message, _ = net.NewRLPMessage(net.MSG_NEW_TX, tx2)
+	node.BroadcastMessage(&message)
+	log.CLog().WithFields(logrus.Fields{
+		"Height": common.Hash2Hex(tx1.Hash),
+	}).Info("Send Tx")
 }
 
 func main() {

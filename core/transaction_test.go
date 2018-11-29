@@ -25,7 +25,7 @@ func TestSign(t *testing.T) {
 
 	from := common.BytesToAddress(common.FromHex("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"))
 	to := common.BytesToAddress(common.FromHex("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3"))
-	tx := core.NewTransaction(from, to, new(big.Int).SetInt64(100))
+	tx := core.NewTransaction(from, to, new(big.Int).SetInt64(100), uint64(0))
 	tx.MakeHash()
 	tx.Sign((*ecdsa.PrivateKey)(priv))
 	sig, _ := tx.VerifySign()

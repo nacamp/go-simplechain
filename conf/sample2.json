@@ -1,6 +1,8 @@
 {
     "port"  : 9992,
+    "rpc_address" :"127.0.0.1:8080",
     "db_path" : "",
+    "enable_mining": true,
     "miner_address" : "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3",
     "miner_private_key" : "0xf390e256b6ed8a1b283d3ea80b103b868c14c31e5b7114fc32fff21c4cb263eb",
     "node_private_key"  : "080212201afa45f64cd5a28cd40e178889ed2e9f987658bc4d48d376ef6ecb1ab1b26211",

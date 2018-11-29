@@ -35,17 +35,16 @@ const (
 var GenesisCoinbaseAddress = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")
 
 type BlockChain struct {
-	mu              sync.RWMutex
-	GenesisBlock    *Block
-	futureBlocks    *lru.Cache
-	Storage         storage.Storage
-	TransactionPool *TransactionPool
-	Consensus       Consensus
-	Lib             *Block
-	Tail            *Block
-	node            *net.Node
-	tailGroup       *sync.Map
-	TEST            bool
+	mu           sync.RWMutex
+	GenesisBlock *Block
+	futureBlocks *lru.Cache
+	Storage      storage.Storage
+	TxPool       *TransactionPool
+	Consensus    Consensus
+	Lib          *Block
+	Tail         *Block
+	node         net.INode
+	tailGroup    *sync.Map
 }
 
 func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
@@ -69,6 +68,7 @@ func (bc *BlockChain) Setup(voters []*Account) {
 		bc.LoadLibFromStorage()
 		bc.LoadTailFromStorage()
 	}
+	bc.TxPool = NewTransactionPool()
 
 }
 
@@ -137,11 +137,12 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	bc.SetTail(bc.GenesisBlock)
 }
 
-func (bc *BlockChain) SetNode(node *net.Node) {
+func (bc *BlockChain) SetNode(node net.INode) {
 	bc.node = node
 	node.RegisterSubscriber(net.MSG_NEW_BLOCK, bc)
 	node.RegisterSubscriber(net.MSG_MISSING_BLOCK, bc)
 	node.RegisterSubscriber(net.MSG_MISSING_BLOCK_ACK, bc)
+	node.RegisterSubscriber(net.MSG_NEW_TX, bc)
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
@@ -182,7 +183,7 @@ func (bc *BlockChain) PutState(block *Block) error {
 		log.CLog().Warning(err)
 		return err
 	}
-
+	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return err
 	}
@@ -246,6 +247,10 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 
 	for _, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
+		if fromAccount.Nonce+1 != tx.Nonce {
+			return ErrTransactionNonce
+		}
+		fromAccount.Nonce += uint64(1)
 		toAccount := accs.GetAccount(tx.To)
 		if err := fromAccount.SubBalance(tx.Amount); err != nil {
 			return err
@@ -303,6 +308,9 @@ func (bc *BlockChain) PutBlock(block *Block) {
 	bc.tailGroup.Store(block.Hash(), block)
 	//if parent exist
 	bc.tailGroup.Delete(block.Header.ParentHash)
+
+	//remove tx
+	bc.RemoveTxInPool(block)
 }
 
 func (bc *BlockChain) AddTailToGroup(block *Block) {
@@ -317,8 +325,8 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.SetTail(block)
 	bc.mu.Unlock()
 	log.CLog().WithFields(logrus.Fields{
-		"Height": block.Header.Height,
-		//"hash":   common.Hash2Hex(block.Hash()),
+		"Height":   block.Header.Height,
+		"Tx count": len(block.Transactions),
 	}).Info("Mined block")
 	bc.AddTailToGroup(block)
 }
@@ -358,14 +366,11 @@ func (bc *BlockChain) AddFutureBlock(block *Block) {
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
 	//FIXME: temporarily, must send hash
 	if block.Header.Height > uint64(1) {
-		//FIXME: temporarily consider how to test
-		if !bc.TEST {
-			msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
-			bc.node.SendMessageToRandomNode(&msg)
-			log.CLog().WithFields(logrus.Fields{
-				"Height": block.Header.Height - uint64(1),
-			}).Info("Request missing block")
-		}
+		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
+		bc.node.SendMessageToRandomNode(&msg)
+		log.CLog().WithFields(logrus.Fields{
+			"Height": block.Header.Height - uint64(1),
+		}).Info("Request missing block")
 	}
 
 }
@@ -435,6 +440,16 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 			"Height": height,
 		}).Debug("missing block request arrived")
 		bc.SendMissingBlock(height, message.PeerID)
+	} else if message.Code == net.MSG_NEW_TX {
+		tx := &Transaction{}
+		rlp.DecodeBytes(message.Payload, &tx)
+		log.CLog().WithFields(logrus.Fields{
+			"From":   common.Address2Hex(tx.From),
+			"To":     common.Address2Hex(tx.To),
+			"Amount": tx.Amount,
+		}).Info("Received tx")
+		bc.TxPool.Put(tx)
+
 	}
 	return nil
 }
@@ -584,4 +599,14 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
 	bc.Tail = block
 	return nil
+}
+func (bc *BlockChain) RemoveTxInPool(block *Block) {
+	for _, tx := range block.Transactions {
+		bc.TxPool.Del(tx.Hash)
+	}
+}
+
+func (bc *BlockChain) BroadcastNewTXMessage(tx *Transaction) {
+	message, _ := net.NewRLPMessage(net.MSG_NEW_TX, tx)
+	bc.node.BroadcastMessage(&message)
 }
