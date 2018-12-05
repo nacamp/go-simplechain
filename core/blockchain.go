@@ -499,16 +499,23 @@ func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
 }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
+	TailTxs := bc.Tail.TransactionState
 	bc.tailGroup.Range(func(key, value interface{}) bool {
 		tail := value.(*Block)
 		var err error
 		if bc.Lib.Header.Height >= tail.Header.Height {
 			validBlock, _ := bc.GetBlockByHeight(tail.Header.Height)
 			for validBlock.Hash() != tail.Hash() {
-				childHash := tail.Hash()
+				removableBlock := tail
 				validBlock, _ = bc.GetBlockByHash(validBlock.Header.ParentHash)
 				tail, err = bc.GetBlockByHash(tail.Header.ParentHash)
-				bc.Storage.Del(childHash[:])
+				for _, tx := range removableBlock.Transactions {
+					_tx := TailTxs.GetTransaction(tx.Hash)
+					if _tx == nil {
+						bc.TxPool.Put(tx)
+					}
+				}
+				bc.Storage.Del(common.HashToBytes(removableBlock.Hash()))
 				//already removed during for loop
 				if err != nil {
 					break

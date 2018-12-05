@@ -48,3 +48,8 @@ func (pool *TransactionPool) Get(hash common.Hash) (tx *Transaction) {
 func (pool *TransactionPool) Del(hash common.Hash) {
 	delete(pool.txMap, hash)
 }
+
+//TODO: remove hash in queue
+func (pool *TransactionPool) Len() int {
+	return len(pool.txMap)
+}

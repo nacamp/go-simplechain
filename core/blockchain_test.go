@@ -349,8 +349,9 @@ func TestRemoveOrphanBlock(t *testing.T) {
 
 	dpos := consensus.NewDpos()
 	bc := core.NewBlockChain(dpos, storage)
-	bc.MakeGenesisBlock(voters)
-	bc.PutBlockByCoinbase(bc.GenesisBlock)
+	bc.Setup(voters)
+	// bc.MakeGenesisBlock(voters)
+	// bc.PutBlockByCoinbase(bc.GenesisBlock)
 
 	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 	bc.PutBlockByCoinbase(block1)
@@ -358,7 +359,8 @@ func TestRemoveOrphanBlock(t *testing.T) {
 	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(2), tests.None, nil)
 	bc.PutBlockByCoinbase(block2)
 
-	block3 := tests.MakeBlock(bc, block1, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(3), tests.None, nil)
+	//2,3 block same tx hash
+	block3 := tests.MakeBlock(bc, block1, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(2), tests.None, nil)
 	bc.PutBlockByCoinbase(block3)
 
 	block4 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(4), tests.None, nil)
@@ -378,9 +380,20 @@ func TestRemoveOrphanBlock(t *testing.T) {
 
 	bc.SetLib(block6)
 	bc.SetTail(block6)
+
+	assert.Equal(t, bc.TxPool.Len(), 0, "")
 	bc.RemoveOrphanBlock()
-	b, err := bc.GetBlockByHash(block4.Hash())
+	b, err := bc.GetBlockByHash(block3.Hash())
 	assert.NotNil(t, err, "")
 	assert.Nil(t, b, "")
 
+	b, err = bc.GetBlockByHash(block4.Hash())
+	assert.NotNil(t, err, "")
+	assert.Nil(t, b, "")
+
+	b, err = bc.GetBlockByHash(block5.Hash())
+	assert.NotNil(t, err, "")
+	assert.Nil(t, b, "")
+	// N3 same tx,  N4,N5 different tx
+	assert.Equal(t, bc.TxPool.Len(), 2, "")
 }
