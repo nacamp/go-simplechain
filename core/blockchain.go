@@ -433,26 +433,10 @@ func encodeBlockHeight(number uint64) []byte {
 func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 	h := &Header{
 		ParentHash: parentBlock.Hash(),
-		//Coinbase        common.Address
-		Height: parentBlock.Header.Height + 1,
-		// Time              uint64
-		// Hash              common.Hash
-		// AccountHash       common.Hash
-		// TransactionHash   common.Hash
-		// MinerHash         common.Hash
-		// VoterHash         common.Hash
-		// SnapshotVoterTime: parentBlock.Header.SnapshotVoterTime,
+		Height:     parentBlock.Header.Height + 1,
 	}
-	// h.ParentHash = parentBlock.Hash()
-	// h.Height = parentBlock.Header.Height + 1
-	// h.Time = time
 	block := &Block{
 		Header: h,
-		// Transactions []*Transaction
-		// AccountState     *AccountState
-		// TransactionState *TransactionState
-		// MinerState       MinerState
-		// VoterState       *AccountState
 	}
 	//state
 	block.VoterState, _ = parentBlock.VoterState.Clone()
@@ -468,30 +452,48 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
 	if message.Code == net.MSG_NEW_BLOCK || message.Code == net.MSG_MISSING_BLOCK_ACK {
-		block := &Block{}
-		rlp.DecodeBytes(message.Payload, block)
-		log.CLog().WithFields(logrus.Fields{
-			"height": block.Header.Height,
-		}).Debug("new block arrrived")
-
-		if block.Header.Height == 1 {
+		baseBlock := &BaseBlock{}
+		err := rlp.DecodeBytes(message.Payload, baseBlock)
+		if err != nil {
 			log.CLog().WithFields(logrus.Fields{
-				"height": block.Header.Height,
-			}).Debug("new block arrrived")
+				"Msg":  err,
+				"Code": message.Code,
+			}).Warning("DecodeBytes")
 		}
-		bc.PutBlockIfParentExist(block)
+		// log.CLog().WithFields(logrus.Fields{
+		// 	"height": block.Header.Height,
+		// }).Debug("new block arrrived")
+
+		// if block.Header.Height == 1 {
+		// 	log.CLog().WithFields(logrus.Fields{
+		// 		"height": block.Header.Height,
+		// 	}).Debug("new block arrrived")
+		// }
+		bc.PutBlockIfParentExist(baseBlock.NewBlock())
 		bc.Consensus.UpdateLIB(bc)
 		bc.RemoveOrphanBlock()
 	} else if message.Code == net.MSG_MISSING_BLOCK {
 		height := uint64(0)
-		rlp.DecodeBytes(message.Payload, &height)
+		err := rlp.DecodeBytes(message.Payload, &height)
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Msg":  err,
+				"Code": message.Code,
+			}).Warning("DecodeBytes")
+		}
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
 		}).Debug("missing block request arrived")
 		bc.SendMissingBlock(height, message.PeerID)
 	} else if message.Code == net.MSG_NEW_TX {
 		tx := &Transaction{}
-		rlp.DecodeBytes(message.Payload, &tx)
+		err := rlp.DecodeBytes(message.Payload, &tx)
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Msg":  err,
+				"Code": message.Code,
+			}).Warning("DecodeBytes")
+		}
 		log.CLog().WithFields(logrus.Fields{
 			"From":   common.Address2Hex(tx.From),
 			"To":     common.Address2Hex(tx.To),
@@ -502,6 +504,43 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 	}
 	return nil
 }
+
+// func (bc *BlockChain) HandleMessage(message *net.Message) error {
+// 	if message.Code == net.MSG_NEW_BLOCK || message.Code == net.MSG_MISSING_BLOCK_ACK {
+// 		block := &Block{}
+// 		rlp.DecodeBytes(message.Payload, block)
+// 		log.CLog().WithFields(logrus.Fields{
+// 			"height": block.Header.Height,
+// 		}).Debug("new block arrrived")
+
+// 		if block.Header.Height == 1 {
+// 			log.CLog().WithFields(logrus.Fields{
+// 				"height": block.Header.Height,
+// 			}).Debug("new block arrrived")
+// 		}
+// 		bc.PutBlockIfParentExist(block)
+// 		bc.Consensus.UpdateLIB(bc)
+// 		bc.RemoveOrphanBlock()
+// 	} else if message.Code == net.MSG_MISSING_BLOCK {
+// 		height := uint64(0)
+// 		rlp.DecodeBytes(message.Payload, &height)
+// 		log.CLog().WithFields(logrus.Fields{
+// 			"Height": height,
+// 		}).Debug("missing block request arrived")
+// 		bc.SendMissingBlock(height, message.PeerID)
+// 	} else if message.Code == net.MSG_NEW_TX {
+// 		tx := &Transaction{}
+// 		rlp.DecodeBytes(message.Payload, &tx)
+// 		log.CLog().WithFields(logrus.Fields{
+// 			"From":   common.Address2Hex(tx.From),
+// 			"To":     common.Address2Hex(tx.To),
+// 			"Amount": tx.Amount,
+// 		}).Info("Received tx")
+// 		bc.TxPool.Put(tx)
+
+// 	}
+// 	return nil
+// }
 
 // func (sp *SubsriberPool) handleMessage(message *Message) {
 // 	sp.messageCh <- message
@@ -535,7 +574,7 @@ func (bc *BlockChain) RequestMissingBlock() {
 func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
 	block, _ := bc.GetBlockByHeight(height)
 	if block != nil {
-		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block)
+		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block.OnlyBaseBlock())
 		bc.node.SendMessage(&message, peerID)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
