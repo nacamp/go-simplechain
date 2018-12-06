@@ -389,14 +389,18 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.AddTailToGroup(block)
 }
 
-func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
+func (bc *BlockChain) HasParentInBlockChain(block *Block) (bool, error) {
 	if block.Header.ParentHash[:] != nil {
-		b, _ := bc.GetBlockByHash(block.Header.ParentHash)
-		if b != nil {
-			return true
+		_, err := bc.GetBlockByHash(block.Header.ParentHash)
+		if err == nil {
+			return true, nil
 		}
+		if err != nil && err == storage.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
 	}
-	return false
+	return false, nil
 }
 
 func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
@@ -407,14 +411,31 @@ func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
 	}
 }
 
-func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
-	if bc.HasParentInBlockChain(block) {
+func (bc *BlockChain) PutBlockIfParentExist(block *Block) error {
+	hasParent, err := bc.HasParentInBlockChain(block)
+	if err != nil {
+		return err
+	}
+	if hasParent {
 		bc.PutBlock(block)
 		bc.putBlockIfParentExistInFutureBlocks(block)
 	} else {
-		bc.AddFutureBlock(block)
+		err = bc.AddFutureBlock(block)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
+
+// func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
+// 	if bc.HasParentInBlockChain(block) {
+// 		bc.PutBlock(block)
+// 		bc.putBlockIfParentExistInFutureBlocks(block)
+// 	} else {
+// 		bc.AddFutureBlock(block)
+// 	}
+// }
 
 func (bc *BlockChain) AddFutureBlock(block *Block) error {
 	log.CLog().WithFields(logrus.Fields{

@@ -100,9 +100,11 @@ func TestStorage(t *testing.T) {
 	h := core.Header{}
 	h.ParentHash = b1.Hash()
 	block := core.Block{Header: &h}
-	assert.Equal(t, true, bc.HasParentInBlockChain(&block), "")
+	trueFase, _ := bc.HasParentInBlockChain(&block)
+	assert.Equal(t, true, trueFase, "")
 	h.ParentHash.SetBytes([]byte{0x01})
-	assert.Equal(t, false, bc.HasParentInBlockChain(&block), "")
+	trueFase, _ = bc.HasParentInBlockChain(&block)
+	assert.Equal(t, false, trueFase, "")
 
 }
 
