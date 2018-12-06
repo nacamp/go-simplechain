@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/najimmy/go-simplechain/rpc"
+	"github.com/sirupsen/logrus"
 
 	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/common"
@@ -42,6 +43,9 @@ func run(c *cli.Context) {
 	bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
 	bc.SetNode(node)
 	if config.EnableMining {
+		log.CLog().WithFields(logrus.Fields{
+			"Address": config.MinerAddress,
+		}).Info("Miner address")
 		dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
 	} else {
 		dpos.SetupNonMiner(bc, node)

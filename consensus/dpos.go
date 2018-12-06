@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"crypto/ecdsa"
-	"errors"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -32,15 +31,15 @@ type Dpos struct {
 }
 
 // const
-var (
-	ErrAddressNotEqual = errors.New("address not equal")
-)
+// var (
+// 	ErrAddressNotEqual = errors.New("address not equal")
+// )
 
 func NewDpos() *Dpos {
 	return &Dpos{}
 }
 
-func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) error {
+func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) {
 	dpos.bc = bc
 	dpos.node = node
 	dpos.enableMining = true
@@ -48,9 +47,10 @@ func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Addr
 	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
 	dpos.priv = (*ecdsa.PrivateKey)(priv)
 	if dpos.coinbase != address {
-		return ErrAddressNotEqual
+		log.CLog().WithFields(logrus.Fields{
+			"Address": common.Address2Hex(dpos.coinbase),
+		}).Panic("Privatekey is different")
 	}
-	return nil
 }
 
 func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
@@ -64,20 +64,21 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	//Fix: when ticker is 1 second, server mining...
 	turn := (now % 9) / 3
 	block := bc.NewBlockFromParent(bc.Tail)
-	parent, _ := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
-
-	if (parent != nil) && (now-parent.Header.Time <= (3 * 3)) {
-		log.CLog().WithFields(logrus.Fields{
-			"address": common.Bytes2Hex(dpos.coinbase[:]),
-		}).Debug("not my turn(Interval is short)")
-		return nil
-	}
 	block.Header.Time = now
 	minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
 		log.CLog().Warning(err)
 	}
 	if minerGroup[turn] == dpos.coinbase {
+		parent, _ := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
+
+		if (parent != nil) && (now-parent.Header.Time < 3) { //(3 * 3)
+			log.CLog().WithFields(logrus.Fields{
+				"address": common.Address2Hex(dpos.coinbase),
+			}).Warning("Interval is short")
+			return nil
+		}
+
 		log.CLog().WithFields(logrus.Fields{
 			"address": common.Bytes2Hex(dpos.coinbase[:]),
 		}).Debug("my turn")
