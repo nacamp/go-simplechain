@@ -219,17 +219,32 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if block.Header.Height == uint64(0) {
 		return nil
 	}
-	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
-	block.AccountState, _ = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
-	block.TransactionState, _ = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
-	block.VoterState, _ = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
-	block.MinerState, _ = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
+	parentBlock, err := bc.GetBlockByHash(block.Header.ParentHash)
+	if err != nil {
+		return err
+	}
+	block.AccountState, err = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.TransactionState, err = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.VoterState, err = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
+	if err != nil {
+		return err
+	}
 
 	bc.RewardForCoinbase(block)
 
-	err := bc.PutMinerState(block)
+	err = bc.PutMinerState(block)
 	if err != nil {
-		log.CLog().Warning(err)
+		// log.CLog().Warning(err)
 		return err
 	}
 	//TODO: check double spending ?
@@ -314,35 +329,28 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 	return nil
 }
 
-func (bc *BlockChain) PutBlock(block *Block) {
+func (bc *BlockChain) PutBlock(block *Block) error {
 	//1. verify transaction
 	err := block.VerifyTransacion()
 	if err != nil {
-		log.CLog().Warning("Error VerifyTransacion")
-		return
+		return err
 	}
 
 	//2. save status and verify hash
 	err = bc.PutState(block)
 	if err != nil {
-		log.CLog().Warning("Error PutState")
-		return
+		return err
 	}
 
 	//4. verify block.hash
 	if block.Hash() != block.CalcHash() {
-		log.CLog().Info("block.Hash() != block.CalcHash()")
-		return
+		return err
 	}
 
 	//5.signer check
 	v, _ := block.VerifySign()
 	if !v || err != nil {
-		log.CLog().WithFields(logrus.Fields{
-			"Height": block.Header.Height,
-			"Err":    err,
-		}).Warning("Signature is invalid")
-		return
+		return errors.New("Signature is invalid")
 	}
 
 	bc.putBlockToStorage(block)
@@ -360,6 +368,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 
 	//remove tx
 	bc.RemoveTxInPool(block)
+	return nil
 }
 
 func (bc *BlockChain) AddTailToGroup(block *Block) {
@@ -433,20 +442,32 @@ func encodeBlockHeight(number uint64) []byte {
 	return enc
 }
 
-func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
+func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err error) {
 	h := &Header{
 		ParentHash: parentBlock.Hash(),
 		Height:     parentBlock.Header.Height + 1,
 	}
-	block := &Block{
+	block = &Block{
 		Header: h,
 	}
 	//state
-	block.VoterState, _ = parentBlock.VoterState.Clone()
-	block.MinerState, _ = parentBlock.MinerState.Clone()
-	block.AccountState, _ = parentBlock.AccountState.Clone()
-	block.TransactionState, _ = parentBlock.TransactionState.Clone()
-	return block
+	block.VoterState, err = parentBlock.VoterState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	block.MinerState, err = parentBlock.MinerState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	block.AccountState, err = parentBlock.AccountState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	block.TransactionState, err = parentBlock.TransactionState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
 }
 
 // func (bc *BlockChain) Start() {
@@ -715,7 +736,11 @@ func (bc *BlockChain) RemoveTxInPool(block *Block) {
 	}
 }
 
-func (bc *BlockChain) BroadcastNewTXMessage(tx *Transaction) {
-	message, _ := net.NewRLPMessage(net.MSG_NEW_TX, tx)
+func (bc *BlockChain) BroadcastNewTXMessage(tx *Transaction) error {
+	message, err := net.NewRLPMessage(net.MSG_NEW_TX, tx)
+	if err != nil {
+		return err
+	}
 	bc.node.BroadcastMessage(&message)
+	return nil
 }
