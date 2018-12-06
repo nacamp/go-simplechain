@@ -62,11 +62,32 @@ func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
 func (bc *BlockChain) Setup(voters []*Account) {
 	err := bc.LoadBlockChainFromStorage()
 	if err != nil {
-		bc.MakeGenesisBlock(voters)
-		bc.PutBlockByCoinbase(bc.GenesisBlock)
+		if err == storage.ErrKeyNotFound {
+			err = bc.MakeGenesisBlock(voters)
+			if err != nil {
+				log.CLog().WithFields(logrus.Fields{
+					"Error": err,
+				}).Panic("MakeGenesisBlock")
+			}
+			bc.PutBlockByCoinbase(bc.GenesisBlock)
+		} else {
+			log.CLog().WithFields(logrus.Fields{
+				"Error": err,
+			}).Panic("")
+		}
 	} else {
-		bc.LoadLibFromStorage()
-		bc.LoadTailFromStorage()
+		err = bc.LoadLibFromStorage()
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Error": err,
+			}).Panic("LoadLibFromStorage")
+		}
+		err = bc.LoadTailFromStorage()
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Error": err,
+			}).Panic("LoadTailFromStorage")
+		}
 	}
 	bc.TxPool = NewTransactionPool()
 
@@ -78,16 +99,28 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 		return err
 	}
 	//status
-	block.AccountState, _ = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
-	block.TransactionState, _ = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
-	block.VoterState, _ = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.TransactionState, err = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	if err != nil {
+		return err
+	}
 	bc.GenesisBlock = block
 	return nil
 
 }
 
-func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
+func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	common.Hex2Bytes(GenesisCoinbaseAddress)
 	header := &Header{
 		Coinbase: common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress)),
@@ -99,7 +132,10 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	}
 
 	//AccountState
-	accs, _ := NewAccountState(bc.Storage)
+	accs, err := NewAccountState(bc.Storage)
+	if err != nil {
+		return err
+	}
 	account := Account{}
 	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
 	account.AddBalance(new(big.Int).SetUint64(100)) //FIXME: amount 0
@@ -108,13 +144,19 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	header.AccountHash = accs.RootHash()
 
 	//TransactionState
-	txs, _ := NewTransactionState(bc.Storage)
+	txs, err := NewTransactionState(bc.Storage)
+	if err != nil {
+		return err
+	}
 	txs.PutTransaction(&Transaction{})
 	block.TransactionState = txs
 	header.TransactionHash = txs.RootHash()
 
 	//VoterState
-	vs, _ := NewAccountState(bc.Storage)
+	vs, err := NewAccountState(bc.Storage)
+	if err != nil {
+		return err
+	}
 	for _, account := range voters {
 		vs.PutAccount(account)
 	}
@@ -123,9 +165,15 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	bc.GenesisBlock = block
 
 	// MinerState
-	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
+	ms, err := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
+	if err != nil {
+		return err
+	}
 	bc.GenesisBlock.MinerState = ms
-	minerGroup, _, _ := ms.GetMinerGroup(bc, block)
+	minerGroup, _, err := ms.GetMinerGroup(bc, block)
+	if err != nil {
+		return err
+	}
 	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
 
 	bc.GenesisBlock = block
@@ -135,6 +183,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 
 	bc.SetLib(bc.GenesisBlock)
 	bc.SetTail(bc.GenesisBlock)
+	return nil
 }
 
 func (bc *BlockChain) SetNode(node net.INode) {
