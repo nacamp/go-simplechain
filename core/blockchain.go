@@ -194,14 +194,20 @@ func (bc *BlockChain) SetNode(node net.INode) {
 	node.RegisterSubscriber(net.MSG_NEW_TX, bc)
 }
 
-func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
+func (bc *BlockChain) GetBlockByHash(hash common.Hash) *Block {
 	encodedBytes, err := bc.Storage.Get(hash[:])
 	if err != nil {
-		return nil, err
+		if err == storage.ErrKeyNotFound {
+			return nil
+		}
+		log.CLog().WithFields(logrus.Fields{
+			"Hash": common.Hash2Hex(hash),
+		}).Panic("")
+		return nil
 	}
 	block := Block{}
 	rlp.NewStream(bytes.NewReader(encodedBytes), 0).Decode(&block)
-	return &block, nil
+	return &block
 }
 
 func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
@@ -210,7 +216,7 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
 	if err != nil {
 		return nil, err
 	}
-	return bc.GetBlockByHash(common.BytesToHash(hash))
+	return bc.GetBlockByHash(common.BytesToHash(hash)), nil
 }
 
 func (bc *BlockChain) PutState(block *Block) error {
@@ -219,10 +225,8 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if block.Header.Height == uint64(0) {
 		return nil
 	}
-	parentBlock, err := bc.GetBlockByHash(block.Header.ParentHash)
-	if err != nil {
-		return err
-	}
+	var err error
+	parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
 	block.AccountState, err = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	if err != nil {
 		return err
@@ -389,18 +393,14 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.AddTailToGroup(block)
 }
 
-func (bc *BlockChain) HasParentInBlockChain(block *Block) (bool, error) {
+func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
 	if block.Header.ParentHash[:] != nil {
-		_, err := bc.GetBlockByHash(block.Header.ParentHash)
-		if err == nil {
-			return true, nil
+		b := bc.GetBlockByHash(block.Header.ParentHash)
+		if b != nil {
+			return true
 		}
-		if err != nil && err == storage.ErrKeyNotFound {
-			return false, nil
-		}
-		return false, err
 	}
-	return false, nil
+	return false
 }
 
 func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
@@ -411,31 +411,32 @@ func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
 	}
 }
 
-func (bc *BlockChain) PutBlockIfParentExist(block *Block) error {
-	hasParent, err := bc.HasParentInBlockChain(block)
-	if err != nil {
-		return err
-	}
-	if hasParent {
-		bc.PutBlock(block)
-		bc.putBlockIfParentExistInFutureBlocks(block)
-	} else {
-		err = bc.AddFutureBlock(block)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
-// 	if bc.HasParentInBlockChain(block) {
+// func (bc *BlockChain) PutBlockIfParentExist(block *Block) error {
+// 	hasParent = bc.HasParentInBlockChain(block)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if hasParent {
 // 		bc.PutBlock(block)
 // 		bc.putBlockIfParentExistInFutureBlocks(block)
 // 	} else {
-// 		bc.AddFutureBlock(block)
+// 		err = bc.AddFutureBlock(block)
+// 		if err != nil {
+// 			return err
+// 		}
 // 	}
+// 	return nil
 // }
+
+func (bc *BlockChain) PutBlockIfParentExist(block *Block) error {
+	if bc.HasParentInBlockChain(block) {
+		bc.PutBlock(block)
+		bc.putBlockIfParentExistInFutureBlocks(block)
+	} else {
+		bc.AddFutureBlock(block)
+	}
+	return nil
+}
 
 func (bc *BlockChain) AddFutureBlock(block *Block) error {
 	log.CLog().WithFields(logrus.Fields{
@@ -606,13 +607,13 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 	TailTxs := bc.Tail.TransactionState
 	bc.tailGroup.Range(func(key, value interface{}) bool {
 		tail := value.(*Block)
-		var err error
+		// var err error
 		if bc.Lib.Header.Height >= tail.Header.Height {
 			validBlock, _ := bc.GetBlockByHeight(tail.Header.Height)
 			for validBlock.Hash() != tail.Hash() {
 				removableBlock := tail
-				validBlock, _ = bc.GetBlockByHash(validBlock.Header.ParentHash)
-				tail, err = bc.GetBlockByHash(tail.Header.ParentHash)
+				validBlock = bc.GetBlockByHash(validBlock.Header.ParentHash)
+				tail = bc.GetBlockByHash(tail.Header.ParentHash)
 				for _, tx := range removableBlock.Transactions {
 					_tx := TailTxs.GetTransaction(tx.Hash)
 					if _tx == nil {
@@ -621,7 +622,10 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 				}
 				bc.Storage.Del(common.HashToBytes(removableBlock.Hash()))
 				//already removed during for loop
-				if err != nil {
+				// if err != nil {
+				// 	break
+				// }
+				if tail == nil {
 					break
 				}
 			}
@@ -640,7 +644,7 @@ func (bc *BlockChain) RebuildBlockHeight() error {
 		if block.Hash() == bc.Lib.Hash() {
 			break
 		}
-		block, err = bc.GetBlockByHash(block.Header.ParentHash)
+		block = bc.GetBlockByHash(block.Header.ParentHash)
 		if err != nil {
 			return err
 		}
@@ -683,7 +687,7 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 	if err != nil {
 		return err
 	}
-	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
+	block := bc.GetBlockByHash(common.BytesToHash(hash))
 	if err != nil {
 		return err
 	}
@@ -727,7 +731,7 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 	if err != nil {
 		return err
 	}
-	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
+	block := bc.GetBlockByHash(common.BytesToHash(hash))
 	if err != nil {
 		return err
 	}

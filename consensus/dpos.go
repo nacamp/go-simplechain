@@ -73,7 +73,7 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		log.CLog().Warning(err)
 	}
 	if minerGroup[turn] == dpos.coinbase {
-		parent, _ := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
+		parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
 
 		if (parent != nil) && (now-parent.Header.Time < 3) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
@@ -186,7 +186,7 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 			miners[block.Header.Coinbase] = true
 			turn = 0
 		}
-		block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+		block = bc.GetBlockByHash(block.Header.ParentHash)
 		turn++
 	}
 	return
