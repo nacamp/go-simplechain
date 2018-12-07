@@ -20,12 +20,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-/*
-First time
-search the height or the hash
-add block
-ignore block validity
-*/
 const (
 	libKey          = "lib"
 	tailKey         = "tail"
@@ -226,25 +220,6 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) *Block {
 	return bc.GetBlockByHash(common.BytesToHash(hash))
 }
 
-// func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
-
-// 	hash, err := bc.Storage.Get(encodeBlockHeight(height))
-// 	if err != nil {
-// 		if err == storage.ErrKeyNotFound {
-// 			return nil, nil
-// 		}
-// 		log.CLog().WithFields(logrus.Fields{
-// 			"Height": height,
-// 		}).Panic("")
-// 		return nil, nil
-// 	}
-
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return bc.GetBlockByHash(common.BytesToHash(hash)), nil
-// }
-
 func (bc *BlockChain) PutState(block *Block) error {
 	//the state save here except genesis block
 	//FIXME: verify genesis block
@@ -429,39 +404,25 @@ func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
 	return false
 }
 
-func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
+func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) error {
 	if bc.futureBlocks.Contains(block.Hash()) {
 		block, _ := bc.futureBlocks.Get(block.Hash())
-		bc.PutBlock(block.(*Block))
-		bc.putBlockIfParentExistInFutureBlocks(block.(*Block))
+		if err := bc.PutBlock(block.(*Block)); err != nil {
+			return err
+		}
+		return bc.putBlockIfParentExistInFutureBlocks(block.(*Block))
 	}
+	return nil
 }
-
-// func (bc *BlockChain) PutBlockIfParentExist(block *Block) error {
-// 	hasParent = bc.HasParentInBlockChain(block)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if hasParent {
-// 		bc.PutBlock(block)
-// 		bc.putBlockIfParentExistInFutureBlocks(block)
-// 	} else {
-// 		err = bc.AddFutureBlock(block)
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return nil
-// }
 
 func (bc *BlockChain) PutBlockIfParentExist(block *Block) error {
 	if bc.HasParentInBlockChain(block) {
-		bc.PutBlock(block)
-		bc.putBlockIfParentExistInFutureBlocks(block)
-	} else {
-		bc.AddFutureBlock(block)
+		if err := bc.PutBlock(block); err != nil {
+			return err
+		}
+		return bc.putBlockIfParentExistInFutureBlocks(block)
 	}
-	return nil
+	return bc.AddFutureBlock(block)
 }
 
 func (bc *BlockChain) AddFutureBlock(block *Block) error {
@@ -532,16 +493,13 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 				"Code": message.Code,
 			}).Warning("DecodeBytes")
 		}
-		// log.CLog().WithFields(logrus.Fields{
-		// 	"height": block.Header.Height,
-		// }).Debug("new block arrrived")
-
-		// if block.Header.Height == 1 {
-		// 	log.CLog().WithFields(logrus.Fields{
-		// 		"height": block.Header.Height,
-		// 	}).Debug("new block arrrived")
-		// }
-		bc.PutBlockIfParentExist(baseBlock.NewBlock())
+		err = bc.PutBlockIfParentExist(baseBlock.NewBlock())
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Msg":  err,
+				"Code": message.Code,
+			}).Warning("PutBlockIfParentExist")
+		}
 		bc.Consensus.UpdateLIB(bc)
 		bc.RemoveOrphanBlock()
 	} else if message.Code == net.MSG_MISSING_BLOCK {
