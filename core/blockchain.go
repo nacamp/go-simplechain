@@ -94,10 +94,11 @@ func (bc *BlockChain) Setup(voters []*Account) {
 }
 
 func (bc *BlockChain) LoadBlockChainFromStorage() error {
-	block, err := bc.GetBlockByHeight(0)
-	if err != nil {
-		return err
+	block := bc.GetBlockByHeight(0)
+	if block == nil {
+		return storage.ErrKeyNotFound
 	}
+	var err error
 	//status
 	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
 	if err != nil {
@@ -210,14 +211,39 @@ func (bc *BlockChain) GetBlockByHash(hash common.Hash) *Block {
 	return &block
 }
 
-func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
+func (bc *BlockChain) GetBlockByHeight(height uint64) *Block {
 
 	hash, err := bc.Storage.Get(encodeBlockHeight(height))
 	if err != nil {
-		return nil, err
+		if err == storage.ErrKeyNotFound {
+			return nil
+		}
+		log.CLog().WithFields(logrus.Fields{
+			"Height": height,
+		}).Panic("")
+		return nil
 	}
-	return bc.GetBlockByHash(common.BytesToHash(hash)), nil
+	return bc.GetBlockByHash(common.BytesToHash(hash))
 }
+
+// func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
+
+// 	hash, err := bc.Storage.Get(encodeBlockHeight(height))
+// 	if err != nil {
+// 		if err == storage.ErrKeyNotFound {
+// 			return nil, nil
+// 		}
+// 		log.CLog().WithFields(logrus.Fields{
+// 			"Height": height,
+// 		}).Panic("")
+// 		return nil, nil
+// 	}
+
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return bc.GetBlockByHash(common.BytesToHash(hash)), nil
+// }
 
 func (bc *BlockChain) PutState(block *Block) error {
 	//the state save here except genesis block
@@ -584,11 +610,11 @@ func (bc *BlockChain) RequestMissingBlock() error {
 	return nil
 }
 
-func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) error {
-	block, err := bc.GetBlockByHeight(height)
-	if err != nil {
-		return err
-	}
+func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
+	block := bc.GetBlockByHeight(height)
+	// if err != nil {
+	// 	return err
+	// }
 	if block != nil {
 		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block.BaseBlock)
 		bc.node.SendMessage(&message, peerID)
@@ -600,7 +626,7 @@ func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) error {
 			"Height": height,
 		}).Info("We don't have missing block")
 	}
-	return nil
+	// return nil
 }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
@@ -609,7 +635,10 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 		tail := value.(*Block)
 		// var err error
 		if bc.Lib.Header.Height >= tail.Header.Height {
-			validBlock, _ := bc.GetBlockByHeight(tail.Header.Height)
+			validBlock := bc.GetBlockByHeight(tail.Header.Height)
+			if validBlock == nil {
+				return true
+			}
 			for validBlock.Hash() != tail.Hash() {
 				removableBlock := tail
 				validBlock = bc.GetBlockByHash(validBlock.Header.ParentHash)
