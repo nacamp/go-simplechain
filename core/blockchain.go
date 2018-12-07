@@ -335,27 +335,27 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 }
 
 func (bc *BlockChain) PutBlock(block *Block) error {
-	//1. verify transaction
-	err := block.VerifyTransacion()
+	//1. verify block.hash
+	if block.Hash() != block.CalcHash() {
+		return errors.New("block.Hash() != block.CalcHash()")
+	}
+
+	//2.signer check
+	v, err := block.VerifySign()
+	if !v || err != nil {
+		return errors.New("Signature is invalid")
+	}
+
+	//3. verify transaction
+	err = block.VerifyTransacion()
 	if err != nil {
 		return err
 	}
 
-	//2. save status and verify hash
+	//4. save status and verify hash
 	err = bc.PutState(block)
 	if err != nil {
 		return err
-	}
-
-	//4. verify block.hash
-	if block.Hash() != block.CalcHash() {
-		return err
-	}
-
-	//5.signer check
-	v, _ := block.VerifySign()
-	if !v || err != nil {
-		return errors.New("Signature is invalid")
 	}
 
 	bc.putBlockToStorage(block)
