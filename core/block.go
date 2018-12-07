@@ -35,8 +35,7 @@ type BaseBlock struct {
 }
 
 type Block struct {
-	Header       *Header
-	Transactions []*Transaction
+	BaseBlock
 
 	AccountState     *AccountState
 	TransactionState *TransactionState
@@ -44,17 +43,9 @@ type Block struct {
 	VoterState       *AccountState
 }
 
-func (b *Block) OnlyBaseBlock() *BaseBlock {
-	return &BaseBlock{
-		Header:       b.Header,
-		Transactions: b.Transactions,
-	}
-}
-
 func (b *BaseBlock) NewBlock() *Block {
 	return &Block{
-		Header:       b.Header,
-		Transactions: b.Transactions,
+		BaseBlock: *b,
 	}
 }
 

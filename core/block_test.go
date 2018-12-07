@@ -23,7 +23,7 @@ func TestHash(t *testing.T) {
 
 func TestRlp(t *testing.T) {
 	h := core.Header{ParentHash: common.Hash{0x01, 0x02, 0x03}, Time: 1540854071} //big.NewInt(1540854071)
-	block := core.Block{Header: &h}
+	block := core.Block{BaseBlock: core.BaseBlock{Header: &h}}
 	// fmt.Printf("%#v\n", block)
 	encodedBytes, _ := rlp.EncodeToBytes(block)
 	// fmt.Printf("Encoded value value: %#v\n", encodedBytes)
@@ -37,7 +37,7 @@ func TestRlp(t *testing.T) {
 func TestSignAndVerify(t *testing.T) {
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(tests.Keystore[tests.Addr0]))
 	h := core.Header{ParentHash: common.Hash{0x01, 0x02, 0x03}, Time: 1540854071} //big.NewInt(1540854071)
-	block := core.Block{Header: &h}
+	block := core.Block{BaseBlock: core.BaseBlock{Header: &h}}
 	block.Sign((*ecdsa.PrivateKey)(priv))
 	b, err := block.VerifySign()
 	assert.True(t, b, "")

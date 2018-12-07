@@ -22,7 +22,7 @@ import "errors"
 
 // const
 var (
-	ErrKeyNotFound = errors.New("not found")
+	ErrKeyNotFound = errors.New("Not found")
 )
 
 // Storage interface of Storage.

@@ -128,7 +128,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 		Time:     0,
 	}
 	block := &Block{
-		Header: header,
+		BaseBlock: BaseBlock{Header: header},
 	}
 
 	//AccountState
@@ -469,7 +469,7 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 		Height:     parentBlock.Header.Height + 1,
 	}
 	block = &Block{
-		Header: h,
+		BaseBlock: BaseBlock{Header: h},
 	}
 	//state
 	block.VoterState, err = parentBlock.VoterState.Clone()
@@ -589,7 +589,7 @@ func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) error {
 		return err
 	}
 	if block != nil {
-		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block.OnlyBaseBlock())
+		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block.BaseBlock)
 		bc.node.SendMessage(&message, peerID)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,

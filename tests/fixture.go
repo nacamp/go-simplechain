@@ -65,7 +65,7 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 		}
 		h.Time++
 	}
-	block := &core.Block{Header: h}
+	block := &core.Block{BaseBlock: core.BaseBlock{Header: h}}
 
 	//voter
 	block.VoterState, _ = parentBlock.VoterState.Clone()

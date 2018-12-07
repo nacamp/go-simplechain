@@ -150,7 +150,7 @@ func (dpos *Dpos) loop() {
 				dpos.bc.PutBlockByCoinbase(block)
 				dpos.bc.Consensus.UpdateLIB(dpos.bc)
 				dpos.bc.RemoveOrphanBlock()
-				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.OnlyBaseBlock())
+				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.BaseBlock)
 				dpos.node.BroadcastMessage(&message)
 			}
 		}

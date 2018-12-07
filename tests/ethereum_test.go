@@ -12,6 +12,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type T1 struct {
+	T1_Text string
+}
+
+type T2 struct {
+	T2_Text string
+	T1
+}
+
+func TestMixtureType(t *testing.T) {
+	tt1 := T2{
+		T2_Text: "Test",
+		T1:      T1{T1_Text: "Test"},
+	}
+	encodedBytes, err := rlp.EncodeToBytes(tt1)
+	if err != nil {
+		fmt.Printf("%#v\n", err)
+	}
+
+	tt2 := &T2{}
+	rlp.Decode(bytes.NewReader(encodedBytes), &tt2)
+	assert.Equal(t, tt1.T2_Text, tt2.T2_Text, "")
+}
+
 func TestRlpMapSlice(t *testing.T) {
 	m := make(map[string]string)
 	m["key0"] = "val0"
