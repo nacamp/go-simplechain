@@ -407,10 +407,12 @@ func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
 func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) error {
 	if bc.futureBlocks.Contains(block.Hash()) {
 		block, _ := bc.futureBlocks.Get(block.Hash())
-		if err := bc.PutBlock(block.(*Block)); err != nil {
+		futureBlock := block.(*Block)
+		if err := bc.PutBlock(futureBlock); err != nil {
+			bc.futureBlocks.Remove(futureBlock.Hash())
 			return err
 		}
-		return bc.putBlockIfParentExistInFutureBlocks(block.(*Block))
+		return bc.putBlockIfParentExistInFutureBlocks(futureBlock)
 	}
 	return nil
 }
