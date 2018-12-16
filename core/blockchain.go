@@ -20,12 +20,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-/*
-First time
-search the height or the hash
-add block
-ignore block validity
-*/
 const (
 	libKey          = "lib"
 	tailKey         = "tail"
@@ -62,32 +56,66 @@ func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
 func (bc *BlockChain) Setup(voters []*Account) {
 	err := bc.LoadBlockChainFromStorage()
 	if err != nil {
-		bc.MakeGenesisBlock(voters)
-		bc.PutBlockByCoinbase(bc.GenesisBlock)
+		if err == storage.ErrKeyNotFound {
+			err = bc.MakeGenesisBlock(voters)
+			if err != nil {
+				log.CLog().WithFields(logrus.Fields{
+					"Error": err,
+				}).Panic("MakeGenesisBlock")
+			}
+			bc.PutBlockByCoinbase(bc.GenesisBlock)
+		} else {
+			log.CLog().WithFields(logrus.Fields{
+				"Error": err,
+			}).Panic("")
+		}
 	} else {
-		bc.LoadLibFromStorage()
-		bc.LoadTailFromStorage()
+		err = bc.LoadLibFromStorage()
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Error": err,
+			}).Panic("LoadLibFromStorage")
+		}
+		err = bc.LoadTailFromStorage()
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Error": err,
+			}).Panic("LoadTailFromStorage")
+		}
 	}
 	bc.TxPool = NewTransactionPool()
 
 }
 
 func (bc *BlockChain) LoadBlockChainFromStorage() error {
-	block, err := bc.GetBlockByHeight(0)
+	block := bc.GetBlockByHeight(0)
+	if block == nil {
+		return storage.ErrKeyNotFound
+	}
+	var err error
+	//status
+	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
 	if err != nil {
 		return err
 	}
-	//status
-	block.AccountState, _ = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
-	block.TransactionState, _ = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
-	block.VoterState, _ = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	block.TransactionState, err = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	if err != nil {
+		return err
+	}
 	bc.GenesisBlock = block
 	return nil
 
 }
 
-func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
+func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	common.Hex2Bytes(GenesisCoinbaseAddress)
 	header := &Header{
 		Coinbase: common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress)),
@@ -95,11 +123,14 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 		Time:     0,
 	}
 	block := &Block{
-		Header: header,
+		BaseBlock: BaseBlock{Header: header},
 	}
 
 	//AccountState
-	accs, _ := NewAccountState(bc.Storage)
+	accs, err := NewAccountState(bc.Storage)
+	if err != nil {
+		return err
+	}
 	account := Account{}
 	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
 	account.AddBalance(new(big.Int).SetUint64(100)) //FIXME: amount 0
@@ -108,13 +139,19 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	header.AccountHash = accs.RootHash()
 
 	//TransactionState
-	txs, _ := NewTransactionState(bc.Storage)
+	txs, err := NewTransactionState(bc.Storage)
+	if err != nil {
+		return err
+	}
 	txs.PutTransaction(&Transaction{})
 	block.TransactionState = txs
 	header.TransactionHash = txs.RootHash()
 
 	//VoterState
-	vs, _ := NewAccountState(bc.Storage)
+	vs, err := NewAccountState(bc.Storage)
+	if err != nil {
+		return err
+	}
 	for _, account := range voters {
 		vs.PutAccount(account)
 	}
@@ -123,9 +160,15 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	bc.GenesisBlock = block
 
 	// MinerState
-	ms, _ := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
+	ms, err := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
+	if err != nil {
+		return err
+	}
 	bc.GenesisBlock.MinerState = ms
-	minerGroup, _, _ := ms.GetMinerGroup(bc, block)
+	minerGroup, _, err := ms.GetMinerGroup(bc, block)
+	if err != nil {
+		return err
+	}
 	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
 
 	bc.GenesisBlock = block
@@ -135,6 +178,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 
 	bc.SetLib(bc.GenesisBlock)
 	bc.SetTail(bc.GenesisBlock)
+	return nil
 }
 
 func (bc *BlockChain) SetNode(node net.INode) {
@@ -145,21 +189,33 @@ func (bc *BlockChain) SetNode(node net.INode) {
 	node.RegisterSubscriber(net.MSG_NEW_TX, bc)
 }
 
-func (bc *BlockChain) GetBlockByHash(hash common.Hash) (*Block, error) {
+func (bc *BlockChain) GetBlockByHash(hash common.Hash) *Block {
 	encodedBytes, err := bc.Storage.Get(hash[:])
 	if err != nil {
-		return nil, err
+		if err == storage.ErrKeyNotFound {
+			return nil
+		}
+		log.CLog().WithFields(logrus.Fields{
+			"Hash": common.Hash2Hex(hash),
+		}).Panic("")
+		return nil
 	}
 	block := Block{}
 	rlp.NewStream(bytes.NewReader(encodedBytes), 0).Decode(&block)
-	return &block, nil
+	return &block
 }
 
-func (bc *BlockChain) GetBlockByHeight(height uint64) (*Block, error) {
+func (bc *BlockChain) GetBlockByHeight(height uint64) *Block {
 
 	hash, err := bc.Storage.Get(encodeBlockHeight(height))
 	if err != nil {
-		return nil, err
+		if err == storage.ErrKeyNotFound {
+			return nil
+		}
+		log.CLog().WithFields(logrus.Fields{
+			"Height": height,
+		}).Panic("")
+		return nil
 	}
 	return bc.GetBlockByHash(common.BytesToHash(hash))
 }
@@ -170,17 +226,30 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if block.Header.Height == uint64(0) {
 		return nil
 	}
-	parentBlock, _ := bc.GetBlockByHash(block.Header.ParentHash)
-	block.AccountState, _ = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
-	block.TransactionState, _ = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
-	block.VoterState, _ = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
-	block.MinerState, _ = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
+	var err error
+	parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
+	block.AccountState, err = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.TransactionState, err = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.VoterState, err = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
+	if err != nil {
+		return err
+	}
 
 	bc.RewardForCoinbase(block)
 
-	err := bc.PutMinerState(block)
+	err = bc.PutMinerState(block)
 	if err != nil {
-		log.CLog().Warning(err)
+		// log.CLog().Warning(err)
 		return err
 	}
 	//TODO: check double spending ?
@@ -265,35 +334,28 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 	return nil
 }
 
-func (bc *BlockChain) PutBlock(block *Block) {
-	//1. verify transaction
-	err := block.VerifyTransacion()
-	if err != nil {
-		log.CLog().Warning("Error VerifyTransacion")
-		return
+func (bc *BlockChain) PutBlock(block *Block) error {
+	//1. verify block.hash
+	if block.Hash() != block.CalcHash() {
+		return errors.New("block.Hash() != block.CalcHash()")
 	}
 
-	//2. save status and verify hash
+	//2.signer check
+	v, err := block.VerifySign()
+	if !v || err != nil {
+		return errors.New("Signature is invalid")
+	}
+
+	//3. verify transaction
+	err = block.VerifyTransacion()
+	if err != nil {
+		return err
+	}
+
+	//4. save status and verify hash
 	err = bc.PutState(block)
 	if err != nil {
-		log.CLog().Warning("Error PutState")
-		return
-	}
-
-	//4. verify block.hash
-	if block.Hash() != block.CalcHash() {
-		log.CLog().Info("block.Hash() != block.CalcHash()")
-		return
-	}
-
-	//5.signer check
-	v, _ := block.VerifySign()
-	if !v || err != nil {
-		log.CLog().WithFields(logrus.Fields{
-			"Height": block.Header.Height,
-			"Err":    err,
-		}).Warning("Signature is invalid")
-		return
+		return err
 	}
 
 	bc.putBlockToStorage(block)
@@ -311,6 +373,7 @@ func (bc *BlockChain) PutBlock(block *Block) {
 
 	//remove tx
 	bc.RemoveTxInPool(block)
+	return nil
 }
 
 func (bc *BlockChain) AddTailToGroup(block *Block) {
@@ -333,7 +396,7 @@ func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 
 func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
 	if block.Header.ParentHash[:] != nil {
-		b, _ := bc.GetBlockByHash(block.Header.ParentHash)
+		b := bc.GetBlockByHash(block.Header.ParentHash)
 		if b != nil {
 			return true
 		}
@@ -341,24 +404,30 @@ func (bc *BlockChain) HasParentInBlockChain(block *Block) bool {
 	return false
 }
 
-func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) {
+func (bc *BlockChain) putBlockIfParentExistInFutureBlocks(block *Block) error {
 	if bc.futureBlocks.Contains(block.Hash()) {
 		block, _ := bc.futureBlocks.Get(block.Hash())
-		bc.PutBlock(block.(*Block))
-		bc.putBlockIfParentExistInFutureBlocks(block.(*Block))
+		futureBlock := block.(*Block)
+		if err := bc.PutBlock(futureBlock); err != nil {
+			bc.futureBlocks.Remove(futureBlock.Hash())
+			return err
+		}
+		return bc.putBlockIfParentExistInFutureBlocks(futureBlock)
 	}
+	return nil
 }
 
-func (bc *BlockChain) PutBlockIfParentExist(block *Block) {
+func (bc *BlockChain) PutBlockIfParentExist(block *Block) error {
 	if bc.HasParentInBlockChain(block) {
-		bc.PutBlock(block)
-		bc.putBlockIfParentExistInFutureBlocks(block)
-	} else {
-		bc.AddFutureBlock(block)
+		if err := bc.PutBlock(block); err != nil {
+			return err
+		}
+		return bc.putBlockIfParentExistInFutureBlocks(block)
 	}
+	return bc.AddFutureBlock(block)
 }
 
-func (bc *BlockChain) AddFutureBlock(block *Block) {
+func (bc *BlockChain) AddFutureBlock(block *Block) error {
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,
 		"hash":   common.Hash2Hex(block.Hash()),
@@ -366,13 +435,16 @@ func (bc *BlockChain) AddFutureBlock(block *Block) {
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
 	//FIXME: temporarily, must send hash
 	if block.Header.Height > uint64(1) {
-		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
+		msg, err := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
+		if err != nil {
+			return err
+		}
 		bc.node.SendMessageToRandomNode(&msg)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": block.Header.Height - uint64(1),
 		}).Info("Request missing block")
 	}
-
+	return nil
 }
 
 func encodeBlockHeight(number uint64) []byte {
@@ -381,36 +453,32 @@ func encodeBlockHeight(number uint64) []byte {
 	return enc
 }
 
-func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
+func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err error) {
 	h := &Header{
 		ParentHash: parentBlock.Hash(),
-		//Coinbase        common.Address
-		Height: parentBlock.Header.Height + 1,
-		// Time              uint64
-		// Hash              common.Hash
-		// AccountHash       common.Hash
-		// TransactionHash   common.Hash
-		// MinerHash         common.Hash
-		// VoterHash         common.Hash
-		// SnapshotVoterTime: parentBlock.Header.SnapshotVoterTime,
+		Height:     parentBlock.Header.Height + 1,
 	}
-	// h.ParentHash = parentBlock.Hash()
-	// h.Height = parentBlock.Header.Height + 1
-	// h.Time = time
-	block := &Block{
-		Header: h,
-		// Transactions []*Transaction
-		// AccountState     *AccountState
-		// TransactionState *TransactionState
-		// MinerState       MinerState
-		// VoterState       *AccountState
+	block = &Block{
+		BaseBlock: BaseBlock{Header: h},
 	}
 	//state
-	block.VoterState, _ = parentBlock.VoterState.Clone()
-	block.MinerState, _ = parentBlock.MinerState.Clone()
-	block.AccountState, _ = parentBlock.AccountState.Clone()
-	block.TransactionState, _ = parentBlock.TransactionState.Clone()
-	return block
+	block.VoterState, err = parentBlock.VoterState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	block.MinerState, err = parentBlock.MinerState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	block.AccountState, err = parentBlock.AccountState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	block.TransactionState, err = parentBlock.TransactionState.Clone()
+	if err != nil {
+		return nil, err
+	}
+	return block, nil
 }
 
 // func (bc *BlockChain) Start() {
@@ -419,30 +487,45 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) *Block {
 
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
 	if message.Code == net.MSG_NEW_BLOCK || message.Code == net.MSG_MISSING_BLOCK_ACK {
-		block := &Block{}
-		rlp.DecodeBytes(message.Payload, block)
-		log.CLog().WithFields(logrus.Fields{
-			"height": block.Header.Height,
-		}).Debug("new block arrrived")
-
-		if block.Header.Height == 1 {
+		baseBlock := &BaseBlock{}
+		err := rlp.DecodeBytes(message.Payload, baseBlock)
+		if err != nil {
 			log.CLog().WithFields(logrus.Fields{
-				"height": block.Header.Height,
-			}).Debug("new block arrrived")
+				"Msg":  err,
+				"Code": message.Code,
+			}).Warning("DecodeBytes")
 		}
-		bc.PutBlockIfParentExist(block)
+		err = bc.PutBlockIfParentExist(baseBlock.NewBlock())
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Msg":  err,
+				"Code": message.Code,
+			}).Warning("PutBlockIfParentExist")
+		}
 		bc.Consensus.UpdateLIB(bc)
 		bc.RemoveOrphanBlock()
 	} else if message.Code == net.MSG_MISSING_BLOCK {
 		height := uint64(0)
-		rlp.DecodeBytes(message.Payload, &height)
+		err := rlp.DecodeBytes(message.Payload, &height)
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Msg":  err,
+				"Code": message.Code,
+			}).Warning("DecodeBytes")
+		}
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
 		}).Debug("missing block request arrived")
 		bc.SendMissingBlock(height, message.PeerID)
 	} else if message.Code == net.MSG_NEW_TX {
 		tx := &Transaction{}
-		rlp.DecodeBytes(message.Payload, &tx)
+		err := rlp.DecodeBytes(message.Payload, &tx)
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Msg":  err,
+				"Code": message.Code,
+			}).Warning("DecodeBytes")
+		}
 		log.CLog().WithFields(logrus.Fields{
 			"From":   common.Address2Hex(tx.From),
 			"To":     common.Address2Hex(tx.To),
@@ -459,7 +542,7 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 // }
 
 //TODO: use code temporarily
-func (bc *BlockChain) RequestMissingBlock() {
+func (bc *BlockChain) RequestMissingBlock() error {
 	missigBlock := make(map[uint64]bool)
 	for _, k := range bc.futureBlocks.Keys() {
 		v, _ := bc.futureBlocks.Peek(k)
@@ -472,21 +555,28 @@ func (bc *BlockChain) RequestMissingBlock() {
 	}
 	sort.Ints(keys)
 	if len(keys) == 0 {
-		return
+		return nil
 	}
 	for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
-		msg, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK, uint64(i))
+		msg, err := net.NewRLPMessage(net.MSG_MISSING_BLOCK, uint64(i))
+		if err != nil {
+			return err
+		}
 		bc.node.SendMessageToRandomNode(&msg)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": i,
 		}).Info("Request missing block")
 	}
+	return nil
 }
 
 func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
-	block, _ := bc.GetBlockByHeight(height)
+	block := bc.GetBlockByHeight(height)
+	// if err != nil {
+	// 	return err
+	// }
 	if block != nil {
-		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block)
+		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block.BaseBlock)
 		bc.node.SendMessage(&message, peerID)
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
@@ -496,21 +586,35 @@ func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
 			"Height": height,
 		}).Info("We don't have missing block")
 	}
+	// return nil
 }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
+	TailTxs := bc.Tail.TransactionState
 	bc.tailGroup.Range(func(key, value interface{}) bool {
 		tail := value.(*Block)
-		var err error
+		// var err error
 		if bc.Lib.Header.Height >= tail.Header.Height {
-			validBlock, _ := bc.GetBlockByHeight(tail.Header.Height)
+			validBlock := bc.GetBlockByHeight(tail.Header.Height)
+			if validBlock == nil {
+				return true
+			}
 			for validBlock.Hash() != tail.Hash() {
-				childHash := tail.Hash()
-				validBlock, _ = bc.GetBlockByHash(validBlock.Header.ParentHash)
-				tail, err = bc.GetBlockByHash(tail.Header.ParentHash)
-				bc.Storage.Del(childHash[:])
+				removableBlock := tail
+				validBlock = bc.GetBlockByHash(validBlock.Header.ParentHash)
+				tail = bc.GetBlockByHash(tail.Header.ParentHash)
+				for _, tx := range removableBlock.Transactions {
+					_tx := TailTxs.GetTransaction(tx.Hash)
+					if _tx == nil {
+						bc.TxPool.Put(tx)
+					}
+				}
+				bc.Storage.Del(common.HashToBytes(removableBlock.Hash()))
 				//already removed during for loop
-				if err != nil {
+				// if err != nil {
+				// 	break
+				// }
+				if tail == nil {
 					break
 				}
 			}
@@ -519,18 +623,23 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 	})
 }
 
-func (bc *BlockChain) RebuildBlockHeight() {
+func (bc *BlockChain) RebuildBlockHeight() error {
 	block := bc.Tail
 	if block.Header.Height == 0 {
-		return
+		return nil
 	}
+	var err error
 	for {
 		if block.Hash() == bc.Lib.Hash() {
 			break
 		}
-		block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+		block = bc.GetBlockByHash(block.Header.ParentHash)
+		if err != nil {
+			return err
+		}
 		bc.Storage.Put(encodeBlockHeight(block.Header.Height), block.Header.Hash[:])
 	}
+	return nil
 }
 
 func (bc *BlockChain) Start() {
@@ -547,10 +656,14 @@ func (bc *BlockChain) loop() {
 	}
 }
 
-func (bc *BlockChain) putBlockToStorage(block *Block) {
-	encodedBytes, _ := rlp.EncodeToBytes(block)
+func (bc *BlockChain) putBlockToStorage(block *Block) error {
+	encodedBytes, err := rlp.EncodeToBytes(block)
+	if err != nil {
+		return err
+	}
 	bc.Storage.Put(block.Header.Hash[:], encodedBytes)
 	bc.Storage.Put(encodeBlockHeight(block.Header.Height), block.Header.Hash[:])
+	return nil
 }
 
 func (bc *BlockChain) SetLib(block *Block) {
@@ -563,11 +676,26 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 	if err != nil {
 		return err
 	}
-	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
-	block.AccountState, _ = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
-	block.TransactionState, _ = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
-	block.VoterState, _ = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	block := bc.GetBlockByHash(common.BytesToHash(hash))
+	if err != nil {
+		return err
+	}
+	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.TransactionState, err = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	if err != nil {
+		return err
+	}
 	bc.Lib = block
 	return nil
 }
@@ -592,21 +720,41 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 	if err != nil {
 		return err
 	}
-	block, err := bc.GetBlockByHash(common.BytesToHash(hash))
-	block.AccountState, _ = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
-	block.TransactionState, _ = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
-	block.VoterState, _ = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-	block.MinerState, _ = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	block := bc.GetBlockByHash(common.BytesToHash(hash))
+	if err != nil {
+		return err
+	}
+	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.TransactionState, err = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+	if err != nil {
+		return err
+	}
 	bc.Tail = block
 	return nil
 }
+
 func (bc *BlockChain) RemoveTxInPool(block *Block) {
 	for _, tx := range block.Transactions {
 		bc.TxPool.Del(tx.Hash)
 	}
 }
 
-func (bc *BlockChain) BroadcastNewTXMessage(tx *Transaction) {
-	message, _ := net.NewRLPMessage(net.MSG_NEW_TX, tx)
+func (bc *BlockChain) BroadcastNewTXMessage(tx *Transaction) error {
+	message, err := net.NewRLPMessage(net.MSG_NEW_TX, tx)
+	if err != nil {
+		return err
+	}
 	bc.node.BroadcastMessage(&message)
+	return nil
 }

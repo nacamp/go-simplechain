@@ -59,7 +59,7 @@ func (ms *MinerState) GetMinerGroup(bc *core.BlockChain, block *core.Block) ([]c
 	//reuse miner group in SnapshotVoterTime
 	if block.Header.Time < block.Header.SnapshotVoterTime+3*3*3 { // 3round * 3miner * 3 duration for making block
 		for block.Header.Time != block.Header.SnapshotVoterTime {
-			block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+			block = bc.GetBlockByHash(block.Header.ParentHash)
 		}
 		miner := ms.Get(block.Header.VoterHash)
 		return miner.MinerGroup, block, nil

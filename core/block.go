@@ -28,14 +28,25 @@ type Header struct {
 }
 
 // Simple Block
-type Block struct {
+//TODO: refactor BaseBlock, Block
+type BaseBlock struct {
 	Header       *Header
 	Transactions []*Transaction
+}
+
+type Block struct {
+	BaseBlock
 
 	AccountState     *AccountState
 	TransactionState *TransactionState
 	MinerState       MinerState
 	VoterState       *AccountState
+}
+
+func (b *BaseBlock) NewBlock() *Block {
+	return &Block{
+		BaseBlock: *b,
+	}
 }
 
 func (b *Block) Hash() common.Hash {

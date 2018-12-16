@@ -15,15 +15,6 @@ import (
 	"github.com/najimmy/go-simplechain/core"
 )
 
-func TestDpos_Setup(t *testing.T) {
-	dpos := consensus.NewDpos()
-	err := dpos.Setup(nil, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
-	assert.NoError(t, err, "")
-
-	err = dpos.Setup(nil, nil, common.HexToAddress(tests.Addr1), common.FromHex(tests.Keystore[tests.Addr0]))
-	assert.Error(t, err, "")
-}
-
 func TestDpos_MakeBlock(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)

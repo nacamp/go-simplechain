@@ -86,23 +86,25 @@ func TestStorage(t *testing.T) {
 
 	bc.PutBlockByCoinbase(bc.GenesisBlock)
 
-	b1, _ := bc.GetBlockByHeight(0)
+	b1 := bc.GetBlockByHeight(0)
 	assert.Equal(t, uint64(0), b1.Header.Height, "")
 	assert.Equal(t, bc.GenesisBlock.Hash(), b1.Hash(), "")
 
-	b2, _ := bc.GetBlockByHash(bc.GenesisBlock.Hash())
+	b2 := bc.GetBlockByHash(bc.GenesisBlock.Hash())
 	assert.Equal(t, uint64(0), b2.Header.Height, "")
 	assert.Equal(t, bc.GenesisBlock.Hash(), b2.Hash(), "")
 
-	b3, _ := bc.GetBlockByHash(common.Hash{0x01})
+	b3 := bc.GetBlockByHash(common.Hash{0x01})
 	assert.Nil(t, b3, "")
 
 	h := core.Header{}
 	h.ParentHash = b1.Hash()
-	block := core.Block{Header: &h}
-	assert.Equal(t, true, bc.HasParentInBlockChain(&block), "")
+	block := core.Block{BaseBlock: core.BaseBlock{Header: &h}}
+	trueFase := bc.HasParentInBlockChain(&block)
+	assert.Equal(t, true, trueFase, "")
 	h.ParentHash.SetBytes([]byte{0x01})
-	assert.Equal(t, false, bc.HasParentInBlockChain(&block), "")
+	trueFase = bc.HasParentInBlockChain(&block)
+	assert.Equal(t, false, trueFase, "")
 
 }
 
@@ -154,25 +156,25 @@ func TestMakeBlockChain(t *testing.T) {
 	bc.SetNode(new(MockNode))
 
 	bc.PutBlockIfParentExist(block1)
-	b, _ := bc.GetBlockByHash(block1.Hash())
+	b := bc.GetBlockByHash(block1.Hash())
 	assert.Equal(t, block1.Hash(), b.Hash(), "")
 
 	bc.PutBlockIfParentExist(block4)
-	b, _ = bc.GetBlockByHash(block4.Hash())
+	b = bc.GetBlockByHash(block4.Hash())
 	assert.Nil(t, b, "")
 
 	bc.PutBlockIfParentExist(block3)
-	b, _ = bc.GetBlockByHash(block3.Hash())
+	b = bc.GetBlockByHash(block3.Hash())
 	assert.Nil(t, b, "")
 
 	bc.PutBlockIfParentExist(block2)
-	b, _ = bc.GetBlockByHash(block2.Hash())
+	b = bc.GetBlockByHash(block2.Hash())
 	assert.NotNil(t, b, "")
 
-	b, _ = bc.GetBlockByHash(block3.Hash())
+	b = bc.GetBlockByHash(block3.Hash())
 	assert.NotNil(t, b, "")
 
-	b, _ = bc.GetBlockByHash(block4.Hash())
+	b = bc.GetBlockByHash(block4.Hash())
 	assert.NotNil(t, b, "")
 
 }
@@ -214,28 +216,28 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 
 	block11 := rlpEncode(block1)
 	bc.PutBlockIfParentExist(block11)
-	b, _ := bc.GetBlockByHash(block11.Hash())
+	b := bc.GetBlockByHash(block11.Hash())
 	assert.Equal(t, block11.Hash(), b.Hash(), "")
 
 	block44 := rlpEncode(block4)
 	bc.PutBlockIfParentExist(block44)
-	b, _ = bc.GetBlockByHash(block44.Hash())
+	b = bc.GetBlockByHash(block44.Hash())
 	assert.Nil(t, b, "")
 
 	block33 := rlpEncode(block3)
 	bc.PutBlockIfParentExist(block33)
-	b, _ = bc.GetBlockByHash(block33.Hash())
+	b = bc.GetBlockByHash(block33.Hash())
 	assert.Nil(t, b, "")
 
 	block22 := rlpEncode(block2)
 	bc.PutBlockIfParentExist(block22)
-	b, _ = bc.GetBlockByHash(block22.Hash())
+	b = bc.GetBlockByHash(block22.Hash())
 	assert.NotNil(t, b, "")
 
-	b, _ = bc.GetBlockByHash(block33.Hash())
+	b = bc.GetBlockByHash(block33.Hash())
 	assert.NotNil(t, b, "")
 
-	b, _ = bc.GetBlockByHash(block33.Hash())
+	b = bc.GetBlockByHash(block33.Hash())
 	assert.NotNil(t, b, "")
 
 }
@@ -264,68 +266,68 @@ func TestRebuildBlockHeight(t *testing.T) {
 
 	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 	bc.PutBlockByCoinbase(block1)
-	b1, _ := bc.GetBlockByHash(block1.Hash())
-	b2, _ := bc.GetBlockByHeight(block1.Header.Height)
+	b1 := bc.GetBlockByHash(block1.Hash())
+	b2 := bc.GetBlockByHeight(block1.Header.Height)
 	assert.Equal(t, b1.Hash(), b2.Hash(), "")
 	assert.Equal(t, uint64(1), block1.Header.Height, "")
 
 	block2 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(2), tests.None, nil)
 	bc.PutBlockByCoinbase(block2)
-	b1, _ = bc.GetBlockByHash(block2.Hash())
-	b2, _ = bc.GetBlockByHeight(block2.Header.Height)
+	b1 = bc.GetBlockByHash(block2.Hash())
+	b2 = bc.GetBlockByHeight(block2.Header.Height)
 	assert.Equal(t, b1.Hash(), b2.Hash(), "")
 	assert.Equal(t, uint64(1), block2.Header.Height, "")
 
 	block3 := tests.MakeBlock(bc, block2, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(3), tests.None, nil)
 	bc.PutBlockByCoinbase(block3)
-	b1, _ = bc.GetBlockByHash(block3.Hash())
-	b2, _ = bc.GetBlockByHeight(block3.Header.Height)
+	b1 = bc.GetBlockByHash(block3.Hash())
+	b2 = bc.GetBlockByHeight(block3.Header.Height)
 	assert.Equal(t, b1.Hash(), b2.Hash(), "")
 	assert.Equal(t, uint64(2), block3.Header.Height, "")
-	b, _ := bc.GetBlockByHeight(uint64(1))
+	b := bc.GetBlockByHeight(uint64(1))
 	assert.Equal(t, block2.Hash(), b.Hash(), "")
 
 	block4 := tests.MakeBlock(bc, block1, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(4), tests.None, nil)
 	bc.PutBlockByCoinbase(block4)
-	b1, _ = bc.GetBlockByHash(block4.Hash())
-	b2, _ = bc.GetBlockByHeight(block4.Header.Height)
+	b1 = bc.GetBlockByHash(block4.Hash())
+	b2 = bc.GetBlockByHeight(block4.Header.Height)
 	assert.Equal(t, uint64(2), block4.Header.Height, "")
 	assert.Equal(t, b1.Hash(), b2.Hash(), "")
-	b, _ = bc.GetBlockByHeight(uint64(1))
+	b = bc.GetBlockByHeight(uint64(1))
 	assert.Equal(t, block1.Hash(), b.Hash(), "")
 
 	block5 := tests.MakeBlock(bc, block4, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(5), tests.None, nil)
 	bc.PutBlockByCoinbase(block5)
-	b1, _ = bc.GetBlockByHash(block5.Hash())
-	b2, _ = bc.GetBlockByHeight(block5.Header.Height)
+	b1 = bc.GetBlockByHash(block5.Hash())
+	b2 = bc.GetBlockByHeight(block5.Header.Height)
 	assert.Equal(t, b1.Hash(), b2.Hash(), "")
 	assert.Equal(t, uint64(3), block5.Header.Height, "")
-	b, _ = bc.GetBlockByHeight(uint64(2))
+	b = bc.GetBlockByHeight(uint64(2))
 	assert.Equal(t, block4.Hash(), b.Hash(), "")
 
 	block6 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(6), tests.None, nil)
 	bc.PutBlockByCoinbase(block6)
-	b1, _ = bc.GetBlockByHash(block6.Hash())
-	b2, _ = bc.GetBlockByHeight(block6.Header.Height)
+	b1 = bc.GetBlockByHash(block6.Hash())
+	b2 = bc.GetBlockByHeight(block6.Header.Height)
 	assert.Equal(t, b1.Hash(), b2.Hash(), "")
 	assert.Equal(t, uint64(3), block6.Header.Height, "")
-	b, _ = bc.GetBlockByHeight(uint64(2))
+	b = bc.GetBlockByHeight(uint64(2))
 	assert.Equal(t, block3.Hash(), b.Hash(), "")
 
 	block7 := tests.MakeBlock(bc, block5, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(7), tests.None, nil)
 	bc.PutBlockByCoinbase(block7)
-	b1, _ = bc.GetBlockByHash(block7.Hash())
-	b2, _ = bc.GetBlockByHeight(block7.Header.Height)
+	b1 = bc.GetBlockByHash(block7.Hash())
+	b2 = bc.GetBlockByHeight(block7.Header.Height)
 	assert.Equal(t, b1.Hash(), b2.Hash(), "")
 	assert.Equal(t, uint64(4), block7.Header.Height, "")
 
-	b, _ = bc.GetBlockByHeight(uint64(1))
+	b = bc.GetBlockByHeight(uint64(1))
 	assert.Equal(t, block1.Hash(), b.Hash(), "")
-	b, _ = bc.GetBlockByHeight(uint64(2))
+	b = bc.GetBlockByHeight(uint64(2))
 	assert.Equal(t, block4.Hash(), b.Hash(), "")
-	b, _ = bc.GetBlockByHeight(uint64(3))
+	b = bc.GetBlockByHeight(uint64(3))
 	assert.Equal(t, block5.Hash(), b.Hash(), "")
-	b, _ = bc.GetBlockByHeight(uint64(4))
+	b = bc.GetBlockByHeight(uint64(4))
 	assert.Equal(t, block7.Hash(), b.Hash(), "")
 }
 
@@ -349,8 +351,9 @@ func TestRemoveOrphanBlock(t *testing.T) {
 
 	dpos := consensus.NewDpos()
 	bc := core.NewBlockChain(dpos, storage)
-	bc.MakeGenesisBlock(voters)
-	bc.PutBlockByCoinbase(bc.GenesisBlock)
+	bc.Setup(voters)
+	// bc.MakeGenesisBlock(voters)
+	// bc.PutBlockByCoinbase(bc.GenesisBlock)
 
 	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 	bc.PutBlockByCoinbase(block1)
@@ -358,7 +361,8 @@ func TestRemoveOrphanBlock(t *testing.T) {
 	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(2), tests.None, nil)
 	bc.PutBlockByCoinbase(block2)
 
-	block3 := tests.MakeBlock(bc, block1, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(3), tests.None, nil)
+	//2,3 block same tx hash
+	block3 := tests.MakeBlock(bc, block1, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(2), tests.None, nil)
 	bc.PutBlockByCoinbase(block3)
 
 	block4 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(4), tests.None, nil)
@@ -378,9 +382,17 @@ func TestRemoveOrphanBlock(t *testing.T) {
 
 	bc.SetLib(block6)
 	bc.SetTail(block6)
+
+	assert.Equal(t, bc.TxPool.Len(), 0, "")
 	bc.RemoveOrphanBlock()
-	b, err := bc.GetBlockByHash(block4.Hash())
-	assert.NotNil(t, err, "")
+	b := bc.GetBlockByHash(block3.Hash())
 	assert.Nil(t, b, "")
 
+	b = bc.GetBlockByHash(block4.Hash())
+	assert.Nil(t, b, "")
+
+	b = bc.GetBlockByHash(block5.Hash())
+	assert.Nil(t, b, "")
+	// N3 same tx,  N4,N5 different tx
+	assert.Equal(t, bc.TxPool.Len(), 2, "")
 }

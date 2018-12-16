@@ -65,7 +65,7 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 		}
 		h.Time++
 	}
-	block := &core.Block{Header: h}
+	block := &core.Block{BaseBlock: core.BaseBlock{Header: h}}
 
 	//voter
 	block.VoterState, _ = parentBlock.VoterState.Clone()
@@ -101,7 +101,8 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 	txs := block.TransactionState
 
 	fromAccount := accs.GetAccount(common.HexToAddress(from))
-	tx := MakeTransaction(from, to, new(big.Int).Div(amount, new(big.Int).SetUint64(2)), fromAccount.Nonce+uint64(1))
+	tx := MakeTransaction(from, to, amount, fromAccount.Nonce+uint64(1))
+	// tx := MakeTransaction(from, to, new(big.Int).Div(amount, new(big.Int).SetUint64(2)), fromAccount.Nonce+uint64(1))
 	block.TransactionState.PutTransaction(tx)
 	block.Transactions = make([]*core.Transaction, 1)
 	block.Transactions[0] = tx

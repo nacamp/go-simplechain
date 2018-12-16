@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"crypto/ecdsa"
-	"errors"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -32,15 +31,15 @@ type Dpos struct {
 }
 
 // const
-var (
-	ErrAddressNotEqual = errors.New("address not equal")
-)
+// var (
+// 	ErrAddressNotEqual = errors.New("address not equal")
+// )
 
 func NewDpos() *Dpos {
 	return &Dpos{}
 }
 
-func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) error {
+func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) {
 	dpos.bc = bc
 	dpos.node = node
 	dpos.enableMining = true
@@ -48,9 +47,10 @@ func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Addr
 	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
 	dpos.priv = (*ecdsa.PrivateKey)(priv)
 	if dpos.coinbase != address {
-		return ErrAddressNotEqual
+		log.CLog().WithFields(logrus.Fields{
+			"Address": common.Address2Hex(dpos.coinbase),
+		}).Panic("Privatekey is different")
 	}
-	return nil
 }
 
 func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
@@ -63,14 +63,9 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
 	//Fix: when ticker is 1 second, server mining...
 	turn := (now % 9) / 3
-	block := bc.NewBlockFromParent(bc.Tail)
-	parent, _ := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
-
-	if (parent != nil) && (now-parent.Header.Time <= (3 * 3)) {
-		log.CLog().WithFields(logrus.Fields{
-			"address": common.Bytes2Hex(dpos.coinbase[:]),
-		}).Debug("not my turn(Interval is short)")
-		return nil
+	block, err := bc.NewBlockFromParent(bc.Tail)
+	if err != nil {
+		log.CLog().Warning(err)
 	}
 	block.Header.Time = now
 	minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
@@ -78,6 +73,15 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		log.CLog().Warning(err)
 	}
 	if minerGroup[turn] == dpos.coinbase {
+		parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
+
+		if (parent != nil) && (now-parent.Header.Time < 3) { //(3 * 3)
+			log.CLog().WithFields(logrus.Fields{
+				"address": common.Address2Hex(dpos.coinbase),
+			}).Warning("Interval is short")
+			return nil
+		}
+
 		log.CLog().WithFields(logrus.Fields{
 			"address": common.Bytes2Hex(dpos.coinbase[:]),
 		}).Debug("my turn")
@@ -146,7 +150,7 @@ func (dpos *Dpos) loop() {
 				dpos.bc.PutBlockByCoinbase(block)
 				dpos.bc.Consensus.UpdateLIB(dpos.bc)
 				dpos.bc.RemoveOrphanBlock()
-				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
+				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.BaseBlock)
 				dpos.node.BroadcastMessage(&message)
 			}
 		}
@@ -182,7 +186,7 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 			miners[block.Header.Coinbase] = true
 			turn = 0
 		}
-		block, _ = bc.GetBlockByHash(block.Header.ParentHash)
+		block = bc.GetBlockByHash(block.Header.ParentHash)
 		turn++
 	}
 	return
