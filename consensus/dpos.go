@@ -191,3 +191,7 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 	}
 	return
 }
+
+func (d *Dpos) ConsensusType() string {
+	return "DPOS"
+}
