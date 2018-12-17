@@ -100,10 +100,11 @@ func (s *Snapshot) ValidVote(address common.Address, authorize bool) bool {
 	return (signer && !authorize) || (!signer && authorize)
 }
 
-func bytesToDoubleAddress(b []byte) DoubleAddress {
-	var a DoubleAddress
-	copy(a[0:], b)
-	return a
+func appendAddress(a common.Address, b common.Address) DoubleAddress {
+	ba := append(a[:], b[:]...)
+	var da DoubleAddress
+	copy(da[0:], ba)
+	return da
 }
 
 func (s *Snapshot) Cast(signer common.Address, address common.Address, authorize bool) bool {
@@ -111,7 +112,7 @@ func (s *Snapshot) Cast(signer common.Address, address common.Address, authorize
 	if !s.ValidVote(address, authorize) {
 		return false
 	}
-	key := bytesToDoubleAddress(append(signer[:], address[:]...))
+	key := appendAddress(signer, address)
 	if _, ok := s.Votes[key]; !ok {
 		s.Votes[key] = VoteData{
 			Address:   address,
@@ -123,8 +124,36 @@ func (s *Snapshot) Cast(signer common.Address, address common.Address, authorize
 		} else {
 			s.Candidates[address] = CandidateData{Authorize: authorize, Votes: 1}
 		}
+		return true
 	}
-	return true
+	return false
+}
+
+func (s *Snapshot) Apply() {
+	devictedAddress := common.Address{}
+	for address, candidate := range s.Candidates {
+		if candidate.Votes > len(s.Signers) {
+			if candidate.Authorize {
+				//join
+				s.Signers[address] = struct{}{}
+			} else {
+				//evict
+				delete(s.Signers, address)
+				devictedAddress = address
+			}
+		}
+	}
+
+	if devictedAddress != (common.Address{}) {
+		for address, candidate := range s.Candidates {
+			if _, ok := s.Votes[appendAddress(devictedAddress, address)]; ok {
+				//TODO: test
+				candidate.Votes--
+				s.Candidates[address] = candidate
+				delete(s.Votes, appendAddress(devictedAddress, address))
+			}
+		}
+	}
 }
 
 type signersAscending []common.Address
