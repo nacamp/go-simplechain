@@ -68,14 +68,6 @@ func LoadSnapshot(db storage.Storage, hash common.Hash) (*Snapshot, error) {
 	return snap, nil
 }
 
-/*
-As per the doc, if you want it to work for map keys as well, implement encoding.TextMarshaler:
-
-func (a Int) MarshalText() (text []byte, err error) {
-    test := a / 10
-    return []byte(fmt.Sprintf("%d-%d", a, test)), nil
-}
-*/
 func (s *Snapshot) Store(db storage.Storage) error {
 	blob, err := json.Marshal(s)
 	if err != nil {
@@ -146,7 +138,7 @@ func (s *Snapshot) Cast(signer common.Address, address common.Address, authorize
 func (s *Snapshot) Apply() {
 	devictedAddress := common.Address{}
 	for address, candidate := range s.Candidates {
-		if candidate.Votes > len(s.Signers) {
+		if candidate.Votes > len(s.Signers)/2 {
 			if candidate.Authorize {
 				//join
 				s.Signers[address] = struct{}{}
