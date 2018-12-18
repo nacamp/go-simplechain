@@ -3,13 +3,19 @@ package consensus
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"sort"
 
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/common/hexutil"
 	"github.com/najimmy/go-simplechain/storage"
 )
 
 type DoubleAddress [common.AddressLength * 2]byte
+
+var (
+	doubleAddressT = reflect.TypeOf(DoubleAddress{})
+)
 
 type Snapshot struct {
 	BlockHash common.Hash                 `json:"hash"`
@@ -62,6 +68,14 @@ func LoadSnapshot(db storage.Storage, hash common.Hash) (*Snapshot, error) {
 	return snap, nil
 }
 
+/*
+As per the doc, if you want it to work for map keys as well, implement encoding.TextMarshaler:
+
+func (a Int) MarshalText() (text []byte, err error) {
+    test := a / 10
+    return []byte(fmt.Sprintf("%d-%d", a, test)), nil
+}
+*/
 func (s *Snapshot) Store(db storage.Storage) error {
 	blob, err := json.Marshal(s)
 	if err != nil {
@@ -169,4 +183,19 @@ func (s *Snapshot) SignerSlice() []common.Address {
 	}
 	sort.Sort(signersAscending(sigs))
 	return sigs
+}
+
+// MarshalText returns the hex representation of a.
+func (a DoubleAddress) MarshalText() ([]byte, error) {
+	return hexutil.Bytes(a[:]).MarshalText()
+}
+
+// UnmarshalText parses a hash in hex syntax.
+func (a *DoubleAddress) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedText("DoubleAddress", input, a[:])
+}
+
+// UnmarshalJSON parses a hash in hex syntax.
+func (a *DoubleAddress) UnmarshalJSON(input []byte) error {
+	return hexutil.UnmarshalFixedJSON(doubleAddressT, input, a[:])
 }
