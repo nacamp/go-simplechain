@@ -192,10 +192,14 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 	return
 }
 
-func (d *Dpos) ConsensusType() string {
+func (c *Dpos) ConsensusType() string {
 	return "DPOS"
 }
 
-func (d *Dpos) ExecuteVote(hash common.Hash, tx *core.Transaction) {
+func (c *Dpos) ExecuteVote(hash common.Hash, tx *core.Transaction) {
+
+}
+
+func (c *Dpos) NewSnapshot(hash common.Hash, addresses []common.Address) {
 
 }

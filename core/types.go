@@ -20,6 +20,7 @@ type Consensus interface {
 	UpdateLIB(bc *BlockChain)
 	ConsensusType() string
 	ExecuteVote(hash common.Hash, tx *Transaction)
+	NewSnapshot(hash common.Hash, addresses []common.Address)
 }
 
 type ConfigAccount struct {

@@ -105,13 +105,15 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 	if err != nil {
 		return err
 	}
-	block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-	if err != nil {
-		return err
-	}
-	block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
-	if err != nil {
-		return err
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+		if err != nil {
+			return err
+		}
+		block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+		if err != nil {
+			return err
+		}
 	}
 	bc.GenesisBlock = block
 	return nil
@@ -177,15 +179,16 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 		bc.GenesisBlock = block
 		bc.GenesisBlock.Header.MinerHash = ms.RootHash()
 		bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
+		bc.GenesisBlock.MakeHash()
 	} else {
 		bc.Signers = make([]common.Address, len(voters))
 		for i, account := range voters {
 			bc.Signers[i] = account.Address
 		}
+		bc.GenesisBlock.MakeHash()
+		bc.Consensus.NewSnapshot(bc.GenesisBlock.Hash(), bc.Signers)
 		bc.GenesisBlock = block
 	}
-
-	bc.GenesisBlock.MakeHash()
 
 	bc.SetLib(bc.GenesisBlock)
 	bc.SetTail(bc.GenesisBlock)
@@ -247,21 +250,24 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if err != nil {
 		return err
 	}
-	block.VoterState, err = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
-	if err != nil {
-		return err
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		block.VoterState, err = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
+		if err != nil {
+			return err
+		}
+		block.MinerState, err = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
+		if err != nil {
+			return err
+		}
 	}
-	block.MinerState, err = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
-	if err != nil {
-		return err
-	}
-
 	bc.RewardForCoinbase(block)
 
-	err = bc.PutMinerState(block)
-	if err != nil {
-		// log.CLog().Warning(err)
-		return err
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		err = bc.PutMinerState(block)
+		if err != nil {
+			// log.CLog().Warning(err)
+			return err
+		}
 	}
 	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
@@ -275,11 +281,13 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if block.TransactionState.RootHash() != block.Header.TransactionHash {
 		return errors.New("block.TransactionState.RootHash() != block.Header.TransactionHash")
 	}
-	if block.VoterState.RootHash() != block.Header.VoterHash {
-		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
-	}
-	if block.MinerState.RootHash() != block.Header.MinerHash {
-		return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		if block.VoterState.RootHash() != block.Header.VoterHash {
+			return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
+		}
+		if block.MinerState.RootHash() != block.Header.MinerHash {
+			return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
+		}
 	}
 	return nil
 }

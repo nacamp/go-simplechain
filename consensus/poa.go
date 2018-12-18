@@ -217,6 +217,7 @@ func (d *Poa) UpdateLIB(bc *core.BlockChain) {
 func (c *Poa) ConsensusType() string {
 	return "POA"
 }
+
 func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
 	snap, err := c.snapshot(hash)
 	if err != nil {
@@ -229,4 +230,9 @@ func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
 		}
 		snap.Store(c.bc.Storage)
 	}
+}
+
+func (c *Poa) NewSnapshot(hash common.Hash, addresses []common.Address) {
+	snap := NewSnapshot(hash, addresses)
+	snap.Store(c.bc.Storage)
 }
