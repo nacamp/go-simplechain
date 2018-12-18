@@ -1,5 +1,5 @@
 # go-simplechain
-It is pilot dpos for blockchain
+It is pilot project for blockchain
 
 ## TODO
 

@@ -19,6 +19,7 @@ type Consensus interface {
 	NewMinerState(rootHash common.Hash, storage storage.Storage) (MinerState, error)
 	UpdateLIB(bc *BlockChain)
 	ConsensusType() string
+	ExecuteVote(hash common.Hash, tx *Transaction)
 }
 
 type ConfigAccount struct {

@@ -13,13 +13,14 @@ import (
 )
 
 type Transaction struct {
-	Hash   common.Hash
-	From   common.Address
-	To     common.Address
-	Amount *big.Int
-	Nonce  uint64
-	Time   uint64     // int64 rlp encoding error
-	Sig    common.Sig // TODO: change name
+	Hash    common.Hash
+	From    common.Address
+	To      common.Address
+	Amount  *big.Int
+	Nonce   uint64
+	Time    uint64     // int64 rlp encoding error
+	Sig     common.Sig // TODO: change name
+	Payload []byte
 }
 
 func NewTransaction(from, to common.Address, amount *big.Int, nonce uint64) *Transaction {
@@ -30,6 +31,12 @@ func NewTransaction(from, to common.Address, amount *big.Int, nonce uint64) *Tra
 		Time:   uint64(time.Now().Unix()),
 		Nonce:  nonce,
 	}
+	return tx
+}
+
+func NewTransactionPayload(from, to common.Address, amount *big.Int, nonce uint64, payload []byte) *Transaction {
+	tx := NewTransaction(from, to, amount, nonce)
+	tx.Payload = payload
 	return tx
 }
 
@@ -44,6 +51,7 @@ func (tx *Transaction) CalcHash() (hash common.Hash) {
 		tx.To,
 		tx.Amount,
 		tx.Nonce,
+		tx.Payload,
 	})
 	hasher.Sum(hash[:0])
 	return hash

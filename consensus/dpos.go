@@ -195,3 +195,7 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 func (d *Dpos) ConsensusType() string {
 	return "DPOS"
 }
+
+func (d *Dpos) ExecuteVote(hash common.Hash, tx *core.Transaction) {
+
+}

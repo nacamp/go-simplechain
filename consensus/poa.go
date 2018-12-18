@@ -4,6 +4,8 @@ import (
 	"crypto/ecdsa"
 	"time"
 
+	"github.com/najimmy/go-simplechain/rlp"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
@@ -86,6 +88,7 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 		//TODO: check double spending ?
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
+		voteCount := 0
 		for {
 			tx := bc.TxPool.Pop()
 			if tx == nil {
@@ -99,7 +102,21 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 					"Address": common.Address2Hex(tx.From),
 				}).Warning("Not found account")
 			} else if fromAccount.Nonce+1 == tx.Nonce {
-				block.Transactions = append(block.Transactions, tx)
+				// if signer is miner, include  voting tx
+				if len(tx.Payload) > 0 {
+					if tx.From == dpos.coinbase {
+						if voteCount == 0 {
+							voteCount++
+							block.Transactions = append(block.Transactions, tx)
+						} else {
+							bc.TxPool.Put(tx)
+						}
+					} else {
+						bc.TxPool.Put(tx)
+					}
+				} else {
+					block.Transactions = append(block.Transactions, tx)
+				}
 			} else if fromAccount.Nonce+1 < tx.Nonce {
 				//use in future
 				bc.TxPool.Put(tx)
@@ -109,6 +126,9 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
+		newSnap := snapshot.Copy()
+		newSnap.Store(bc.Storage)
+
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
 		block.Header.AccountHash = block.AccountState.RootHash()
@@ -117,11 +137,7 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 		// block.Header.VoterHash = block.VoterState.RootHash()
 		// bc.PutMinerState(block)
 		// block.Header.MinerHash = block.MinerState.RootHash()
-		newSnap := snapshot.Copy()
-		if newSnap.Cast(dpos.coinbase, dpos.coinbase, true) {
-			newSnap.Apply()
-		}
-		newSnap.Store(bc.Storage)
+		//TODO: snapshot hash
 		block.MakeHash()
 		return block
 	} else {
@@ -198,6 +214,19 @@ func (d *Poa) UpdateLIB(bc *core.BlockChain) {
 	}
 	return
 }
-func (d *Poa) ConsensusType() string {
+func (c *Poa) ConsensusType() string {
 	return "POA"
+}
+func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
+	snap, err := c.snapshot(hash)
+	if err != nil {
+		//TODO
+	} else {
+		authorize := bool(true)
+		rlp.DecodeBytes(tx.Payload, &authorize)
+		if snap.Cast(c.coinbase, c.coinbase, true) {
+			snap.Apply()
+		}
+		snap.Store(c.bc.Storage)
+	}
 }

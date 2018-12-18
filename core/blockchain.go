@@ -39,6 +39,9 @@ type BlockChain struct {
 	Tail         *Block
 	node         net.INode
 	tailGroup    *sync.Map
+
+	//poa
+	Signers []common.Address
 }
 
 func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
@@ -147,33 +150,41 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	block.TransactionState = txs
 	header.TransactionHash = txs.RootHash()
 
-	//VoterState
-	vs, err := NewAccountState(bc.Storage)
-	if err != nil {
-		return err
-	}
-	for _, account := range voters {
-		vs.PutAccount(account)
-	}
-	block.VoterState = vs
-	header.VoterHash = vs.RootHash()
-	bc.GenesisBlock = block
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		//VoterState
+		vs, err := NewAccountState(bc.Storage)
+		if err != nil {
+			return err
+		}
+		for _, account := range voters {
+			vs.PutAccount(account)
+		}
+		block.VoterState = vs
+		header.VoterHash = vs.RootHash()
+		bc.GenesisBlock = block
 
-	// MinerState
-	ms, err := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
-	if err != nil {
-		return err
+		// MinerState
+		ms, err := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
+		if err != nil {
+			return err
+		}
+		bc.GenesisBlock.MinerState = ms
+		minerGroup, _, err := ms.GetMinerGroup(bc, block)
+		if err != nil {
+			return err
+		}
+		ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
+		bc.GenesisBlock = block
+		bc.GenesisBlock.Header.MinerHash = ms.RootHash()
+		bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
+	} else {
+		bc.Signers = make([]common.Address, len(voters))
+		for i, account := range voters {
+			bc.Signers[i] = account.Address
+		}
+		bc.GenesisBlock = block
 	}
-	bc.GenesisBlock.MinerState = ms
-	minerGroup, _, err := ms.GetMinerGroup(bc, block)
-	if err != nil {
-		return err
-	}
-	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
 
-	bc.GenesisBlock = block
-	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
-	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
 	bc.GenesisBlock.MakeHash()
 
 	bc.SetLib(bc.GenesisBlock)
@@ -320,14 +331,19 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			return ErrTransactionNonce
 		}
 		fromAccount.Nonce += uint64(1)
-		toAccount := accs.GetAccount(tx.To)
-		if err := fromAccount.SubBalance(tx.Amount); err != nil {
-			return err
+		if len(tx.Payload) == 0 {
+			toAccount := accs.GetAccount(tx.To)
+			if err := fromAccount.SubBalance(tx.Amount); err != nil {
+				return err
+			}
+			toAccount.AddBalance(tx.Amount)
+			accs.PutAccount(toAccount)
+		} else {
+			//vote
+			bc.Consensus.ExecuteVote(block.Hash(), tx)
 		}
-		toAccount.AddBalance(tx.Amount)
 
 		accs.PutAccount(fromAccount)
-		accs.PutAccount(toAccount)
 		txs.PutTransaction(tx)
 		//implement vote transaction later
 	}
