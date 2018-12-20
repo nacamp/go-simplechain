@@ -21,6 +21,7 @@ type Consensus interface {
 	ConsensusType() string
 	ExecuteVote(hash common.Hash, tx *Transaction)
 	NewSnapshot(hash common.Hash, addresses []common.Address)
+	GetSigners(hash common.Hash) []common.Address
 }
 
 type ConfigAccount struct {

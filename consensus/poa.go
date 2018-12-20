@@ -22,10 +22,11 @@ type Poa struct {
 	coinbase     common.Address
 	priv         *ecdsa.PrivateKey
 	enableMining bool
+	Storage      storage.Storage
 }
 
-func NewPos() *Poa {
-	return &Poa{}
+func NewPoa(storage storage.Storage) *Poa {
+	return &Poa{Storage: storage}
 }
 
 //Same as dpos
@@ -232,7 +233,13 @@ func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
 	}
 }
 
+//TOD change name
 func (c *Poa) NewSnapshot(hash common.Hash, addresses []common.Address) {
 	snap := NewSnapshot(hash, addresses)
-	snap.Store(c.bc.Storage)
+	snap.Store(c.Storage)
+}
+
+func (cs *Poa) GetSigners(hash common.Hash) []common.Address {
+	snap, _ := cs.snapshot(hash)
+	return snap.SignerSlice()
 }

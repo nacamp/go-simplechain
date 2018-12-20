@@ -185,9 +185,13 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 		for i, account := range voters {
 			bc.Signers[i] = account.Address
 		}
-		bc.GenesisBlock.MakeHash()
-		bc.Consensus.NewSnapshot(bc.GenesisBlock.Hash(), bc.Signers)
+		// //TODO: dummy to fix
+		// bc.GenesisBlock.Header.MinerHash = common.Hash{}
 		bc.GenesisBlock = block
+		bc.GenesisBlock.MakeHash()
+		//컨센서스에서 bc값이 nil이다.
+		bc.Consensus.NewSnapshot(bc.GenesisBlock.Hash(), bc.Signers)
+
 	}
 
 	bc.SetLib(bc.GenesisBlock)
@@ -486,13 +490,15 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 		BaseBlock: BaseBlock{Header: h},
 	}
 	//state
-	block.VoterState, err = parentBlock.VoterState.Clone()
-	if err != nil {
-		return nil, err
-	}
-	block.MinerState, err = parentBlock.MinerState.Clone()
-	if err != nil {
-		return nil, err
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		block.VoterState, err = parentBlock.VoterState.Clone()
+		if err != nil {
+			return nil, err
+		}
+		block.MinerState, err = parentBlock.MinerState.Clone()
+		if err != nil {
+			return nil, err
+		}
 	}
 	block.AccountState, err = parentBlock.AccountState.Clone()
 	if err != nil {
@@ -712,13 +718,15 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 	if err != nil {
 		return err
 	}
-	block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-	if err != nil {
-		return err
-	}
-	block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
-	if err != nil {
-		return err
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+		if err != nil {
+			return err
+		}
+		block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+		if err != nil {
+			return err
+		}
 	}
 	bc.Lib = block
 	return nil
@@ -756,13 +764,15 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 	if err != nil {
 		return err
 	}
-	block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-	if err != nil {
-		return err
-	}
-	block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
-	if err != nil {
-		return err
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+		if err != nil {
+			return err
+		}
+		block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
+		if err != nil {
+			return err
+		}
 	}
 	bc.Tail = block
 	return nil

@@ -56,31 +56,45 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 	h.Height = parentBlock.Header.Height + 1
 	h.Time = parentBlock.Header.Time + 3
 	//set time to turn coinbase mining
-	gMs, _ := bc.GenesisBlock.MinerState.Clone()
-	gMinerGroup, _ := gMs.MakeMiner(bc.GenesisBlock.VoterState, 3)
-	for {
-		index := (h.Time % 9) / 3
-		if gMinerGroup[index] == common.HexToAddress(coinbase) {
-			break
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		gMs, _ := bc.GenesisBlock.MinerState.Clone()
+		gMinerGroup, _ := gMs.MakeMiner(bc.GenesisBlock.VoterState, 3)
+		for {
+			index := (h.Time % 9) / 3
+			if gMinerGroup[index] == common.HexToAddress(coinbase) {
+				break
+			}
+			h.Time++
 		}
-		h.Time++
+	} else {
+		gMinerGroup := bc.Signers
+		for {
+			index := (h.Time % 9) / 3
+			if gMinerGroup[index] == common.HexToAddress(coinbase) {
+				break
+			}
+			h.Time++
+		}
+		// snapshot, err := dpos.snapshot(block.Header.ParentHash)
 	}
 	block := &core.Block{BaseBlock: core.BaseBlock{Header: h}}
 
-	//voter
-	block.VoterState, _ = parentBlock.VoterState.Clone()
-	h.VoterHash = block.VoterState.RootHash()
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		//voter
+		block.VoterState, _ = parentBlock.VoterState.Clone()
+		h.VoterHash = block.VoterState.RootHash()
 
-	//miner
-	block.MinerState, _ = parentBlock.MinerState.Clone()
-	minerGroup, voterBlock, _ := block.MinerState.GetMinerGroup(bc, block)
+		//miner
+		block.MinerState, _ = parentBlock.MinerState.Clone()
+		minerGroup, voterBlock, _ := block.MinerState.GetMinerGroup(bc, block)
 
-	//TODO: we need to test  when voter transaction make
-	if voterBlock.Header.Height == block.Header.Height {
-		block.MinerState.Put(minerGroup, block.Header.VoterHash)
-		fmt.Printf("VoterHash(put), height, time, >>>%v, %v, %v\n", block.Header.Height, block.Header.Time, block.Header.VoterHash)
-	} else {
-		fmt.Printf("VoterHash(   ), height, time, >>>%v, %v, %v\n", block.Header.Height, block.Header.Time, block.Header.VoterHash)
+		//TODO: we need to test  when voter transaction make
+		if voterBlock.Header.Height == block.Header.Height {
+			block.MinerState.Put(minerGroup, block.Header.VoterHash)
+			fmt.Printf("VoterHash(put), height, time, >>>%v, %v, %v\n", block.Header.Height, block.Header.Time, block.Header.VoterHash)
+		} else {
+			fmt.Printf("VoterHash(   ), height, time, >>>%v, %v, %v\n", block.Header.Height, block.Header.Time, block.Header.VoterHash)
+		}
 	}
 	h.Coinbase = common.HexToAddress(coinbase)
 	// index := block.Header.Height % 3
@@ -121,7 +135,9 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 	txs.PutTransaction(tx)
 	h.TransactionHash = block.TransactionState.RootHash()
 
-	h.MinerHash = block.MinerState.RootHash()
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		h.MinerHash = block.MinerState.RootHash()
+	}
 
 	block.MakeHash()
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[coinbase]))
