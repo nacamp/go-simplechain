@@ -380,10 +380,25 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 		return err
 	}
 
+	//4. poa
+	if bc.Consensus.ConsensusType() == "POA" {
+		parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
+		minerGroup := bc.Consensus.GetMiners(parentBlock.Hash())
+		index := (block.Header.Time % 9) / 3
+		if minerGroup[index] != block.Header.Coinbase {
+			return errors.New("minerGroup[index] != block.Header.Coinbase")
+		}
+	}
+
 	//4. save status and verify hash
 	err = bc.PutState(block)
 	if err != nil {
 		return err
+	}
+
+	//4. poa
+	if bc.Consensus.ConsensusType() == "POA" {
+		bc.Consensus.SaveMiners(block)
 	}
 
 	bc.putBlockToStorage(block)

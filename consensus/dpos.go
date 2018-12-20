@@ -203,6 +203,9 @@ func (c *Dpos) ExecuteVote(hash common.Hash, tx *core.Transaction) {
 func (c *Dpos) NewSnapshot(hash common.Hash, addresses []common.Address) {
 
 }
-func (cs *Dpos) GetSigners(hash common.Hash) []common.Address {
+func (cs *Dpos) GetMiners(hash common.Hash) []common.Address {
+	return nil
+}
+func (cs *Dpos) SaveMiners(block *core.Block) error {
 	return nil
 }

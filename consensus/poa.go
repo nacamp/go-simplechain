@@ -23,6 +23,7 @@ type Poa struct {
 	priv         *ecdsa.PrivateKey
 	enableMining bool
 	Storage      storage.Storage
+	voteTx       *core.Transaction
 }
 
 func NewPoa(storage storage.Storage) *Poa {
@@ -67,6 +68,11 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
 		log.CLog().Warning(err)
+	}
+	if snapshot == nil {
+		log.CLog().Warning(common.Hash2Hex(block.Header.ParentHash))
+		log.CLog().Warning(block.Header.Height)
+		return nil
 	}
 
 	if snapshot.SignerSlice()[turn] == dpos.coinbase {
@@ -127,8 +133,8 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
-		newSnap := snapshot.Copy()
-		newSnap.Store(bc.Storage)
+		// newSnap := snapshot.Copy()
+		// newSnap.Store(bc.Storage)
 
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
@@ -140,6 +146,32 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 		// block.Header.MinerHash = block.MinerState.RootHash()
 		//TODO: snapshot hash
 		block.MakeHash()
+		newSnap := snapshot.Copy()
+		newSnap.BlockHash = block.Hash()
+		if dpos.voteTx != nil {
+			authorize := bool(true)
+			rlp.DecodeBytes(dpos.voteTx.Payload, &authorize)
+			if newSnap.Cast(dpos.coinbase, dpos.coinbase, true) {
+				newSnap.Apply()
+			}
+		}
+		newSnap.Store(bc.Storage)
+		dpos.voteTx = nil
+		/*
+					func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
+				snap, err := c.snapshot(hash)
+				if err != nil {
+					//TODO
+				} else {
+					authorize := bool(true)
+					rlp.DecodeBytes(tx.Payload, &authorize)
+					if snap.Cast(c.coinbase, c.coinbase, true) {
+						snap.Apply()
+					}
+					snap.Store(c.bc.Storage)
+				}
+			}
+		*/
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
@@ -147,6 +179,21 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 		}).Debug("not my turn")
 		return nil
 	}
+}
+
+func (c *Poa) ExecuteVote2(hash common.Hash, tx *core.Transaction) {
+	c.voteTx = tx
+	// snap, err := c.snapshot(hash)
+	// if err != nil {
+	// 	//TODO
+	// } else {
+	// 	authorize := bool(true)
+	// 	rlp.DecodeBytes(tx.Payload, &authorize)
+	// 	if snap.Cast(c.coinbase, c.coinbase, true) {
+	// 		snap.Apply()
+	// 	}
+	// 	snap.Store(c.bc.Storage)
+	// }
 }
 
 func (dpos *Poa) Start() {
@@ -220,17 +267,18 @@ func (c *Poa) ConsensusType() string {
 }
 
 func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
-	snap, err := c.snapshot(hash)
-	if err != nil {
-		//TODO
-	} else {
-		authorize := bool(true)
-		rlp.DecodeBytes(tx.Payload, &authorize)
-		if snap.Cast(c.coinbase, c.coinbase, true) {
-			snap.Apply()
-		}
-		snap.Store(c.bc.Storage)
-	}
+	c.voteTx = tx
+	// snap, err := c.snapshot(hash)
+	// if err != nil {
+	// 	//TODO
+	// } else {
+	// 	authorize := bool(true)
+	// 	rlp.DecodeBytes(tx.Payload, &authorize)
+	// 	if snap.Cast(c.coinbase, c.coinbase, true) {
+	// 		snap.Apply()
+	// 	}
+	// 	snap.Store(c.bc.Storage)
+	// }
 }
 
 //TOD change name
@@ -239,7 +287,40 @@ func (c *Poa) NewSnapshot(hash common.Hash, addresses []common.Address) {
 	snap.Store(c.Storage)
 }
 
-func (cs *Poa) GetSigners(hash common.Hash) []common.Address {
+func (cs *Poa) GetMiners(hash common.Hash) []common.Address {
 	snap, _ := cs.snapshot(hash)
 	return snap.SignerSlice()
 }
+
+func (cs *Poa) SaveMiners(block *core.Block) error {
+	snapshot, err := cs.snapshot(block.Header.ParentHash)
+	if err != nil {
+		return err
+	}
+	newSnap := snapshot.Copy()
+	newSnap.BlockHash = block.Hash()
+	if cs.voteTx != nil {
+		authorize := bool(true)
+		rlp.DecodeBytes(cs.voteTx.Payload, &authorize)
+		if newSnap.Cast(cs.coinbase, cs.coinbase, true) {
+			newSnap.Apply()
+		}
+	}
+	newSnap.Store(cs.Storage)
+	cs.voteTx = nil
+	return nil
+}
+
+/*
+	newSnap := snapshot.Copy()
+	newSnap.BlockHash = block.Hash()
+	if dpos.voteTx != nil {
+		authorize := bool(true)
+		rlp.DecodeBytes(dpos.voteTx.Payload, &authorize)
+		if newSnap.Cast(dpos.coinbase, dpos.coinbase, true) {
+			newSnap.Apply()
+		}
+	}
+	newSnap.Store(bc.Storage)
+	dpos.voteTx = nil
+*/

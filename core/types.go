@@ -21,7 +21,8 @@ type Consensus interface {
 	ConsensusType() string
 	ExecuteVote(hash common.Hash, tx *Transaction)
 	NewSnapshot(hash common.Hash, addresses []common.Address)
-	GetSigners(hash common.Hash) []common.Address
+	GetMiners(hash common.Hash) []common.Address
+	SaveMiners(block *Block) error
 }
 
 type ConfigAccount struct {
@@ -39,4 +40,5 @@ type Config struct {
 	Seeds           []string        `json:"seeds"`
 	Voters          []ConfigAccount `json:"voters"`
 	EnableMining    bool            `json:"enable_mining"`
+	Consensus       string          `json:"consensus"`
 }
