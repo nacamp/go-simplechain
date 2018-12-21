@@ -276,9 +276,12 @@ func (c *Poa) NewSnapshot(hash common.Hash, addresses []common.Address) {
 	snap.Store(c.Storage)
 }
 
-func (cs *Poa) GetMiners(hash common.Hash) []common.Address {
-	snap, _ := cs.snapshot(hash)
-	return snap.SignerSlice()
+func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
+	snap, err := cs.snapshot(hash)
+	if err != nil {
+		return nil, err
+	}
+	return snap.SignerSlice(), nil
 }
 
 func (cs *Poa) SaveMiners(block *core.Block) error {

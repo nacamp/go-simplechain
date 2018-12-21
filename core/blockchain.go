@@ -363,6 +363,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 }
 
 func (bc *BlockChain) PutBlock(block *Block) error {
+	var err error
 	//1. verify block.hash
 	if block.Hash() != block.CalcHash() {
 		return errors.New("block.Hash() != block.CalcHash()")
@@ -383,7 +384,10 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 	//4. poa
 	if bc.Consensus.ConsensusType() == "POA" {
 		parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
-		minerGroup := bc.Consensus.GetMiners(parentBlock.Hash())
+		minerGroup, err := bc.Consensus.GetMiners(parentBlock.Hash())
+		if err != nil {
+			return err
+		}
 		index := (block.Header.Time % 9) / 3
 		if minerGroup[index] != block.Header.Coinbase {
 			return errors.New("minerGroup[index] != block.Header.Coinbase")
