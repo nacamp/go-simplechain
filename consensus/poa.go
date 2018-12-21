@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"time"
 
 	"github.com/najimmy/go-simplechain/rlp"
@@ -24,6 +25,7 @@ type Poa struct {
 	enableMining bool
 	Storage      storage.Storage
 	voteTx       *core.Transaction
+	Period       uint64
 }
 
 func NewPoa(storage storage.Storage) *Poa {
@@ -31,16 +33,17 @@ func NewPoa(storage storage.Storage) *Poa {
 }
 
 //Same as dpos
-func (poa *Poa) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) {
-	poa.bc = bc
-	poa.node = node
-	poa.enableMining = true
+func (cs *Poa) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte, period int) {
+	cs.bc = bc
+	cs.node = node
+	cs.enableMining = true
 	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
-	poa.coinbase = common.BytesToAddress(pub.SerializeCompressed())
-	poa.priv = (*ecdsa.PrivateKey)(priv)
-	if poa.coinbase != address {
+	cs.coinbase = common.BytesToAddress(pub.SerializeCompressed())
+	cs.priv = (*ecdsa.PrivateKey)(priv)
+	cs.Period = uint64(period)
+	if cs.coinbase != address {
 		log.CLog().WithFields(logrus.Fields{
-			"Address": common.Address2Hex(poa.coinbase),
+			"Address": common.Address2Hex(cs.coinbase),
 		}).Panic("Privatekey is different")
 	}
 }
@@ -52,43 +55,46 @@ func (dpos *Poa) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
 }
 
 //To be changed
-func (dpos *Poa) MakeBlock(now uint64) *core.Block {
-	bc := dpos.bc
+func (cs *Poa) MakeBlock(now uint64) *core.Block {
+	bc := cs.bc
 	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
 	//Fix: when ticker is 1 second, server mining...
-	turn := (now % 9) / 3
+	// turn := (now % 9) / 3
 	block, err := bc.NewBlockFromParent(bc.Tail)
 	if err != nil {
 		log.CLog().Warning(err)
 	}
 	block.Header.Time = now
-
-	//이곳에 마이너 그룹을 가져온다.
-	snapshot, err := dpos.snapshot(block.Header.ParentHash)
+	miners, err := cs.GetMiners(bc.Tail.Hash())
+	turn := (now % (uint64(len(miners)) * cs.Period)) / cs.Period
+	//
+	snapshot, err := cs.snapshot(block.Header.ParentHash)
 	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
 		log.CLog().Warning(err)
 	}
 	if snapshot == nil {
-		log.CLog().Warning(common.Hash2Hex(block.Header.ParentHash))
-		log.CLog().Warning(block.Header.Height)
+		log.CLog().WithFields(logrus.Fields{
+			"Height":     block.Header.Height,
+			"ParentHash": common.Hash2Hex(block.Header.ParentHash),
+		}).Warning("Snapshot is nil")
 		return nil
 	}
 
-	if snapshot.SignerSlice()[turn] == dpos.coinbase {
+	if snapshot.SignerSlice()[turn] == cs.coinbase {
 		parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
 
-		if (parent != nil) && (now-parent.Header.Time < 3) { //(3 * 3)
+		if (parent != nil) && (now-parent.Header.Time < cs.Period) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
-				"address": common.Address2Hex(dpos.coinbase),
+				"address": common.Address2Hex(cs.coinbase),
 			}).Warning("Interval is short")
 			return nil
 		}
 
 		log.CLog().WithFields(logrus.Fields{
-			"address": common.Bytes2Hex(dpos.coinbase[:]),
+			"address": common.Bytes2Hex(cs.coinbase[:]),
 		}).Debug("my turn")
-		block.Header.Coinbase = dpos.coinbase
+		block.Header.Coinbase = cs.coinbase
 		//block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
 		//because PutMinerState recall GetMinerGroup , here assign  bc.Tail.Header.SnapshotVoterTime , not voterBlock.Header.Time
 
@@ -111,7 +117,7 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 			} else if fromAccount.Nonce+1 == tx.Nonce {
 				// if signer is miner, include  voting tx
 				if len(tx.Payload) > 0 {
-					if tx.From == dpos.coinbase {
+					if tx.From == cs.coinbase {
 						if voteCount == 0 {
 							voteCount++
 							block.Transactions = append(block.Transactions, tx)
@@ -133,8 +139,6 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
-		// newSnap := snapshot.Copy()
-		// newSnap.Store(bc.Storage)
 
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
@@ -148,52 +152,22 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 		block.MakeHash()
 		newSnap := snapshot.Copy()
 		newSnap.BlockHash = block.Hash()
-		if dpos.voteTx != nil {
+		if cs.voteTx != nil {
 			authorize := bool(true)
-			rlp.DecodeBytes(dpos.voteTx.Payload, &authorize)
-			if newSnap.Cast(dpos.coinbase, dpos.coinbase, true) {
+			rlp.DecodeBytes(cs.voteTx.Payload, &authorize)
+			if newSnap.Cast(cs.coinbase, cs.coinbase, true) {
 				newSnap.Apply()
 			}
 		}
-		newSnap.Store(dpos.Storage)
-		dpos.voteTx = nil
-		/*
-					func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
-				snap, err := c.snapshot(hash)
-				if err != nil {
-					//TODO
-				} else {
-					authorize := bool(true)
-					rlp.DecodeBytes(tx.Payload, &authorize)
-					if snap.Cast(c.coinbase, c.coinbase, true) {
-						snap.Apply()
-					}
-					snap.Store(c.bc.Storage)
-				}
-			}
-		*/
+		newSnap.Store(cs.Storage)
+		cs.voteTx = nil
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
-			"address": common.Bytes2Hex(dpos.coinbase[:]),
+			"address": common.Bytes2Hex(cs.coinbase[:]),
 		}).Debug("not my turn")
 		return nil
 	}
-}
-
-func (c *Poa) ExecuteVote2(hash common.Hash, tx *core.Transaction) {
-	c.voteTx = tx
-	// snap, err := c.snapshot(hash)
-	// if err != nil {
-	// 	//TODO
-	// } else {
-	// 	authorize := bool(true)
-	// 	rlp.DecodeBytes(tx.Payload, &authorize)
-	// 	if snap.Cast(c.coinbase, c.coinbase, true) {
-	// 		snap.Apply()
-	// 	}
-	// 	snap.Store(c.bc.Storage)
-	// }
 }
 
 func (dpos *Poa) Start() {
@@ -302,3 +276,35 @@ func (cs *Poa) SaveMiners(block *core.Block) error {
 	cs.voteTx = nil
 	return nil
 }
+
+func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
+	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
+	miners, err := cs.GetMiners(parentBlock.Hash())
+	if err != nil {
+		return err
+	}
+	index := (block.Header.Time % (uint64(len(miners)) * cs.Period)) / cs.Period
+	if miners[index] != block.Header.Coinbase {
+		return errors.New("This turn is not the miner's turn ")
+	}
+	return nil
+}
+
+/*
+	if bc.Consensus.ConsensusType() == "POA" {
+		parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
+		minerGroup, err := bc.Consensus.GetMiners(parentBlock.Hash())
+		if err != nil {
+			return err
+		}
+		/ *
+				miners, err := cs.GetMiners(bc.Tail.Hash())
+			turn := (now % (uint64(len(minerGroup)) * bc.Conse.Period)) / cs.Period
+		* /
+		index := (block.Header.Time % 9) / 3
+		if minerGroup[index] != block.Header.Coinbase {
+			return errors.New("minerGroup[index] != block.Header.Coinbase")
+		}
+	}
+
+*/

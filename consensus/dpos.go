@@ -211,3 +211,6 @@ func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
 func (cs *Dpos) SaveMiners(block *core.Block) error {
 	return nil
 }
+func (cs *Dpos) VerifyMinerTurn(block *core.Block) error {
+	return nil
+}

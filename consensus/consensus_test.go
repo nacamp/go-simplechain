@@ -31,7 +31,7 @@ func TestMakeBlock(t *testing.T) {
 			cs.(*consensus.Dpos).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
 			block = cs.(*consensus.Dpos).MakeBlock(uint64(1)) // minerGroup[0]
 		} else {
-			cs.(*consensus.Poa).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
+			cs.(*consensus.Poa).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
 			block = cs.(*consensus.Poa).MakeBlock(uint64(1)) // minerGroup[0]
 		}
 		assert.NotNil(t, block, "")

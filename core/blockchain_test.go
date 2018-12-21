@@ -81,6 +81,7 @@ func TestSetup(t *testing.T) {
 			cs2 = consensus.NewDpos()
 		} else {
 			cs2 = consensus.NewPoa(storage02)
+			cs2.(*consensus.Poa).Period = 3
 		}
 		bc := core.NewBlockChain(cs2, storage1)
 		bc.LoadBlockChainFromStorage()
@@ -180,6 +181,7 @@ func TestMakeBlockChain(t *testing.T) {
 		bc := core.NewBlockChain(cs2, storage2)
 		if cs.ConsensusType() == "POA" {
 			cs2.(*consensus.Poa).SetupNonMiner(bc, nil)
+			cs2.(*consensus.Poa).Period = 3
 		}
 
 		//FIXME: how to test
@@ -246,6 +248,7 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 			cs2 = consensus.NewDpos()
 		} else {
 			cs2 = consensus.NewPoa(storage02)
+			cs2.(*consensus.Poa).Period = 3
 		}
 		bc := core.NewBlockChain(cs2, storage2)
 		if cs.ConsensusType() == "POA" {

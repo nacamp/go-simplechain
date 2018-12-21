@@ -69,7 +69,7 @@ func run(c *cli.Context) {
 			log.CLog().WithFields(logrus.Fields{
 				"Address": config.MinerAddress,
 			}).Info("Miner address")
-			cs.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
+			cs.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey), 3)
 		} else {
 			cs.SetupNonMiner(bc, node)
 		}

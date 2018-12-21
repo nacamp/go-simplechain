@@ -383,14 +383,9 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 
 	//4. poa
 	if bc.Consensus.ConsensusType() == "POA" {
-		parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
-		minerGroup, err := bc.Consensus.GetMiners(parentBlock.Hash())
+		err = bc.Consensus.VerifyMinerTurn(block)
 		if err != nil {
 			return err
-		}
-		index := (block.Header.Time % 9) / 3
-		if minerGroup[index] != block.Header.Coinbase {
-			return errors.New("minerGroup[index] != block.Header.Coinbase")
 		}
 	}
 
