@@ -148,10 +148,11 @@ func (node *MockNode) BroadcastMessage(message *net.Message) {}
 func TestMakeBlockChain(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
-	storage1, _ := storage.NewMemoryStorage()
+
 	storage01, _ := storage.NewMemoryStorage()
 	storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewDpos(), consensus.NewPoa(storage01)} {
+	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
+		storage1, _ := storage.NewMemoryStorage()
 		remoteBc := core.NewBlockChain(cs, storage1)
 		remoteBc.MakeGenesisBlock(voters)
 
@@ -177,6 +178,10 @@ func TestMakeBlockChain(t *testing.T) {
 			cs2 = consensus.NewPoa(storage02)
 		}
 		bc := core.NewBlockChain(cs2, storage2)
+		if cs.ConsensusType() == "POA" {
+			cs2.(*consensus.Poa).SetupNonMiner(bc, nil)
+		}
+
 		//FIXME: how to test
 		bc.Setup(voters)
 		bc.SetNode(new(MockNode))
@@ -243,6 +248,9 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 			cs2 = consensus.NewPoa(storage02)
 		}
 		bc := core.NewBlockChain(cs2, storage2)
+		if cs.ConsensusType() == "POA" {
+			cs2.(*consensus.Poa).SetupNonMiner(bc, nil)
+		}
 		bc.Setup(voters)
 		bc.SetNode(new(MockNode))
 

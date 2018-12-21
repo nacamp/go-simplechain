@@ -155,7 +155,7 @@ func (dpos *Poa) MakeBlock(now uint64) *core.Block {
 				newSnap.Apply()
 			}
 		}
-		newSnap.Store(bc.Storage)
+		newSnap.Store(dpos.Storage)
 		dpos.voteTx = nil
 		/*
 					func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
@@ -225,7 +225,7 @@ func (poa *Poa) snapshot(hash common.Hash) (*Snapshot, error) {
 	if block.Header.Height == uint64(0) {
 		return NewSnapshot(hash, poa.bc.Signers), nil
 	}
-	return LoadSnapshot(poa.bc.Storage, hash)
+	return LoadSnapshot(poa.Storage, hash)
 }
 
 //---------- Consensus
@@ -268,17 +268,6 @@ func (c *Poa) ConsensusType() string {
 
 func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
 	c.voteTx = tx
-	// snap, err := c.snapshot(hash)
-	// if err != nil {
-	// 	//TODO
-	// } else {
-	// 	authorize := bool(true)
-	// 	rlp.DecodeBytes(tx.Payload, &authorize)
-	// 	if snap.Cast(c.coinbase, c.coinbase, true) {
-	// 		snap.Apply()
-	// 	}
-	// 	snap.Store(c.bc.Storage)
-	// }
 }
 
 //TOD change name
@@ -310,17 +299,3 @@ func (cs *Poa) SaveMiners(block *core.Block) error {
 	cs.voteTx = nil
 	return nil
 }
-
-/*
-	newSnap := snapshot.Copy()
-	newSnap.BlockHash = block.Hash()
-	if dpos.voteTx != nil {
-		authorize := bool(true)
-		rlp.DecodeBytes(dpos.voteTx.Payload, &authorize)
-		if newSnap.Cast(dpos.coinbase, dpos.coinbase, true) {
-			newSnap.Apply()
-		}
-	}
-	newSnap.Store(bc.Storage)
-	dpos.voteTx = nil
-*/
