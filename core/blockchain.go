@@ -190,7 +190,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 		bc.GenesisBlock = block
 		bc.GenesisBlock.MakeHash()
 		//컨센서스에서 bc값이 nil이다.
-		bc.Consensus.NewSnapshot(bc.GenesisBlock.Hash(), bc.Signers)
+		bc.Consensus.InitSaveSnapshot(bc.GenesisBlock.Hash(), bc.Signers)
 
 	}
 

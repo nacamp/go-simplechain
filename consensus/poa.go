@@ -271,7 +271,7 @@ func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
 }
 
 //TOD change name
-func (c *Poa) NewSnapshot(hash common.Hash, addresses []common.Address) {
+func (c *Poa) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
 	snap := NewSnapshot(hash, addresses)
 	snap.Store(c.Storage)
 }

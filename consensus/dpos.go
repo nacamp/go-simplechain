@@ -200,7 +200,7 @@ func (c *Dpos) ExecuteVote(hash common.Hash, tx *core.Transaction) {
 
 }
 
-func (c *Dpos) NewSnapshot(hash common.Hash, addresses []common.Address) {
+func (c *Dpos) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
 
 }
 

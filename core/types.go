@@ -20,7 +20,7 @@ type Consensus interface {
 	UpdateLIB(bc *BlockChain)
 	ConsensusType() string
 	ExecuteVote(hash common.Hash, tx *Transaction)
-	NewSnapshot(hash common.Hash, addresses []common.Address)
+	InitSaveSnapshot(hash common.Hash, addresses []common.Address)
 	GetMiners(hash common.Hash) ([]common.Address, error)
 	SaveMiners(block *Block) error
 }
