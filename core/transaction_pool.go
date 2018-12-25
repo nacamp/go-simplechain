@@ -1,8 +1,13 @@
 package core
 
-import "github.com/najimmy/go-simplechain/common"
+import (
+	"sync"
+
+	"github.com/najimmy/go-simplechain/common"
+)
 
 type TransactionPool struct {
+	mu    sync.RWMutex
 	queue []common.Hash
 	txMap map[common.Hash]*Transaction
 }
@@ -13,10 +18,14 @@ func NewTransactionPool() *TransactionPool {
 
 func (pool *TransactionPool) Put(tx *Transaction) {
 	pool.txMap[tx.Hash] = tx
+	pool.mu.Lock()
 	pool.queue = append(pool.queue, tx.Hash)
+	pool.mu.Unlock()
 }
 
 func (pool *TransactionPool) Pop() (tx *Transaction) {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
 	for {
 		if len(pool.queue) > 0 {
 			hash := pool.queue[0]
@@ -34,6 +43,8 @@ func (pool *TransactionPool) Pop() (tx *Transaction) {
 }
 
 func (pool *TransactionPool) Peek() (tx *Transaction) {
+	pool.mu.RLock()
+	defer pool.mu.RUnlock()
 	if len(pool.queue) > 0 {
 		hash := pool.queue[0]
 		return pool.txMap[hash]
