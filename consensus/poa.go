@@ -216,20 +216,58 @@ func (cs *Poa) NewMinerState(rootHash common.Hash, storage storage.Storage) (cor
 	}, err
 }
 
+func (cs *Poa) getMinerSize(block *core.Block) (int, error) {
+	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
+	if parentBlock == nil {
+		return 0, errors.New("Parent is nil")
+	}
+	ms, err := cs.GetMiners(parentBlock.Hash())
+	if err != nil {
+		return 0, err
+	}
+	minerSize := len(ms)
+	if minerSize == 0 {
+		return 0, errors.New("Miners length cannot is zero")
+	}
+	return minerSize, nil
+}
+
 func (cs *Poa) UpdateLIB(bc *core.BlockChain) {
 	block := bc.Tail
-	//FIXME: consider timestamp, changed minerGroup
+	//FIXME: consider timestamp
 	miners := make(map[common.Address]bool)
 	turn := 1
+
+	firstMinerSize, err := cs.getMinerSize(block)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{
+			"Msg": err,
+		}).Warning("getMinerSize")
+		return
+	}
+	if firstMinerSize < 3 {
+		log.CLog().WithFields(logrus.Fields{
+			"Size": firstMinerSize,
+		}).Debug("At least 3 node are needed")
+		return
+	}
 	for bc.Lib.Hash() != block.Hash() {
 		miners[block.Header.Coinbase] = true
-		//minerGroup, _, _ := block.MinerState.GetMinerGroup(bc, block)
-		if turn == 3 {
-			if len(miners) == 3 {
+		size, err := cs.getMinerSize(block)
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Msg": err,
+			}).Warning("getMinerSize")
+			return
+		}
+		if firstMinerSize != size {
+			return
+		}
+		if turn == firstMinerSize {
+			if len(miners) == firstMinerSize*2/3+1 {
 				bc.SetLib(block)
 				log.CLog().WithFields(logrus.Fields{
 					"Height": block.Header.Height,
-					//"address": common.Hash2Hex(block.Hash()),
 				}).Info("Updated Lib")
 				return
 			}
