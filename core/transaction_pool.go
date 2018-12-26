@@ -17,8 +17,8 @@ func NewTransactionPool() *TransactionPool {
 }
 
 func (pool *TransactionPool) Put(tx *Transaction) {
-	pool.txMap[tx.Hash] = tx
 	pool.mu.Lock()
+	pool.txMap[tx.Hash] = tx
 	pool.queue = append(pool.queue, tx.Hash)
 	pool.mu.Unlock()
 }
