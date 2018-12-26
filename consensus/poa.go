@@ -51,9 +51,9 @@ func (cs *Poa) Setup(bc *core.BlockChain, node *net.Node, address common.Address
 }
 
 //Same as dpos
-func (dpos *Poa) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
-	dpos.bc = bc
-	dpos.node = node
+func (cs *Poa) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
+	cs.bc = bc
+	cs.node = node
 }
 
 //To be changed
@@ -180,47 +180,47 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	}
 }
 
-func (dpos *Poa) Start() {
-	if dpos.enableMining {
-		go dpos.loop()
+func (cs *Poa) Start() {
+	if cs.enableMining {
+		go cs.loop()
 	}
 }
 
-func (dpos *Poa) loop() {
+func (cs *Poa) loop() {
 	ticker := time.NewTicker(2 * time.Second)
 	for {
 		select {
 		case now := <-ticker.C:
-			block := dpos.MakeBlock(uint64(now.Unix()))
+			block := cs.MakeBlock(uint64(now.Unix()))
 			if block != nil {
-				block.Sign(dpos.priv)
-				dpos.bc.PutBlockByCoinbase(block)
-				dpos.bc.Consensus.UpdateLIB(dpos.bc)
-				dpos.bc.RemoveOrphanBlock()
+				block.Sign(cs.priv)
+				cs.bc.PutBlockByCoinbase(block)
+				cs.bc.Consensus.UpdateLIB(cs.bc)
+				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.BaseBlock)
-				dpos.node.BroadcastMessage(&message)
+				cs.node.BroadcastMessage(&message)
 			}
 		}
 	}
 }
 
-func (poa *Poa) snapshot(hash common.Hash) (*Snapshot, error) {
-	block := poa.bc.GetBlockByHash(hash)
+func (cs *Poa) snapshot(hash common.Hash) (*Snapshot, error) {
+	block := cs.bc.GetBlockByHash(hash)
 	if block.Header.Height == uint64(0) {
-		return NewSnapshot(hash, poa.bc.Signers), nil
+		return NewSnapshot(hash, cs.bc.Signers), nil
 	}
-	return LoadSnapshot(poa.Storage, hash)
+	return LoadSnapshot(cs.Storage, hash)
 }
 
 //---------- Consensus
-func (d *Poa) NewMinerState(rootHash common.Hash, storage storage.Storage) (core.MinerState, error) {
+func (cs *Poa) NewMinerState(rootHash common.Hash, storage storage.Storage) (core.MinerState, error) {
 	tr, err := trie.NewTrie(common.HashToBytes(rootHash), storage, false)
 	return &MinerState{
 		Trie: tr,
 	}, err
 }
 
-func (d *Poa) UpdateLIB(bc *core.BlockChain) {
+func (cs *Poa) UpdateLIB(bc *core.BlockChain) {
 	block := bc.Tail
 	//FIXME: consider timestamp, changed minerGroup
 	miners := make(map[common.Address]bool)
@@ -246,18 +246,18 @@ func (d *Poa) UpdateLIB(bc *core.BlockChain) {
 	}
 	return
 }
-func (c *Poa) ConsensusType() string {
+
+func (cs *Poa) ConsensusType() string {
 	return "POA"
 }
 
-func (c *Poa) ExecuteVote(tx *core.Transaction) {
-	c.voteTx = tx
+func (cs *Poa) ExecuteVote(tx *core.Transaction) {
+	cs.voteTx = tx
 }
 
-//TOD change name
-func (c *Poa) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
+func (cs *Poa) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
 	snap := NewSnapshot(hash, addresses)
-	snap.Store(c.Storage)
+	snap.Store(cs.Storage)
 }
 
 func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
