@@ -46,8 +46,9 @@ func run(c *cli.Context) {
 		bc.SetNode(node)
 		if config.EnableMining {
 			log.CLog().WithFields(logrus.Fields{
-				"Address": config.MinerAddress,
-			}).Info("Miner address")
+				"Address":   config.MinerAddress,
+				"Consensus": config.Consensus,
+			}).Info("Miner Info")
 			cs.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
 		} else {
 			cs.SetupNonMiner(bc, node)
@@ -67,8 +68,9 @@ func run(c *cli.Context) {
 		bc.SetNode(node)
 		if config.EnableMining {
 			log.CLog().WithFields(logrus.Fields{
-				"Address": config.MinerAddress,
-			}).Info("Miner address")
+				"Address":   config.MinerAddress,
+				"Consensus": config.Consensus,
+			}).Info("Miner Info")
 			cs.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey), 3)
 		} else {
 			cs.SetupNonMiner(bc, node)
