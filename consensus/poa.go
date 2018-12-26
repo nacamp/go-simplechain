@@ -294,7 +294,7 @@ func (cs *Poa) SaveMiners(block *core.Block) error {
 
 func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
 	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
-	if parentBlock != nil {
+	if parentBlock == nil {
 		return errors.New("parent block is nil")
 	}
 	miners, err := cs.GetMiners(parentBlock.Hash())
@@ -303,7 +303,7 @@ func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
 	}
 	index := (block.Header.Time % (uint64(len(miners)) * cs.Period)) / cs.Period
 	if miners[index] != block.Header.Coinbase {
-		return errors.New("This turn is not the miner's turn ")
+		return errors.New("This turn is not this miner's turn ")
 	}
 	return nil
 }

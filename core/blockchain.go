@@ -383,11 +383,10 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 
 	//4. poa
 	if bc.Consensus.ConsensusType() == "POA" {
-		//TODO:
-		// err = bc.Consensus.VerifyMinerTurn(block)
-		// if err != nil {
-		// 	return err
-		// }
+		err = bc.Consensus.VerifyMinerTurn(block)
+		if err != nil {
+			return err
+		}
 	}
 
 	//4. save status and verify hash
