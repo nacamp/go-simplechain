@@ -336,7 +336,7 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 	accs := block.AccountState
 	txs := block.TransactionState
-
+	firstVote := true
 	for _, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
 		if fromAccount.Nonce+1 != tx.Nonce {
@@ -351,13 +351,14 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			toAccount.AddBalance(tx.Amount)
 			accs.PutAccount(toAccount)
 		} else {
-			//vote
-			bc.Consensus.ExecuteVote(tx)
+			if tx.From == block.Header.Coinbase && firstVote {
+				firstVote = false
+			} else {
+				return errors.New("This tx is not validated")
+			}
 		}
-
 		accs.PutAccount(fromAccount)
 		txs.PutTransaction(tx)
-		//implement vote transaction later
 	}
 	return nil
 }

@@ -26,7 +26,6 @@ type Poa struct {
 	priv         *ecdsa.PrivateKey
 	enableMining bool
 	Storage      storage.Storage
-	voteTx       *core.Transaction
 	Period       uint64
 }
 
@@ -106,7 +105,8 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		//TODO: check double spending ?
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
-		voteCount := 0
+		firstVote := true
+		var voteTx *core.Transaction
 		for i := 0; i < bc.TxPool.Len(); i++ {
 			tx := bc.TxPool.Pop()
 			if tx == nil {
@@ -122,13 +122,10 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 			} else if fromAccount.Nonce+1 == tx.Nonce {
 				// if signer is miner, include  voting tx
 				if len(tx.Payload) > 0 {
-					if tx.From == cs.coinbase {
-						if voteCount == 0 {
-							voteCount++
-							block.Transactions = append(block.Transactions, tx)
-						} else {
-							bc.TxPool.Put(tx)
-						}
+					if tx.From == cs.coinbase && firstVote {
+						firstVote = false
+						voteTx = tx
+						block.Transactions = append(block.Transactions, tx)
 					} else {
 						bc.TxPool.Put(tx)
 					}
@@ -157,10 +154,10 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		newSnap := snapshot.Copy()
 		newSnap.BlockHash = block.Hash()
 		l := len(newSnap.Signers)
-		if voteCount > 0 && cs.voteTx != nil {
+		if voteTx != nil {
 			authorize := bool(true)
-			rlp.DecodeBytes(cs.voteTx.Payload, &authorize)
-			if newSnap.Cast(cs.coinbase, cs.voteTx.To, authorize) {
+			rlp.DecodeBytes(voteTx.Payload, &authorize)
+			if newSnap.Cast(cs.coinbase, voteTx.To, authorize) {
 				newSnap.Apply()
 			}
 		}
@@ -170,7 +167,6 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 			}).Info("changed signers")
 		}
 		newSnap.Store(cs.Storage)
-		cs.voteTx = nil
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
@@ -251,10 +247,6 @@ func (cs *Poa) ConsensusType() string {
 	return "POA"
 }
 
-func (cs *Poa) ExecuteVote(tx *core.Transaction) {
-	cs.voteTx = tx
-}
-
 func (cs *Poa) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
 	snap := NewSnapshot(hash, addresses)
 	snap.Store(cs.Storage)
@@ -280,15 +272,17 @@ func (cs *Poa) SaveMiners(block *core.Block) error {
 	}
 	newSnap := snapshot.Copy()
 	newSnap.BlockHash = block.Hash()
-	if cs.voteTx != nil {
-		authorize := bool(true)
-		rlp.DecodeBytes(cs.voteTx.Payload, &authorize)
-		if newSnap.Cast(cs.voteTx.From, cs.voteTx.To, authorize) {
-			newSnap.Apply()
+	for _, tx := range block.Transactions {
+		if len(tx.Payload) > 0 {
+			authorize := bool(true)
+			rlp.DecodeBytes(tx.Payload, &authorize)
+			if newSnap.Cast(tx.From, tx.To, authorize) {
+				newSnap.Apply()
+			}
+			break
 		}
 	}
 	newSnap.Store(cs.Storage)
-	cs.voteTx = nil
 	return nil
 }
 
