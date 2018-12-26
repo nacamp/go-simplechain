@@ -58,15 +58,12 @@ func (cs *Poa) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
 //To be changed
 func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	bc := cs.bc
-	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
-	//Fix: when ticker is 1 second, server mining...
-	// turn := (now % 9) / 3
 	block, err := bc.NewBlockFromParent(bc.Tail)
 	if err != nil {
 		log.CLog().Warning(err)
 	}
 	block.Header.Time = now
-	miners, err := cs.GetMiners(bc.Tail.Hash())
+	miners, err := cs.GetMiners(block.Header.ParentHash)
 	if len(miners) == 0 {
 		log.CLog().WithFields(logrus.Fields{
 			"Size": 0,
@@ -86,12 +83,13 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		return nil
 	}
 	if snapshot.SignerSlice()[turn] == cs.coinbase {
-		parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
+		parent := bc.GetBlockByHash(block.Header.ParentHash)
 
+		//if (parent != nil) && (now-parent.Header.Time < ((uint64(len(miners)) * cs.Period) - 1)) { //(3 * 3)
 		if (parent != nil) && (now-parent.Header.Time < cs.Period) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
 				"address": common.Address2Hex(cs.coinbase),
-			}).Warning("Interval is short")
+			}).Debug("Interval is short")
 			return nil
 		}
 
@@ -99,10 +97,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 			"address": common.Bytes2Hex(cs.coinbase[:]),
 		}).Debug("my turn")
 		block.Header.Coinbase = cs.coinbase
-		//block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
-		//because PutMinerState recall GetMinerGroup , here assign  bc.Tail.Header.SnapshotVoterTime , not voterBlock.Header.Time
 
-		//TODO: check double spending ?
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
 		firstVote := true
@@ -183,7 +178,7 @@ func (cs *Poa) Start() {
 }
 
 func (cs *Poa) loop() {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	for {
 		select {
 		case now := <-ticker.C:
