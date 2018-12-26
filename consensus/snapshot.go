@@ -159,6 +159,12 @@ func (s *Snapshot) Apply() {
 				delete(s.Votes, appendAddress(devictedAddress, address))
 			}
 		}
+		for address := range s.Signers {
+			if _, ok := s.Votes[appendAddress(address, devictedAddress)]; ok {
+				delete(s.Votes, appendAddress(address, devictedAddress))
+			}
+		}
+		delete(s.Candidates, devictedAddress)
 	}
 }
 
