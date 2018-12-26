@@ -352,7 +352,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			accs.PutAccount(toAccount)
 		} else {
 			//vote
-			bc.Consensus.ExecuteVote(block.Hash(), tx)
+			bc.Consensus.ExecuteVote(tx)
 		}
 
 		accs.PutAccount(fromAccount)
@@ -383,10 +383,11 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 
 	//4. poa
 	if bc.Consensus.ConsensusType() == "POA" {
-		err = bc.Consensus.VerifyMinerTurn(block)
-		if err != nil {
-			return err
-		}
+		//TODO:
+		// err = bc.Consensus.VerifyMinerTurn(block)
+		// if err != nil {
+		// 	return err
+		// }
 	}
 
 	//4. save status and verify hash
@@ -427,8 +428,9 @@ func (bc *BlockChain) AddTailToGroup(block *Block) {
 func (bc *BlockChain) PutBlockByCoinbase(block *Block) {
 	bc.mu.Lock()
 	bc.putBlockToStorage(block)
-	bc.SetTail(block)
 	bc.mu.Unlock()
+	bc.SetTail(block)
+
 	log.CLog().WithFields(logrus.Fields{
 		"Height":   block.Header.Height,
 		"Tx count": len(block.Transactions),
@@ -525,10 +527,6 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 	return block, nil
 }
 
-// func (bc *BlockChain) Start() {
-// 	//go bc.Loop()
-// }
-
 func (bc *BlockChain) HandleMessage(message *net.Message) error {
 	if message.Code == net.MSG_NEW_BLOCK || message.Code == net.MSG_MISSING_BLOCK_ACK {
 		baseBlock := &BaseBlock{}
@@ -581,10 +579,6 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 	return nil
 }
 
-// func (sp *SubsriberPool) handleMessage(message *Message) {
-// 	sp.messageCh <- message
-// }
-
 //TODO: use code temporarily
 func (bc *BlockChain) RequestMissingBlock() error {
 	missigBlock := make(map[uint64]bool)
@@ -601,6 +595,8 @@ func (bc *BlockChain) RequestMissingBlock() error {
 	if len(keys) == 0 {
 		return nil
 	}
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
 	for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
 		msg, err := net.NewRLPMessage(net.MSG_MISSING_BLOCK, uint64(i))
 		if err != nil {
@@ -634,7 +630,9 @@ func (bc *BlockChain) SendMissingBlock(height uint64, peerID peer.ID) {
 }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
+	bc.mu.RLock()
 	TailTxs := bc.Tail.TransactionState
+	bc.mu.RUnlock()
 	bc.tailGroup.Range(func(key, value interface{}) bool {
 		tail := value.(*Block)
 		// var err error
@@ -752,7 +750,9 @@ func (bc *BlockChain) SetTail(block *Block) {
 		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
 	}
 	if block.Header.Height >= bc.Tail.Header.Height {
+		bc.mu.Lock()
 		bc.Tail = block
+		bc.mu.Unlock()
 		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
 		log.CLog().WithFields(logrus.Fields{
 			"Height": block.Header.Height,

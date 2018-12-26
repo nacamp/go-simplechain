@@ -3,6 +3,7 @@ package consensus
 import (
 	"crypto/ecdsa"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/najimmy/go-simplechain/rlp"
@@ -18,6 +19,7 @@ import (
 )
 
 type Poa struct {
+	mu           sync.RWMutex
 	bc           *core.BlockChain
 	node         *net.Node
 	coinbase     common.Address
@@ -66,8 +68,12 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	}
 	block.Header.Time = now
 	miners, err := cs.GetMiners(bc.Tail.Hash())
+	if len(miners) == 0 {
+		log.CLog().WithFields(logrus.Fields{
+			"Size": 0,
+		}).Panic("Miner must be one more")
+	}
 	turn := (now % (uint64(len(miners)) * cs.Period)) / cs.Period
-	//
 	snapshot, err := cs.snapshot(block.Header.ParentHash)
 	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
@@ -80,7 +86,6 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		}).Warning("Snapshot is nil")
 		return nil
 	}
-
 	if snapshot.SignerSlice()[turn] == cs.coinbase {
 		parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
 
@@ -102,7 +107,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
 		voteCount := 0
-		for {
+		for i := 0; i < bc.TxPool.Len(); i++ {
 			tx := bc.TxPool.Pop()
 			if tx == nil {
 				break
@@ -139,7 +144,6 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
-
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
 		block.Header.AccountHash = block.AccountState.RootHash()
@@ -152,12 +156,18 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		block.MakeHash()
 		newSnap := snapshot.Copy()
 		newSnap.BlockHash = block.Hash()
-		if cs.voteTx != nil {
+		l := len(newSnap.Signers)
+		if voteCount > 0 && cs.voteTx != nil {
 			authorize := bool(true)
 			rlp.DecodeBytes(cs.voteTx.Payload, &authorize)
-			if newSnap.Cast(cs.coinbase, cs.coinbase, true) {
+			if newSnap.Cast(cs.coinbase, cs.voteTx.To, authorize) {
 				newSnap.Apply()
 			}
+		}
+		if l != len(newSnap.Signers) {
+			log.CLog().WithFields(logrus.Fields{
+				"Size": len(newSnap.Signers),
+			}).Info("changed signers")
 		}
 		newSnap.Store(cs.Storage)
 		cs.voteTx = nil
@@ -177,7 +187,7 @@ func (dpos *Poa) Start() {
 }
 
 func (dpos *Poa) loop() {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	for {
 		select {
 		case now := <-ticker.C:
@@ -240,7 +250,7 @@ func (c *Poa) ConsensusType() string {
 	return "POA"
 }
 
-func (c *Poa) ExecuteVote(hash common.Hash, tx *core.Transaction) {
+func (c *Poa) ExecuteVote(tx *core.Transaction) {
 	c.voteTx = tx
 }
 
@@ -260,15 +270,20 @@ func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
 
 func (cs *Poa) SaveMiners(block *core.Block) error {
 	snapshot, err := cs.snapshot(block.Header.ParentHash)
+	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
+		log.CLog().Warning(err)
 		return err
+	}
+	if snapshot == nil {
+		return errors.New("Snapshot is nil")
 	}
 	newSnap := snapshot.Copy()
 	newSnap.BlockHash = block.Hash()
 	if cs.voteTx != nil {
 		authorize := bool(true)
 		rlp.DecodeBytes(cs.voteTx.Payload, &authorize)
-		if newSnap.Cast(cs.coinbase, cs.coinbase, true) {
+		if newSnap.Cast(cs.voteTx.From, cs.voteTx.To, authorize) {
 			newSnap.Apply()
 		}
 	}
@@ -279,6 +294,9 @@ func (cs *Poa) SaveMiners(block *core.Block) error {
 
 func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
 	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
+	if parentBlock != nil {
+		return errors.New("parent block is nil")
+	}
 	miners, err := cs.GetMiners(parentBlock.Hash())
 	if err != nil {
 		return err
@@ -289,22 +307,3 @@ func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
 	}
 	return nil
 }
-
-/*
-	if bc.Consensus.ConsensusType() == "POA" {
-		parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
-		minerGroup, err := bc.Consensus.GetMiners(parentBlock.Hash())
-		if err != nil {
-			return err
-		}
-		/ *
-				miners, err := cs.GetMiners(bc.Tail.Hash())
-			turn := (now % (uint64(len(minerGroup)) * bc.Conse.Period)) / cs.Period
-		* /
-		index := (block.Header.Time % 9) / 3
-		if minerGroup[index] != block.Header.Coinbase {
-			return errors.New("minerGroup[index] != block.Header.Coinbase")
-		}
-	}
-
-*/

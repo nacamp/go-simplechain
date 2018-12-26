@@ -92,7 +92,7 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		//TODO: check double spending ?
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
-		for {
+		for i := 0; i < bc.TxPool.Len(); i++ {
 			tx := bc.TxPool.Pop()
 			if tx == nil {
 				break
@@ -196,7 +196,7 @@ func (c *Dpos) ConsensusType() string {
 	return "DPOS"
 }
 
-func (c *Dpos) ExecuteVote(hash common.Hash, tx *core.Transaction) {
+func (c *Dpos) ExecuteVote(tx *core.Transaction) {
 
 }
 

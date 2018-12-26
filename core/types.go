@@ -19,7 +19,7 @@ type Consensus interface {
 	NewMinerState(rootHash common.Hash, storage storage.Storage) (MinerState, error)
 	UpdateLIB(bc *BlockChain)
 	ConsensusType() string
-	ExecuteVote(hash common.Hash, tx *Transaction)
+	ExecuteVote(tx *Transaction)
 	InitSaveSnapshot(hash common.Hash, addresses []common.Address)
 	GetMiners(hash common.Hash) ([]common.Address, error)
 	SaveMiners(block *Block) error
