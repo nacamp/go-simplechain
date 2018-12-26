@@ -7,6 +7,7 @@
     "miner_private_key" : "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
     "node_private_key"  : "08021220114a228984dea82c6d7e6996a85fccc7ae6053249dbf5aa5698ffb14668d68f4",
     "seeds" :  ["/ip4/127.0.0.1/tcp/9991/ipfs/16Uiu2HAkwR1pV8ZR8ApcZWrMSw5iNMwaJHFpKr91H9a1a65WGehk"],
+    "consensus" : "poa",
     "voters" : [{"address":"0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0", "balance":100 },
                 {"address":"0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "balance":20 },
                 {"address":"0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", "balance":50 }]
