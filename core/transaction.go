@@ -88,6 +88,14 @@ func MakeTransaction(from, to string, amount *big.Int, nonce uint64) *Transactio
 	return tx
 }
 
+func MakeTransactionPayload(from, to string, amount *big.Int, nonce uint64, payload []byte) *Transaction {
+	tx := NewTransactionPayload(common.HexToAddress(from), common.HexToAddress(to), amount, nonce, payload)
+	tx.MakeHash()
+	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[from]))
+	tx.Sign((*ecdsa.PrivateKey)(priv))
+	return tx
+}
+
 /*TODO
 where privatekey , keystore
 unique : nonce  or timestamp
