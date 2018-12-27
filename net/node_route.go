@@ -111,10 +111,13 @@ func (nodeRoute *NodeRoute) FindNewNodes() {
 		v, ok := node.p2pStreamMap.Load(peerid)
 		if ok {
 			p2pStream := v.(*P2PStream)
+			p2pStream.mu.RLock()
 			if !p2pStream.isClosed {
+				p2pStream.mu.RUnlock()
 				log.CLog().Debug("reuse stream")
 				p2pStream.RequestPeers()
 			} else {
+				p2pStream.mu.RUnlock()
 				log.CLog().Debug("FindNewNodes lock before")
 				p2pStream.mu.Lock()
 				node.p2pStreamMap.Delete(peerid)

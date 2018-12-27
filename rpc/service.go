@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/najimmy/go-simplechain/rlp"
+
 	"github.com/intel-go/fastjson"
 
 	"github.com/najimmy/go-simplechain/common"
@@ -103,10 +105,11 @@ func (h *GetTransactionCountHandler) Result() interface{} {
 
 // sendTransaction >>>>>>>>>>>
 type TempTx struct {
-	From   string `json:"from"`
-	To     string `json:"to"`
-	Amount string `json:"amount"`
-	Nonce  string `json:"nonce"`
+	From    string `json:"from"`
+	To      string `json:"to"`
+	Amount  string `json:"amount"`
+	Nonce   string `json:"nonce"`
+	Payload string `json:"payload"`
 }
 
 type SendTransactionHandler struct {
@@ -129,7 +132,15 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	}
 	amount, _ := new(big.Int).SetString(p.Amount, 10)
 	nonce, _ := strconv.ParseUint(p.Nonce, 10, 64)
-	tx := core.MakeTransaction(p.From, p.To, amount, nonce)
+	var tx *core.Transaction
+	if p.Payload == "" {
+		tx = core.MakeTransaction(p.From, p.To, amount, nonce)
+	} else {
+		payload, _ := strconv.ParseBool(p.Payload)
+		bytePpayload, _ := rlp.EncodeToBytes(payload)
+		tx = core.MakeTransactionPayload(p.From, p.To, amount, nonce, bytePpayload)
+	}
+
 	h.bc.TxPool.Put(tx)
 	h.bc.BroadcastNewTXMessage(tx)
 	return common.Hash2Hex(tx.Hash), nil

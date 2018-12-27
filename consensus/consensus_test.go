@@ -15,22 +15,31 @@ import (
 	"github.com/najimmy/go-simplechain/core"
 )
 
-func TestDpos_MakeBlock(t *testing.T) {
+func TestMakeBlock(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
-	dpos := consensus.NewDpos()
-	remoteBc := core.NewBlockChain(dpos, storage1)
-	remoteBc.Setup(voters)
+	storage01, _ := storage.NewMemoryStorage()
+	// storage02, _ := storage.NewMemoryStorage()
+	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
+		remoteBc := core.NewBlockChain(cs, storage1)
+		remoteBc.Setup(voters)
 
-	dpos.Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
-	block := dpos.MakeBlock(uint64(1)) // minerGroup[0]
-	assert.NotNil(t, block, "")
-	assert.NotEqual(t, block.Header.AccountHash, remoteBc.GenesisBlock.Header.AccountHash, "")
-	assert.Equal(t, block.Header.VoterHash, remoteBc.GenesisBlock.Header.VoterHash, "")
-	assert.Equal(t, block.Header.MinerHash, remoteBc.GenesisBlock.Header.MinerHash, "")
-	assert.Equal(t, block.Header.TransactionHash, remoteBc.GenesisBlock.Header.TransactionHash, "")
+		var block *core.Block
+		if cs.ConsensusType() == "DPOS" {
+			cs.(*consensus.Dpos).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
+			block = cs.(*consensus.Dpos).MakeBlock(uint64(1)) // minerGroup[0]
+		} else {
+			cs.(*consensus.Poa).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
+			block = cs.(*consensus.Poa).MakeBlock(uint64(1)) // minerGroup[0]
+		}
+		assert.NotNil(t, block, "")
+		assert.NotEqual(t, block.Header.AccountHash, remoteBc.GenesisBlock.Header.AccountHash, "")
+		assert.Equal(t, block.Header.VoterHash, remoteBc.GenesisBlock.Header.VoterHash, "")
+		assert.Equal(t, block.Header.MinerHash, remoteBc.GenesisBlock.Header.MinerHash, "")
+		assert.Equal(t, block.Header.TransactionHash, remoteBc.GenesisBlock.Header.TransactionHash, "")
+	}
 }
 
 /*
@@ -43,28 +52,31 @@ func TestUpdateLIB1(t *testing.T) {
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
 
-	dpos := consensus.NewDpos()
-	bc := core.NewBlockChain(dpos, storage1)
-	bc.Setup(voters)
+	storage01, _ := storage.NewMemoryStorage()
+	// storage02, _ := storage.NewMemoryStorage()
+	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
+		bc := core.NewBlockChain(cs, storage1)
+		bc.Setup(voters)
 
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block1)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block1)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block2)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block2)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block3 := tests.MakeBlock(bc, block2, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block3)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, block1.Hash(), bc.Lib.Hash(), "")
+		block3 := tests.MakeBlock(bc, block2, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block3)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		cs.UpdateLIB(bc)
+		assert.Equal(t, block1.Hash(), bc.Lib.Hash(), "")
+	}
 }
 
 /*
@@ -77,39 +89,41 @@ func TestUpdateLIB2(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
+	storage01, _ := storage.NewMemoryStorage()
+	// storage02, _ := storage.NewMemoryStorage()
+	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
+		bc := core.NewBlockChain(cs, storage1)
+		bc.Setup(voters)
 
-	dpos := consensus.NewDpos()
-	bc := core.NewBlockChain(dpos, storage1)
-	bc.Setup(voters)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block1)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block1)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block2)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block2)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block3 := tests.MakeBlock(bc, block2, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block3)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block3 := tests.MakeBlock(bc, block2, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block3)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block4 := tests.MakeBlock(bc, block3, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block4)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block4 := tests.MakeBlock(bc, block3, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block4)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
-
-	block5 := tests.MakeBlock(bc, block4, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block5)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, block3.Hash(), bc.Lib.Hash(), "")
+		block5 := tests.MakeBlock(bc, block4, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block5)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		cs.UpdateLIB(bc)
+		assert.Equal(t, block3.Hash(), bc.Lib.Hash(), "")
+	}
 }
 
 /*
@@ -125,49 +139,64 @@ func TestUpdateLIB3(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage1, _ := storage.NewMemoryStorage()
+	storage01, _ := storage.NewMemoryStorage()
+	storage02, _ := storage.NewMemoryStorage()
+	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
+		bc := core.NewBlockChain(cs, storage1)
+		bc.Setup(voters)
 
-	dpos := consensus.NewDpos()
-	bc := core.NewBlockChain(dpos, storage1)
-	bc.Setup(voters)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block1)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block1)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block2)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
-	block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block2)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
+		block3 := tests.MakeBlock(bc, block2, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block3)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, block1.Hash(), bc.Lib.Hash(), "")
 
-	block3 := tests.MakeBlock(bc, block2, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block3)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, block1.Hash(), bc.Lib.Hash(), "")
+		block4 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block4)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, block2.Hash(), bc.Lib.Hash(), "")
 
-	block4 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block4)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, block2.Hash(), bc.Lib.Hash(), "")
+		block5 := tests.MakeBlock(bc, block4, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
+		bc.PutBlockByCoinbase(block5)
+		cs.UpdateLIB(bc)
+		assert.Equal(t, block3.Hash(), bc.Lib.Hash(), "")
 
-	block5 := tests.MakeBlock(bc, block4, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
-	bc.PutBlockByCoinbase(block5)
-	dpos.UpdateLIB(bc)
-	assert.Equal(t, block3.Hash(), bc.Lib.Hash(), "")
+		//test LoadLibFromStorage with same storage
+		var cs2 core.Consensus
+		if cs.ConsensusType() == "DPOS" {
+			cs2 = consensus.NewDpos()
+			bc2 := core.NewBlockChain(cs2, storage1)
+			bc2.Setup(voters)
+			assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
+			//check status loading
+			assert.NotNil(t, bc2.Lib.VoterState, "")
 
-	//test LoadLibFromStorage with same storage
-	dpos2 := consensus.NewDpos()
-	bc2 := core.NewBlockChain(dpos2, storage1)
-	bc2.Setup(voters)
-	assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
-	//check status loading
-	assert.NotNil(t, bc2.Lib.VoterState, "")
+			//test LoadTailFromStorage with same storage
+			assert.Equal(t, bc.Tail.Hash(), block5.Hash(), "")
+			//check status loading
+			assert.NotNil(t, bc2.Tail.VoterState, "")
 
-	//test LoadTailFromStorage with same storage
-	assert.Equal(t, bc.Tail.Hash(), block5.Hash(), "")
-	//check status loading
-	assert.NotNil(t, bc2.Tail.VoterState, "")
+		} else {
+			cs2 = consensus.NewPoa(storage02)
+			bc2 := core.NewBlockChain(cs2, storage1)
+			bc2.Setup(voters)
+			assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
+
+			//test LoadTailFromStorage with same storage
+			assert.Equal(t, bc.Tail.Hash(), block5.Hash(), "")
+		}
+
+	}
 }

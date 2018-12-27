@@ -1,12 +1,22 @@
 package common
 
-import "encoding/hex"
+import (
+	"encoding/hex"
+	"reflect"
+
+	"github.com/najimmy/go-simplechain/common/hexutil"
+)
 
 //first naive publickey
 const (
 	HashLength    = 32
 	AddressLength = 33
 	SigLength     = 65
+)
+
+var (
+	hashT    = reflect.TypeOf(Hash{})
+	addressT = reflect.TypeOf(Address{})
 )
 
 // Address
@@ -62,4 +72,19 @@ func Hash2Hex(hash Hash) string {
 
 func Address2Hex(address Address) string {
 	return hex.EncodeToString(address[:])
+}
+
+// MarshalText returns the hex representation of a.
+func (a Address) MarshalText() ([]byte, error) {
+	return hexutil.Bytes(a[:]).MarshalText()
+}
+
+// UnmarshalText parses a hash in hex syntax.
+func (a *Address) UnmarshalText(input []byte) error {
+	return hexutil.UnmarshalFixedText("Address", input, a[:])
+}
+
+// UnmarshalJSON parses a hash in hex syntax.
+func (a *Address) UnmarshalJSON(input []byte) error {
+	return hexutil.UnmarshalFixedJSON(addressT, input, a[:])
 }

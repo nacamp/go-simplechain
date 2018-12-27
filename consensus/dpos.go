@@ -92,7 +92,7 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		//TODO: check double spending ?
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
-		for {
+		for i := 0; i < bc.TxPool.Len(); i++ {
 			tx := bc.TxPool.Pop()
 			if tx == nil {
 				break
@@ -190,4 +190,23 @@ func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
 		turn++
 	}
 	return
+}
+
+func (c *Dpos) ConsensusType() string {
+	return "DPOS"
+}
+
+func (c *Dpos) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
+
+}
+
+func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
+	return nil, nil
+}
+
+func (cs *Dpos) SaveMiners(block *core.Block) error {
+	return nil
+}
+func (cs *Dpos) VerifyMinerTurn(block *core.Block) error {
+	return nil
 }

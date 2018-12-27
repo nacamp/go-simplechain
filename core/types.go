@@ -18,6 +18,11 @@ type MinerState interface {
 type Consensus interface {
 	NewMinerState(rootHash common.Hash, storage storage.Storage) (MinerState, error)
 	UpdateLIB(bc *BlockChain)
+	ConsensusType() string
+	InitSaveSnapshot(hash common.Hash, addresses []common.Address)
+	GetMiners(hash common.Hash) ([]common.Address, error)
+	SaveMiners(block *Block) error
+	VerifyMinerTurn(block *Block) error
 }
 
 type ConfigAccount struct {
@@ -35,4 +40,11 @@ type Config struct {
 	Seeds           []string        `json:"seeds"`
 	Voters          []ConfigAccount `json:"voters"`
 	EnableMining    bool            `json:"enable_mining"`
+	Consensus       string          `json:"consensus"`
 }
+
+/*
+period
+
+
+*/

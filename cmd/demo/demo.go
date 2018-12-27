@@ -38,26 +38,52 @@ func run(c *cli.Context) {
 	} else {
 		db, _ = storage.NewLevelDBStorage(config.DBPath)
 	}
-	dpos := consensus.NewDpos()
-	bc := core.NewBlockChain(dpos, db)
-	bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
-	bc.SetNode(node)
-	if config.EnableMining {
-		log.CLog().WithFields(logrus.Fields{
-			"Address": config.MinerAddress,
-		}).Info("Miner address")
-		dpos.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
-	} else {
-		dpos.SetupNonMiner(bc, node)
-	}
-	bc.Start()
-	node.Start(config.Seeds[0])
-	dpos.Start()
+	//TODO: remove duplicated code
+	if config.Consensus == "dpos" {
+		cs := consensus.NewDpos()
+		bc := core.NewBlockChain(cs, db)
+		bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
+		bc.SetNode(node)
+		if config.EnableMining {
+			log.CLog().WithFields(logrus.Fields{
+				"Address":   config.MinerAddress,
+				"Consensus": config.Consensus,
+			}).Info("Miner Info")
+			cs.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
+		} else {
+			cs.SetupNonMiner(bc, node)
+		}
+		bc.Start()
+		node.Start(config.Seeds[0])
+		cs.Start()
 
-	rpcServer := rpc.NewRpcServer(config.RpcAddress)
-	rpcService := &rpc.RpcService{}
-	rpcService.Setup(rpcServer, config, bc)
-	rpcServer.Start()
+		rpcServer := rpc.NewRpcServer(config.RpcAddress)
+		rpcService := &rpc.RpcService{}
+		rpcService.Setup(rpcServer, config, bc)
+		rpcServer.Start()
+	} else {
+		cs := consensus.NewPoa(db)
+		bc := core.NewBlockChain(cs, db)
+		bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
+		bc.SetNode(node)
+		if config.EnableMining {
+			log.CLog().WithFields(logrus.Fields{
+				"Address":   config.MinerAddress,
+				"Consensus": config.Consensus,
+			}).Info("Miner Info")
+			cs.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey), 3)
+		} else {
+			cs.SetupNonMiner(bc, node)
+		}
+		bc.Start()
+		node.Start(config.Seeds[0])
+		cs.Start()
+
+		rpcServer := rpc.NewRpcServer(config.RpcAddress)
+		rpcService := &rpc.RpcService{}
+		rpcService.Setup(rpcServer, config, bc)
+		rpcServer.Start()
+	}
 
 	select {}
 
