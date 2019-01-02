@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
 )
@@ -29,7 +30,7 @@ const (
 	LangObjC
 )
 
-func MakeConfig() *core.Config {
+func MakeConfig() *cmd.Config {
 	configStr := `
 	{
 		"host_id" : "/ip4/127.0.0.1/tcp/9990/ipfs/16Uiu2HAkwR1pV8ZR8ApcZWrMSw5iNMwaJHFpKr91H9a1a65WGehk",
@@ -45,7 +46,7 @@ func MakeConfig() *core.Config {
 	}
 	`
 	contents := []byte(configStr)
-	config := &core.Config{}
+	config := &cmd.Config{}
 	json.Unmarshal([]byte(contents), config)
 	return config
 }

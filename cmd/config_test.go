@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/najimmy/go-simplechain/cmd"
-	"github.com/najimmy/go-simplechain/core"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,7 +24,7 @@ func TestConfig(t *testing.T) {
 					{"address":"0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", "balance":50 }]
 		}`
 	contents := []byte(configStr)
-	config := &core.Config{}
+	config := &cmd.Config{}
 	// err := json.Unmarshal([]byte(contents), config)
 	// if err != nil {
 	// 	fmt.Println(err)
@@ -51,7 +50,7 @@ func TestConfig(t *testing.T) {
 		fmt.Println(err)
 	}
 
-	config = &core.Config{}
+	config = &cmd.Config{}
 	config = cmd.NewConfigFromFile(tmpfile.Name())
 	// fmt.Println(config.HostId)
 	// fmt.Println(config.MinerAddress)
