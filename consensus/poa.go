@@ -232,7 +232,9 @@ func (cs *Poa) UpdateLIB(bc *core.BlockChain) {
 	//FIXME: consider timestamp
 	miners := make(map[common.Address]bool)
 	turn := 1
-
+	if block.Header.Height == 0 {
+		return
+	}
 	firstMinerSize, err := cs.getMinerSize(block)
 	if err != nil {
 		log.CLog().WithFields(logrus.Fields{

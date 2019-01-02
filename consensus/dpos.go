@@ -53,11 +53,6 @@ func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Addr
 	}
 }
 
-func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
-	dpos.bc = bc
-	dpos.node = node
-}
-
 func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	bc := dpos.bc
 	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
@@ -163,6 +158,11 @@ func (d *Dpos) NewMinerState(rootHash common.Hash, storage storage.Storage) (cor
 	return &MinerState{
 		Trie: tr,
 	}, err
+}
+
+func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
+	dpos.bc = bc
+	dpos.node = node
 }
 
 func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
