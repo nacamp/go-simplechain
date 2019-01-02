@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/najimmy/go-simplechain/cmd"
@@ -18,6 +19,7 @@ func TestConfig(t *testing.T) {
 		"db_path" : "/opt/simplechain/data",
 		"miner_address" : "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0",
 		"miner_private_key" : "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
+		"node_key_path" : "/test/nodekey",
 		"seeds" :  ["080212201afa45f64cd5a28cd40e178889ed2e9f987658bc4d48d376ef6ecb1ab1b26211"],
 		"voters" : [{"address":"0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0", "balance":100 },
 				    {"address":"0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "balance":20 },
@@ -61,4 +63,12 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, new(big.Int).SetUint64(100), config.Voters[0].Balance, "")
 	assert.Equal(t, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", config.Voters[1].Address, "")
 	assert.Equal(t, "/opt/simplechain/data", config.DBPath, "")
+	assert.Equal(t, "/test/nodekey", config.NodeKeyPath, "")
+
+	//NodeKey
+	priv1, _ := config.NodePrivateKey()
+	priv2, _ := config.NodePrivateKey()
+	assert.Equal(t, priv1, priv2, "")
+	_, err = os.Stat(filepath.Join(config.NodeKeyPath, "node_pub.id"))
+	assert.False(t, os.IsNotExist(err), "")
 }

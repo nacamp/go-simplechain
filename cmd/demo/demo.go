@@ -25,7 +25,7 @@ func run(c *cli.Context) {
 
 	log.Init("", log.InfoLevel, 0)
 	//TODO change node private key
-	privKey, err := net.HexStringToPrivkeyTo(config.NodePrivateKey)
+	privKey, err := config.NodePrivateKey()
 	if err != nil {
 	}
 
