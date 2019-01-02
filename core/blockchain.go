@@ -544,7 +544,7 @@ func (bc *BlockChain) HandleMessage(message *net.Message) error {
 				"Code": message.Code,
 			}).Warning("PutBlockIfParentExist")
 		}
-		bc.Consensus.UpdateLIB(bc)
+		bc.Consensus.UpdateLIB()
 		bc.RemoveOrphanBlock()
 	} else if message.Code == net.MSG_MISSING_BLOCK {
 		height := uint64(0)

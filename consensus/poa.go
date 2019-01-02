@@ -186,7 +186,7 @@ func (cs *Poa) loop() {
 			if block != nil {
 				block.Sign(cs.priv)
 				cs.bc.PutBlockByCoinbase(block)
-				cs.bc.Consensus.UpdateLIB(cs.bc)
+				cs.bc.Consensus.UpdateLIB()
 				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.BaseBlock)
 				cs.node.BroadcastMessage(&message)
@@ -227,7 +227,8 @@ func (cs *Poa) getMinerSize(block *core.Block) (int, error) {
 	return minerSize, nil
 }
 
-func (cs *Poa) UpdateLIB(bc *core.BlockChain) {
+func (cs *Poa) UpdateLIB() {
+	bc := cs.bc
 	block := bc.Tail
 	//FIXME: consider timestamp
 	miners := make(map[common.Address]bool)

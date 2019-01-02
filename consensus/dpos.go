@@ -143,7 +143,7 @@ func (dpos *Dpos) loop() {
 			if block != nil {
 				block.Sign(dpos.priv)
 				dpos.bc.PutBlockByCoinbase(block)
-				dpos.bc.Consensus.UpdateLIB(dpos.bc)
+				dpos.bc.Consensus.UpdateLIB()
 				dpos.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.BaseBlock)
 				dpos.node.BroadcastMessage(&message)
@@ -165,7 +165,8 @@ func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
 	dpos.node = node
 }
 
-func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
+func (d *Dpos) UpdateLIB() {
+	bc := d.bc
 	block := bc.Tail
 	//FIXME: consider timestamp, changed minerGroup
 	miners := make(map[common.Address]bool)

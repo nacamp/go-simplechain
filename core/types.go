@@ -18,7 +18,7 @@ type MinerState interface {
 
 type Consensus interface {
 	NewMinerState(rootHash common.Hash, storage storage.Storage) (MinerState, error)
-	UpdateLIB(bc *BlockChain)
+	UpdateLIB()
 	ConsensusType() string
 	InitSaveSnapshot(hash common.Hash, addresses []common.Address)
 	GetMiners(hash common.Hash) ([]common.Address, error)
