@@ -5,16 +5,17 @@ import (
 	"testing"
 
 	"github.com/najimmy/go-simplechain/cmd"
+	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/storage"
 	"github.com/najimmy/go-simplechain/tests"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/consensus"
 	"github.com/najimmy/go-simplechain/core"
 )
 
+//, consensus.NewDpos()
 func TestMakeBlock(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
@@ -32,7 +33,7 @@ func TestMakeBlock(t *testing.T) {
 			block = cs.(*consensus.Dpos).MakeBlock(uint64(1)) // minerGroup[0]
 		} else {
 			cs.(*consensus.Poa).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
-			block = cs.(*consensus.Poa).MakeBlock(uint64(1)) // minerGroup[0]
+			block = cs.(*consensus.Poa).MakeBlock(uint64(9 + 1)) // minerGroup[0]
 		}
 		assert.NotNil(t, block, "")
 		assert.NotEqual(t, block.Header.AccountHash, remoteBc.GenesisBlock.Header.AccountHash, "")
