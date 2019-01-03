@@ -143,7 +143,7 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	}
 
 	h.bc.TxPool.Put(tx)
-	h.bc.BroadcastNewTXMessage(tx)
+	h.bc.NewTXMessage <- tx
 	return common.Hash2Hex(tx.Hash), nil
 }
 

@@ -3,6 +3,7 @@ package core
 import (
 	"time"
 
+	peer "github.com/libp2p/go-libp2p-peer"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
@@ -26,15 +27,15 @@ func NewBlockChainService(bc *BlockChain, node net.INode) *BlockChainService {
 
 func (bcs *BlockChainService) registerSubscriber() {
 	node := bcs.node
-	bc := bcs.bc
-	node.RegisterSubscriber(net.MSG_NEW_BLOCK, bc)
-	node.RegisterSubscriber(net.MSG_MISSING_BLOCK, bc)
-	node.RegisterSubscriber(net.MSG_MISSING_BLOCK_ACK, bc)
-	node.RegisterSubscriber(net.MSG_NEW_TX, bc)
+	node.RegisterSubscriber(net.MSG_NEW_BLOCK, bcs)
+	node.RegisterSubscriber(net.MSG_MISSING_BLOCK, bcs)
+	node.RegisterSubscriber(net.MSG_MISSING_BLOCK_ACK, bcs)
+	node.RegisterSubscriber(net.MSG_NEW_TX, bcs)
 }
 
 func (bcs *BlockChainService) Start() {
 	go bcs.loop()
+	go bcs.messageLoop()
 }
 
 func (bcs *BlockChainService) loop() {
@@ -43,6 +44,17 @@ func (bcs *BlockChainService) loop() {
 		select {
 		case <-ticker.C:
 			bcs.bc.RequestMissingBlock()
+		}
+	}
+}
+
+func (bcs *BlockChainService) messageLoop() {
+	for {
+		select {
+		case msg := <-bcs.bc.MessageToRandomNode:
+			bcs.node.SendMessageToRandomNode(msg)
+		case msg := <-bcs.bc.NewTXMessage:
+			bcs.BroadcastNewTXMessage(msg)
 		}
 	}
 }
@@ -79,7 +91,7 @@ func (bcs *BlockChainService) HandleMessage(message *net.Message) error {
 		log.CLog().WithFields(logrus.Fields{
 			"Height": height,
 		}).Debug("missing block request arrived")
-		bc.SendMissingBlock(height, message.PeerID)
+		bcs.SendMissingBlock(height, message.PeerID)
 	} else if message.Code == net.MSG_NEW_TX {
 		tx := &Transaction{}
 		err := rlp.DecodeBytes(message.Payload, &tx)
@@ -97,5 +109,34 @@ func (bcs *BlockChainService) HandleMessage(message *net.Message) error {
 		bc.TxPool.Put(tx)
 
 	}
+	return nil
+}
+
+func (bcs *BlockChainService) SendMissingBlock(height uint64, peerID peer.ID) {
+	bc := bcs.bc
+	block := bc.GetBlockByHeight(height)
+	// if err != nil {
+	// 	return err
+	// }
+	if block != nil {
+		message, _ := net.NewRLPMessage(net.MSG_MISSING_BLOCK_ACK, block.BaseBlock)
+		bcs.node.SendMessage(&message, peerID)
+		log.CLog().WithFields(logrus.Fields{
+			"Height": height,
+		}).Info("Send missing block")
+	} else {
+		log.CLog().WithFields(logrus.Fields{
+			"Height": height,
+		}).Info("We don't have missing block")
+	}
+}
+
+func (bcs *BlockChainService) BroadcastNewTXMessage(tx *Transaction) error {
+	message, err := net.NewRLPMessage(net.MSG_NEW_TX, tx)
+	if err != nil {
+		return err
+	}
+	// bc.BroadcastMessage <- &message
+	bcs.node.BroadcastMessage(&message)
 	return nil
 }
