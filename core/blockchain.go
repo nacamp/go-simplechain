@@ -27,14 +27,14 @@ const (
 var GenesisCoinbaseAddress = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")
 
 type BlockChain struct {
-	mu           sync.RWMutex
-	GenesisBlock *Block
-	futureBlocks *lru.Cache
-	Storage      storage.Storage
-	TxPool       *TransactionPool
-	Consensus    Consensus
-	Lib          *Block
-	Tail         *Block
+	mu                  sync.RWMutex
+	GenesisBlock        *Block
+	futureBlocks        *lru.Cache
+	Storage             storage.Storage
+	TxPool              *TransactionPool
+	Consensus           Consensus
+	Lib                 *Block
+	Tail                *Block
 	MessageToRandomNode chan *net.Message
 	NewTXMessage        chan *Transaction
 	tailGroup           *sync.Map
@@ -285,6 +285,8 @@ func (bc *BlockChain) PutState(block *Block) error {
 		if block.MinerState.RootHash() != block.Header.MinerHash {
 			return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
 		}
+	} else {
+		bc.Consensus.SaveMiners(block.Header.SnapshotHash, block)
 	}
 	return nil
 }
@@ -387,11 +389,6 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 	err = bc.PutState(block)
 	if err != nil {
 		return err
-	}
-
-	//4. poa
-	if bc.Consensus.ConsensusType() == "POA" {
-		bc.Consensus.SaveMiners(block)
 	}
 
 	bc.putBlockToStorage(block)
@@ -519,7 +516,6 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 	}
 	return block, nil
 }
-
 
 //TODO: use code temporarily
 func (bc *BlockChain) RequestMissingBlock() error {

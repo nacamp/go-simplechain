@@ -20,7 +20,7 @@ type Consensus interface {
 	ConsensusType() string
 	InitSaveSnapshot(hash common.Hash, addresses []common.Address)
 	GetMiners(hash common.Hash) ([]common.Address, error)
-	SaveMiners(block *Block) error
+	SaveMiners(hash common.Hash, block *Block) error
 	VerifyMinerTurn(block *Block) error
 	SetupNonMiner(bc *BlockChain, node *net.Node)
 }

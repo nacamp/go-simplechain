@@ -9,6 +9,7 @@ import (
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/common/hexutil"
 	"github.com/najimmy/go-simplechain/storage"
+	"golang.org/x/crypto/sha3"
 )
 
 type DoubleAddress [common.AddressLength * 2]byte
@@ -18,7 +19,7 @@ var (
 )
 
 type Snapshot struct {
-	BlockHash common.Hash                 `json:"hash"`
+	BlockHash common.Hash                 `json:"-"`
 	Signers   map[common.Address]struct{} `json:"signers"`
 	//voter address+candidate address
 	Votes      map[DoubleAddress]VoteData       `json:"votes"`
@@ -74,6 +75,14 @@ func (s *Snapshot) Store(db storage.Storage) error {
 		return err
 	}
 	return db.Put(append([]byte("snap-"), s.BlockHash[:]...), blob)
+}
+
+func (s *Snapshot) CalcHash() (hash common.Hash) {
+	blob, _ := json.Marshal(s)
+	hasher := sha3.New256()
+	hasher.Write(blob)
+	hasher.Sum(hash[:0])
+	return hash
 }
 
 func (s *Snapshot) Copy() *Snapshot {

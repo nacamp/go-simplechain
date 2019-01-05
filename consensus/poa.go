@@ -145,9 +145,8 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		// bc.PutMinerState(block)
 		// block.Header.MinerHash = block.MinerState.RootHash()
 		//TODO: snapshot hash
-		block.MakeHash()
+
 		newSnap := snapshot.Copy()
-		newSnap.BlockHash = block.Hash()
 		l := len(newSnap.Signers)
 		if voteTx != nil {
 			authorize := bool(true)
@@ -161,6 +160,9 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 				"Size": len(newSnap.Signers),
 			}).Info("changed signers")
 		}
+		block.Header.SnapshotHash = newSnap.CalcHash()
+		block.MakeHash()
+		newSnap.BlockHash = block.Hash()
 		newSnap.Store(cs.Storage)
 		return block
 	} else {
@@ -296,7 +298,7 @@ func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
 	return snap.SignerSlice(), nil
 }
 
-func (cs *Poa) SaveMiners(block *core.Block) error {
+func (cs *Poa) SaveMiners(hash common.Hash, block *core.Block) error {
 	snapshot, err := cs.snapshot(block.Header.ParentHash)
 	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
@@ -317,6 +319,10 @@ func (cs *Poa) SaveMiners(block *core.Block) error {
 			}
 			break
 		}
+	}
+	h := newSnap.CalcHash()
+	if h != hash {
+		return errors.New("Hash is different")
 	}
 	newSnap.Store(cs.Storage)
 	return nil
