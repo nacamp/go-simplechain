@@ -141,6 +141,12 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 		h.MinerHash = block.MinerState.RootHash()
 	}
 
+	if bc.Consensus.ConsensusType() == "POA" {
+		//TODO: fix temp hash
+		block.Header.SnapshotHash = bc.GenesisBlock.Header.SnapshotHash
+		// cannot use below code for cycling reference
+		// 	snapshot, _ := bc.Consensus.(*consensus.Poa).Snapshot(block.Header.ParentHash)
+	}
 	block.MakeHash()
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[coinbase]))
 	block.Sign((*ecdsa.PrivateKey)(priv))

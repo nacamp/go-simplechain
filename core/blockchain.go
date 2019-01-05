@@ -186,13 +186,10 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 		for i, account := range voters {
 			bc.Signers[i] = account.Address
 		}
-		// //TODO: dummy to fix
-		// bc.GenesisBlock.Header.MinerHash = common.Hash{}
+		// TODO: set c.GenesisBlock.Header.SnapshotHash
 		bc.GenesisBlock = block
-		bc.GenesisBlock.MakeHash()
-		//컨센서스에서 bc값이 nil이다.
-		bc.Consensus.InitSaveSnapshot(bc.GenesisBlock.Hash(), bc.Signers)
-
+		// bc.GenesisBlock.MakeHash()
+		bc.Consensus.InitSaveSnapshot(bc.GenesisBlock, bc.Signers)
 	}
 
 	bc.SetLib(bc.GenesisBlock)

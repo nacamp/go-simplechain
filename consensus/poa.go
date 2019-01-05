@@ -70,7 +70,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		}).Panic("Miner must be one more")
 	}
 	turn := (now % (uint64(len(miners)) * cs.Period)) / cs.Period
-	snapshot, err := cs.snapshot(block.Header.ParentHash)
+	snapshot, err := cs.Snapshot(block.Header.ParentHash)
 	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
 		log.CLog().Warning(err)
@@ -197,7 +197,7 @@ func (cs *Poa) loop() {
 	}
 }
 
-func (cs *Poa) snapshot(hash common.Hash) (*Snapshot, error) {
+func (cs *Poa) Snapshot(hash common.Hash) (*Snapshot, error) {
 	block := cs.bc.GetBlockByHash(hash)
 	if block.Header.Height == uint64(0) {
 		return NewSnapshot(hash, cs.bc.Signers), nil
@@ -285,13 +285,17 @@ func (cs *Poa) ConsensusType() string {
 	return "POA"
 }
 
-func (cs *Poa) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
-	snap := NewSnapshot(hash, addresses)
+func (cs *Poa) InitSaveSnapshot(block *core.Block, addresses []common.Address) {
+	snap := NewSnapshot(common.Hash{}, addresses)
+	block.Header.SnapshotHash = snap.CalcHash()
+	block.MakeHash()
+	snap.BlockHash = block.Hash()
 	snap.Store(cs.Storage)
+
 }
 
 func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
-	snap, err := cs.snapshot(hash)
+	snap, err := cs.Snapshot(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +303,7 @@ func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
 }
 
 func (cs *Poa) SaveMiners(hash common.Hash, block *core.Block) error {
-	snapshot, err := cs.snapshot(block.Header.ParentHash)
+	snapshot, err := cs.Snapshot(block.Header.ParentHash)
 	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
 		log.CLog().Warning(err)

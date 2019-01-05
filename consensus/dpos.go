@@ -197,7 +197,7 @@ func (c *Dpos) ConsensusType() string {
 	return "DPOS"
 }
 
-func (c *Dpos) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
+func (c *Dpos) InitSaveSnapshot(block *core.Block, addresses []common.Address) {
 
 }
 
