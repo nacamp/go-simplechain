@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/rlp"
 
 	"github.com/intel-go/fastjson"
@@ -18,10 +19,10 @@ import (
 
 // accounts >>>>>>>>>>>
 type AccountsHandler struct {
-	config *core.Config
+	config *cmd.Config
 }
 
-func NewAccountsHandler(config *core.Config) *AccountsHandler {
+func NewAccountsHandler(config *cmd.Config) *AccountsHandler {
 	return &AccountsHandler{config: config}
 }
 func (h *AccountsHandler) Name() string {
@@ -142,7 +143,7 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	}
 
 	h.bc.TxPool.Put(tx)
-	h.bc.BroadcastNewTXMessage(tx)
+	h.bc.NewTXMessage <- tx
 	return common.Hash2Hex(tx.Hash), nil
 }
 
@@ -197,7 +198,7 @@ type RpcService struct {
 	server *RpcServer
 }
 
-func (rs *RpcService) Setup(server *RpcServer, config *core.Config, bc *core.BlockChain) {
+func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.BlockChain) {
 	rs.server = server
 	rs.server.RegisterHandler(NewAccountsHandler(config))
 	rs.server.RegisterHandler(NewGetBalanceHandler(bc))

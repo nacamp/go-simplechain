@@ -21,6 +21,7 @@ type Header struct {
 	TransactionHash   common.Hash
 	MinerHash         common.Hash
 	VoterHash         common.Hash
+	SnapshotHash      common.Hash
 	SnapshotVoterTime uint64
 	//not need signature at pow
 	//need signature, to prevent malicious behavior like to skip deliberately block in the previous turn
@@ -67,6 +68,7 @@ func (b *Block) CalcHash() (hash common.Hash) {
 		b.Header.AccountHash,
 		b.Header.TransactionHash,
 		b.Header.MinerHash,
+		b.Header.SnapshotHash,
 	})
 	hasher.Sum(hash[:0])
 	return hash

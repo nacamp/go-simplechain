@@ -146,6 +146,27 @@ func (node *MockNode) SendMessageToRandomNode(message *net.Message) {
 }
 func (node *MockNode) BroadcastMessage(message *net.Message) {}
 
+type MockBlockChainService struct {
+	bc *core.BlockChain
+}
+
+func NewMockBlockChainService(bc *core.BlockChain) *MockBlockChainService {
+	bcs := MockBlockChainService{
+		bc: bc,
+	}
+	return &bcs
+}
+func (bcs *MockBlockChainService) Start() {
+	go func() {
+		for {
+			select {
+			case <-bcs.bc.MessageToRandomNode:
+			case <-bcs.bc.NewTXMessage:
+			}
+		}
+	}()
+}
+
 func TestMakeBlockChain(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
@@ -184,9 +205,10 @@ func TestMakeBlockChain(t *testing.T) {
 			cs2.(*consensus.Poa).Period = 3
 		}
 
-		//FIXME: how to test
 		bc.Setup(voters)
-		bc.SetNode(new(MockNode))
+		bcs := NewMockBlockChainService(bc)
+		bcs.Start()
+		//bc.SetNode(new(MockNode))
 
 		bc.PutBlockIfParentExist(block1)
 		b := bc.GetBlockByHash(block1.Hash())
@@ -255,7 +277,8 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 			cs2.(*consensus.Poa).SetupNonMiner(bc, nil)
 		}
 		bc.Setup(voters)
-		bc.SetNode(new(MockNode))
+		bcs := NewMockBlockChainService(bc)
+		bcs.Start()
 
 		block11 := rlpEncode(block1)
 		bc.PutBlockIfParentExist(block11)

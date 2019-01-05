@@ -1,9 +1,8 @@
 package core
 
 import (
-	"math/big"
-
 	"github.com/najimmy/go-simplechain/common"
+	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/storage"
 )
 
@@ -17,30 +16,13 @@ type MinerState interface {
 
 type Consensus interface {
 	NewMinerState(rootHash common.Hash, storage storage.Storage) (MinerState, error)
-	UpdateLIB(bc *BlockChain)
+	UpdateLIB()
 	ConsensusType() string
-	InitSaveSnapshot(hash common.Hash, addresses []common.Address)
+	InitSaveSnapshot(block *Block, addresses []common.Address)
 	GetMiners(hash common.Hash) ([]common.Address, error)
-	SaveMiners(block *Block) error
+	SaveMiners(hash common.Hash, block *Block) error
 	VerifyMinerTurn(block *Block) error
-}
-
-type ConfigAccount struct {
-	Address string   `json:"address"`
-	Balance *big.Int `json:"balance"`
-}
-type Config struct {
-	HostId          string          `json:"host_id"`
-	RpcAddress      string          `json:"rpc_address"`
-	DBPath          string          `json:"db_path"`
-	MinerAddress    string          `json:"miner_address"`
-	MinerPrivateKey string          `json:"miner_private_key"`
-	NodePrivateKey  string          `json:"node_private_key"`
-	Port            int             `json:"port"`
-	Seeds           []string        `json:"seeds"`
-	Voters          []ConfigAccount `json:"voters"`
-	EnableMining    bool            `json:"enable_mining"`
-	Consensus       string          `json:"consensus"`
+	SetupNonMiner(bc *BlockChain, node *net.Node)
 }
 
 /*

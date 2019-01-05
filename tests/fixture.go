@@ -7,6 +7,7 @@ import (
 	"math/big"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/najimmy/go-simplechain/cmd"
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/core"
 )
@@ -29,14 +30,15 @@ const (
 	LangObjC
 )
 
-func MakeConfig() *core.Config {
+func MakeConfig() *cmd.Config {
 	configStr := `
 	{
 		"host_id" : "/ip4/127.0.0.1/tcp/9990/ipfs/16Uiu2HAkwR1pV8ZR8ApcZWrMSw5iNMwaJHFpKr91H9a1a65WGehk",
-		"db_path" : "/opt/simplechain/data",
+		"db_path" : "/test/db",
 		"miner_address" : "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0",
 		"miner_private_key" : "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
 		"node_private_key"  : "08021220a178bc3f8ee6738af0139d9784519e5aa1cb256c12c54444bd63296502f29e94",
+		"node_key_path" : "/test/nodekey",
 		"seeds" :  ["080212201afa45f64cd5a28cd40e178889ed2e9f987658bc4d48d376ef6ecb1ab1b26211"],
 		
 		"voters" : [{"address":"0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0", "balance":100 },
@@ -45,7 +47,7 @@ func MakeConfig() *core.Config {
 	}
 	`
 	contents := []byte(configStr)
-	config := &core.Config{}
+	config := &cmd.Config{}
 	json.Unmarshal([]byte(contents), config)
 	return config
 }
@@ -139,6 +141,12 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 		h.MinerHash = block.MinerState.RootHash()
 	}
 
+	if bc.Consensus.ConsensusType() == "POA" {
+		//TODO: fix temp hash
+		block.Header.SnapshotHash = bc.GenesisBlock.Header.SnapshotHash
+		// cannot use below code for cycling reference
+		// 	snapshot, _ := bc.Consensus.(*consensus.Poa).Snapshot(block.Header.ParentHash)
+	}
 	block.MakeHash()
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[coinbase]))
 	block.Sign((*ecdsa.PrivateKey)(priv))

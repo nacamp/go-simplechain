@@ -53,11 +53,6 @@ func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Addr
 	}
 }
 
-func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
-	dpos.bc = bc
-	dpos.node = node
-}
-
 func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 	bc := dpos.bc
 	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
@@ -148,7 +143,7 @@ func (dpos *Dpos) loop() {
 			if block != nil {
 				block.Sign(dpos.priv)
 				dpos.bc.PutBlockByCoinbase(block)
-				dpos.bc.Consensus.UpdateLIB(dpos.bc)
+				dpos.bc.Consensus.UpdateLIB()
 				dpos.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.BaseBlock)
 				dpos.node.BroadcastMessage(&message)
@@ -165,7 +160,13 @@ func (d *Dpos) NewMinerState(rootHash common.Hash, storage storage.Storage) (cor
 	}, err
 }
 
-func (d *Dpos) UpdateLIB(bc *core.BlockChain) {
+func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
+	dpos.bc = bc
+	dpos.node = node
+}
+
+func (d *Dpos) UpdateLIB() {
+	bc := d.bc
 	block := bc.Tail
 	//FIXME: consider timestamp, changed minerGroup
 	miners := make(map[common.Address]bool)
@@ -196,7 +197,7 @@ func (c *Dpos) ConsensusType() string {
 	return "DPOS"
 }
 
-func (c *Dpos) InitSaveSnapshot(hash common.Hash, addresses []common.Address) {
+func (c *Dpos) InitSaveSnapshot(block *core.Block, addresses []common.Address) {
 
 }
 
@@ -204,7 +205,7 @@ func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
 	return nil, nil
 }
 
-func (cs *Dpos) SaveMiners(block *core.Block) error {
+func (cs *Dpos) SaveMiners(hash common.Hash, block *core.Block) error {
 	return nil
 }
 func (cs *Dpos) VerifyMinerTurn(block *core.Block) error {

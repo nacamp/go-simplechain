@@ -5,16 +5,17 @@ import (
 	"testing"
 
 	"github.com/najimmy/go-simplechain/cmd"
+	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/storage"
 	"github.com/najimmy/go-simplechain/tests"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/consensus"
 	"github.com/najimmy/go-simplechain/core"
 )
 
+//, consensus.NewDpos()
 func TestMakeBlock(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
@@ -32,7 +33,7 @@ func TestMakeBlock(t *testing.T) {
 			block = cs.(*consensus.Dpos).MakeBlock(uint64(1)) // minerGroup[0]
 		} else {
 			cs.(*consensus.Poa).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
-			block = cs.(*consensus.Poa).MakeBlock(uint64(1)) // minerGroup[0]
+			block = cs.(*consensus.Poa).MakeBlock(uint64(9 + 1)) // minerGroup[0]
 		}
 		assert.NotNil(t, block, "")
 		assert.NotEqual(t, block.Header.AccountHash, remoteBc.GenesisBlock.Header.AccountHash, "")
@@ -57,24 +58,28 @@ func TestUpdateLIB1(t *testing.T) {
 	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
 		bc := core.NewBlockChain(cs, storage1)
 		bc.Setup(voters)
+		cs.SetupNonMiner(bc, nil)
 
-		cs.UpdateLIB(bc)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block1)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block1.Header.SnapshotHash, block1)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block2)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block2.Header.SnapshotHash, block2)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block3 := tests.MakeBlock(bc, block2, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block3)
+		cs.SaveMiners(block3.Header.SnapshotHash, block3)
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
-		cs.UpdateLIB(bc)
+		cs.UpdateLIB()
 		assert.Equal(t, block1.Hash(), bc.Lib.Hash(), "")
 	}
 }
@@ -94,34 +99,40 @@ func TestUpdateLIB2(t *testing.T) {
 	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
 		bc := core.NewBlockChain(cs, storage1)
 		bc.Setup(voters)
+		cs.SetupNonMiner(bc, nil)
 
-		cs.UpdateLIB(bc)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block1)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block1.Header.SnapshotHash, block1)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block2)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block2.Header.SnapshotHash, block2)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block3 := tests.MakeBlock(bc, block2, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block3)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block3.Header.SnapshotHash, block3)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block4 := tests.MakeBlock(bc, block3, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block4)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block4.Header.SnapshotHash, block4)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block5 := tests.MakeBlock(bc, block4, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block5)
+		cs.SaveMiners(block5.Header.SnapshotHash, block5)
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
-		cs.UpdateLIB(bc)
+		cs.UpdateLIB()
 		assert.Equal(t, block3.Hash(), bc.Lib.Hash(), "")
 	}
 }
@@ -144,33 +155,39 @@ func TestUpdateLIB3(t *testing.T) {
 	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
 		bc := core.NewBlockChain(cs, storage1)
 		bc.Setup(voters)
+		cs.SetupNonMiner(bc, nil)
 
-		cs.UpdateLIB(bc)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block1 := tests.MakeBlock(bc, bc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block1)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block1.Header.SnapshotHash, block1)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block2 := tests.MakeBlock(bc, block1, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block2)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block2.Header.SnapshotHash, block2)
+		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
 
 		block3 := tests.MakeBlock(bc, block2, tests.Addr2, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block3)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block3.Header.SnapshotHash, block3)
+		cs.UpdateLIB()
 		assert.Equal(t, block1.Hash(), bc.Lib.Hash(), "")
 
 		block4 := tests.MakeBlock(bc, block3, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block4)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block4.Header.SnapshotHash, block4)
+		cs.UpdateLIB()
 		assert.Equal(t, block2.Hash(), bc.Lib.Hash(), "")
 
 		block5 := tests.MakeBlock(bc, block4, tests.Addr1, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		bc.PutBlockByCoinbase(block5)
-		cs.UpdateLIB(bc)
+		cs.SaveMiners(block5.Header.SnapshotHash, block5)
+		cs.UpdateLIB()
 		assert.Equal(t, block3.Hash(), bc.Lib.Hash(), "")
 
 		//test LoadLibFromStorage with same storage
