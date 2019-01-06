@@ -211,13 +211,10 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	bc.RewardForCoinbase(block)
 
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		err = bc.PutMinerState(block)
-		if err != nil {
-			// log.CLog().Warning(err)
-			return err
-		}
+	if err := bc.Consensus.SaveMiners(block); err != nil {
+		return err
 	}
+
 	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return err
@@ -230,15 +227,9 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if block.TransactionState.RootHash() != block.Header.TransactionHash {
 		return errors.New("block.TransactionState.RootHash() != block.Header.TransactionHash")
 	}
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		if block.VoterState.RootHash() != block.Header.VoterHash {
-			return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
-		}
-		if block.MinerState.RootHash() != block.Header.MinerHash {
-			return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
-		}
-	} else {
-		bc.Consensus.SaveMiners(block.Header.SnapshotHash, block)
+
+	if err := bc.Consensus.VerifyConsensusStatusHash(block); err != nil {
+		return err
 	}
 	return nil
 }

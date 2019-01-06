@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -195,9 +196,6 @@ func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
 	return nil, nil
 }
 
-func (cs *Dpos) SaveMiners(hash common.Hash, block *core.Block) error {
-	return nil
-}
 func (cs *Dpos) VerifyMinerTurn(block *core.Block) error {
 	return nil
 }
@@ -212,6 +210,16 @@ func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {
 	block.MinerState, err = cs.NewMinerState(block.Header.MinerHash, bc.Storage)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (cs *Dpos) VerifyConsensusStatusHash(block *core.Block) (err error) {
+	if block.VoterState.RootHash() != block.Header.VoterHash {
+		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
+	}
+	if block.MinerState.RootHash() != block.Header.MinerHash {
+		return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
 	}
 	return nil
 }
@@ -258,6 +266,15 @@ func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block)
 		return err
 	}
 	block.MinerState, err = parentBlock.MinerState.Clone()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cs *Dpos) SaveMiners(block *core.Block) (err error) {
+	bc := cs.bc
+	err = bc.PutMinerState(block)
 	if err != nil {
 		return err
 	}

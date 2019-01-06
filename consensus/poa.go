@@ -276,36 +276,6 @@ func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
 	return snap.SignerSlice(), nil
 }
 
-func (cs *Poa) SaveMiners(hash common.Hash, block *core.Block) error {
-	snapshot, err := cs.LoadSnapshot(block.Header.ParentHash)
-	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
-	if err != nil {
-		log.CLog().Warning(err)
-		return err
-	}
-	if snapshot == nil {
-		return errors.New("Snapshot is nil")
-	}
-	newSnap := snapshot.Copy()
-	newSnap.BlockHash = block.Hash()
-	for _, tx := range block.Transactions {
-		if len(tx.Payload) > 0 {
-			authorize := bool(true)
-			rlp.DecodeBytes(tx.Payload, &authorize)
-			if newSnap.Cast(tx.From, tx.To, authorize) {
-				newSnap.Apply()
-			}
-			break
-		}
-	}
-	h := newSnap.CalcHash()
-	if h != hash {
-		return errors.New("Hash is different")
-	}
-	newSnap.Store(cs.Storage)
-	return nil
-}
-
 func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
 	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
 	if parentBlock == nil {
@@ -323,6 +293,10 @@ func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
 }
 
 func (cs *Poa) LoadConsensusStatus(block *core.Block) (err error) {
+	return nil
+}
+
+func (cs *Poa) VerifyConsensusStatusHash(block *core.Block) (err error) {
 	return nil
 }
 
@@ -350,5 +324,34 @@ func (cs *Poa) AddBlockChain(bc *core.BlockChain) {
 
 func (cs *Poa) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
 	block.Snapshot, err = cs.LoadSnapshot(block.Header.ParentHash)
+	return nil
+}
+
+func (cs *Poa) SaveMiners(block *core.Block) error {
+	snapshot, err := cs.LoadSnapshot(block.Header.ParentHash)
+	if err != nil {
+		log.CLog().Warning(err)
+		return err
+	}
+	if snapshot == nil {
+		return errors.New("Snapshot is nil")
+	}
+	newSnap := snapshot.Copy()
+	newSnap.BlockHash = block.Hash()
+	for _, tx := range block.Transactions {
+		if len(tx.Payload) > 0 {
+			authorize := bool(true)
+			rlp.DecodeBytes(tx.Payload, &authorize)
+			if newSnap.Cast(tx.From, tx.To, authorize) {
+				newSnap.Apply()
+			}
+			break
+		}
+	}
+	h := newSnap.CalcHash()
+	if h != block.Header.SnapshotHash {
+		return errors.New("Hash is different")
+	}
+	newSnap.Store(cs.Storage)
 	return nil
 }
