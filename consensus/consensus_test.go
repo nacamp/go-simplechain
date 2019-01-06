@@ -15,7 +15,6 @@ import (
 	"github.com/najimmy/go-simplechain/core"
 )
 
-//, consensus.NewDpos()
 func TestMakeBlock(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
@@ -23,16 +22,16 @@ func TestMakeBlock(t *testing.T) {
 
 	storage01, _ := storage.NewMemoryStorage()
 	// storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
-		remoteBc := core.NewBlockChain(cs, storage1)
-		remoteBc.Setup(voters)
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		remoteBc := core.NewBlockChain(storage1)
+		remoteBc.Setup(cs, voters)
 
 		var block *core.Block
 		if cs.ConsensusType() == "DPOS" {
-			cs.(*consensus.Dpos).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
+			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
 			block = cs.(*consensus.Dpos).MakeBlock(uint64(1)) // minerGroup[0]
 		} else {
-			cs.(*consensus.Poa).Setup(remoteBc, nil, common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
+			cs.(*consensus.Poa).Setup(common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
 			block = cs.(*consensus.Poa).MakeBlock(uint64(9 + 1)) // minerGroup[0]
 		}
 		assert.NotNil(t, block, "")
@@ -55,10 +54,9 @@ func TestUpdateLIB1(t *testing.T) {
 
 	storage01, _ := storage.NewMemoryStorage()
 	// storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
-		bc := core.NewBlockChain(cs, storage1)
-		bc.Setup(voters)
-		cs.SetupNonMiner(bc, nil)
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs, voters)
 
 		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
@@ -96,10 +94,9 @@ func TestUpdateLIB2(t *testing.T) {
 	storage1, _ := storage.NewMemoryStorage()
 	storage01, _ := storage.NewMemoryStorage()
 	// storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
-		bc := core.NewBlockChain(cs, storage1)
-		bc.Setup(voters)
-		cs.SetupNonMiner(bc, nil)
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs, voters)
 
 		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
@@ -152,10 +149,9 @@ func TestUpdateLIB3(t *testing.T) {
 	storage1, _ := storage.NewMemoryStorage()
 	storage01, _ := storage.NewMemoryStorage()
 	storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
-		bc := core.NewBlockChain(cs, storage1)
-		bc.Setup(voters)
-		cs.SetupNonMiner(bc, nil)
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs, voters)
 
 		cs.UpdateLIB()
 		assert.Equal(t, bc.GenesisBlock.Hash(), bc.Lib.Hash(), "")
@@ -193,10 +189,9 @@ func TestUpdateLIB3(t *testing.T) {
 		//test LoadLibFromStorage with same storage
 		var cs2 core.Consensus
 		if cs.ConsensusType() == "DPOS" {
-			cs2 = consensus.NewDpos()
-			bc2 := core.NewBlockChain(cs2, storage1)
-			cs2.SetupNonMiner(bc2, nil)
-			bc2.Setup(voters)
+			cs2 = consensus.NewDpos(nil)
+			bc2 := core.NewBlockChain(storage1)
+			bc2.Setup(cs2, voters)
 			assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
 			//check status loading
 			assert.NotNil(t, bc2.Lib.VoterState, "")
@@ -206,10 +201,9 @@ func TestUpdateLIB3(t *testing.T) {
 			//check status loading
 			assert.NotNil(t, bc2.Tail.VoterState, "")
 		} else {
-			cs2 = consensus.NewPoa(storage02)
-			bc2 := core.NewBlockChain(cs2, storage1)
-			cs2.SetupNonMiner(bc2, nil)
-			bc2.Setup(voters)
+			cs2 = consensus.NewPoa(nil, storage02)
+			bc2 := core.NewBlockChain(storage1)
+			bc2.Setup(cs2, voters)
 			assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
 
 			//test LoadTailFromStorage with same storage

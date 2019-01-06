@@ -22,8 +22,9 @@ func TestGenesisBlock(t *testing.T) {
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	storage, _ := storage.NewMemoryStorage()
 
-	dpos := consensus.NewDpos()
-	bc := core.NewBlockChain(dpos, storage)
+	cs := consensus.NewDpos(nil)
+	bc := core.NewBlockChain(storage)
+	bc.Setup(cs, voters)
 	bc.MakeGenesisBlock(voters)
 
 	assert.Equal(t, voters[0].Address, bc.GenesisBlock.Header.Coinbase, "")
@@ -42,20 +43,21 @@ func TestLoadBlockChainFromStorage(t *testing.T) {
 	storage01, _ := storage.NewMemoryStorage()
 	storage02, _ := storage.NewMemoryStorage()
 	storage1, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewDpos(), consensus.NewPoa(storage01)} {
+	for _, cs := range []core.Consensus{consensus.NewDpos(nil), consensus.NewPoa(nil, storage01)} {
 		// cs := consensus.NewDpos()
-		remoteBc := core.NewBlockChain(cs, storage1)
+		remoteBc := core.NewBlockChain(storage1)
+		remoteBc.Setup(cs, voters)
 		remoteBc.MakeGenesisBlock(voters)
 		remoteBc.PutBlockByCoinbase(remoteBc.GenesisBlock)
 
 		var cs2 core.Consensus
 		if cs.ConsensusType() == "DPOS" {
-			cs2 = consensus.NewDpos()
+			cs2 = consensus.NewDpos(nil)
 		} else {
-			cs2 = consensus.NewPoa(storage02)
+			cs2 = consensus.NewPoa(nil, storage02)
 		}
-		bc := core.NewBlockChain(cs2, storage1)
-		cs2.SetupNonMiner(bc, nil)
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs2, voters)
 		bc.LoadBlockChainFromStorage()
 
 		assert.Equal(t, remoteBc.GenesisBlock.Hash(), bc.GenesisBlock.Hash(), "")
@@ -73,19 +75,19 @@ func TestSetup(t *testing.T) {
 	storage1, _ := storage.NewMemoryStorage()
 	storage01, _ := storage.NewMemoryStorage()
 	storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewDpos(), consensus.NewPoa(storage01)} {
-		remoteBc := core.NewBlockChain(cs, storage1)
-		remoteBc.Setup(voters)
+	for _, cs := range []core.Consensus{consensus.NewDpos(nil), consensus.NewPoa(nil, storage01)} {
+		remoteBc := core.NewBlockChain(storage1)
+		remoteBc.Setup(cs, voters)
 
 		var cs2 core.Consensus
 		if cs.ConsensusType() == "DPOS" {
-			cs2 = consensus.NewDpos()
+			cs2 = consensus.NewDpos(nil)
 		} else {
-			cs2 = consensus.NewPoa(storage02)
+			cs2 = consensus.NewPoa(nil, storage02)
 			cs2.(*consensus.Poa).Period = 3
 		}
-		bc := core.NewBlockChain(cs2, storage1)
-		cs2.SetupNonMiner(bc, nil)
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs2, voters)
 		bc.LoadBlockChainFromStorage()
 
 		assert.Equal(t, remoteBc.GenesisBlock.Hash(), bc.GenesisBlock.Hash(), "")
@@ -103,8 +105,9 @@ func TestStorage(t *testing.T) {
 	storage1, _ := storage.NewMemoryStorage()
 	storage01, _ := storage.NewMemoryStorage()
 	// storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewDpos(), consensus.NewPoa(storage01)} {
-		bc := core.NewBlockChain(cs, storage1)
+	for _, cs := range []core.Consensus{consensus.NewDpos(nil), consensus.NewPoa(nil, storage01)} {
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs, voters)
 		bc.MakeGenesisBlock(voters)
 
 		bc.PutBlockByCoinbase(bc.GenesisBlock)
@@ -175,10 +178,10 @@ func TestMakeBlockChain(t *testing.T) {
 
 	storage01, _ := storage.NewMemoryStorage()
 	storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
 		storage1, _ := storage.NewMemoryStorage()
-		remoteBc := core.NewBlockChain(cs, storage1)
-		remoteBc.MakeGenesisBlock(voters)
+		remoteBc := core.NewBlockChain(storage1)
+		remoteBc.Setup(cs, voters)
 
 		remoteBc.PutBlockByCoinbase(remoteBc.GenesisBlock)
 		block1 := tests.MakeBlock(remoteBc, remoteBc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
@@ -197,20 +200,17 @@ func TestMakeBlockChain(t *testing.T) {
 
 		var cs2 core.Consensus
 		if cs.ConsensusType() == "DPOS" {
-			cs2 = consensus.NewDpos()
+			cs2 = consensus.NewDpos(nil)
 		} else {
-			cs2 = consensus.NewPoa(storage02)
+			cs2 = consensus.NewPoa(nil, storage02)
 		}
-		bc := core.NewBlockChain(cs2, storage2)
+		bc := core.NewBlockChain(storage2)
 		if cs.ConsensusType() == "POA" {
-			cs2.(*consensus.Poa).SetupNonMiner(bc, nil)
 			cs2.(*consensus.Poa).Period = 3
 		}
-		cs2.SetupNonMiner(bc, nil)
-		bc.Setup(voters)
+		bc.Setup(cs2, voters)
 		bcs := NewMockBlockChainService(bc)
 		bcs.Start()
-		//bc.SetNode(new(MockNode))
 
 		bc.PutBlockIfParentExist(block1)
 		b := bc.GetBlockByHash(block1.Hash())
@@ -249,10 +249,10 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 	storage1, _ := storage.NewMemoryStorage()
 	storage01, _ := storage.NewMemoryStorage()
 	storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
-		remoteBc := core.NewBlockChain(cs, storage1)
-		cs.SetupNonMiner(remoteBc, nil)
-		remoteBc.Setup(voters)
+
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		remoteBc := core.NewBlockChain(storage1)
+		remoteBc.Setup(cs, voters)
 
 		block1 := tests.MakeBlock(remoteBc, remoteBc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
 		remoteBc.PutBlockByCoinbase(block1)
@@ -270,17 +270,13 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 
 		var cs2 core.Consensus
 		if cs.ConsensusType() == "DPOS" {
-			cs2 = consensus.NewDpos()
+			cs2 = consensus.NewDpos(nil)
 		} else {
-			cs2 = consensus.NewPoa(storage02)
+			cs2 = consensus.NewPoa(nil, storage02)
 			cs2.(*consensus.Poa).Period = 3
 		}
-		bc := core.NewBlockChain(cs2, storage2)
-		if cs.ConsensusType() == "POA" {
-			cs2.(*consensus.Poa).SetupNonMiner(bc, nil)
-		}
-		cs2.SetupNonMiner(bc, nil)
-		bc.Setup(voters)
+		bc := core.NewBlockChain(storage2)
+		bc.Setup(cs2, voters)
 		bcs := NewMockBlockChainService(bc)
 		bcs.Start()
 
@@ -330,8 +326,9 @@ func TestRebuildBlockHeight(t *testing.T) {
 	storage1, _ := storage.NewMemoryStorage()
 	storage01, _ := storage.NewMemoryStorage()
 	// storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
-		bc := core.NewBlockChain(cs, storage1)
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs, voters)
 		bc.MakeGenesisBlock(voters)
 		bc.PutBlockByCoinbase(bc.GenesisBlock)
 
@@ -422,9 +419,9 @@ func TestRemoveOrphanBlock(t *testing.T) {
 	storage1, _ := storage.NewMemoryStorage()
 	storage01, _ := storage.NewMemoryStorage()
 	// storage02, _ := storage.NewMemoryStorage()
-	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
-		bc := core.NewBlockChain(cs, storage1)
-		bc.Setup(voters)
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs, voters)
 		// bc.MakeGenesisBlock(voters)
 		// bc.PutBlockByCoinbase(bc.GenesisBlock)
 
