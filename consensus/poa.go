@@ -277,15 +277,6 @@ func (cs *Poa) ConsensusType() string {
 	return "POA"
 }
 
-func (cs *Poa) InitSaveSnapshot(block *core.Block, addresses []common.Address) {
-	snap := NewSnapshot(common.Hash{}, addresses)
-	block.Header.SnapshotHash = snap.CalcHash()
-	block.MakeHash()
-	snap.BlockHash = block.Hash()
-	snap.Store(cs.Storage)
-
-}
-
 func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
 	snap, err := cs.Snapshot(hash)
 	if err != nil {
@@ -353,7 +344,12 @@ func (cs *Poa) MakeGenesisBlock(block *core.Block, voters []*core.Account) error
 	// TODO: set c.GenesisBlock.Header.SnapshotHash
 	bc.GenesisBlock = block
 	// bc.GenesisBlock.MakeHash()
-	bc.Consensus.InitSaveSnapshot(bc.GenesisBlock, bc.Signers)
+
+	snap := NewSnapshot(common.Hash{}, bc.Signers)
+	block.Header.SnapshotHash = snap.CalcHash()
+	block.MakeHash()
+	snap.BlockHash = block.Hash()
+	snap.Store(cs.Storage)
 	return nil
 }
 

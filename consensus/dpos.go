@@ -190,9 +190,6 @@ func (c *Dpos) ConsensusType() string {
 	return "DPOS"
 }
 
-func (c *Dpos) InitSaveSnapshot(block *core.Block, addresses []common.Address) {
-
-}
 
 func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
 	return nil, nil
