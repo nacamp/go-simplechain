@@ -23,6 +23,8 @@ type Consensus interface {
 	SaveMiners(hash common.Hash, block *Block) error
 	VerifyMinerTurn(block *Block) error
 	SetupNonMiner(bc *BlockChain, node *net.Node)
+
+	LoadConsensusStatus(block *Block) (err error)
 }
 
 /*

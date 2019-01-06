@@ -195,6 +195,7 @@ func TestUpdateLIB3(t *testing.T) {
 		if cs.ConsensusType() == "DPOS" {
 			cs2 = consensus.NewDpos()
 			bc2 := core.NewBlockChain(cs2, storage1)
+			cs2.SetupNonMiner(bc2, nil)
 			bc2.Setup(voters)
 			assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
 			//check status loading
@@ -204,10 +205,10 @@ func TestUpdateLIB3(t *testing.T) {
 			assert.Equal(t, bc.Tail.Hash(), block5.Hash(), "")
 			//check status loading
 			assert.NotNil(t, bc2.Tail.VoterState, "")
-
 		} else {
 			cs2 = consensus.NewPoa(storage02)
 			bc2 := core.NewBlockChain(cs2, storage1)
+			cs2.SetupNonMiner(bc2, nil)
 			bc2.Setup(voters)
 			assert.Equal(t, bc.Lib.Hash(), bc2.Lib.Hash(), "")
 

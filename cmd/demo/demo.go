@@ -43,7 +43,6 @@ func run(c *cli.Context) {
 		cs := consensus.NewDpos()
 		bc := core.NewBlockChain(cs, db)
 		bcs := core.NewBlockChainService(bc, node)
-		bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
 		// bc.SetNode(node)
 		if config.EnableMining {
 			log.CLog().WithFields(logrus.Fields{
@@ -54,6 +53,7 @@ func run(c *cli.Context) {
 		} else {
 			cs.SetupNonMiner(bc, node)
 		}
+		bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
 		// bc.Start()
 		bcs.Start()
 		node.Start(config.Seeds[0])
@@ -67,7 +67,6 @@ func run(c *cli.Context) {
 		cs := consensus.NewPoa(db)
 		bc := core.NewBlockChain(cs, db)
 		bcs := core.NewBlockChainService(bc, node)
-		bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
 		// bc.SetNode(node)
 		if config.EnableMining {
 			log.CLog().WithFields(logrus.Fields{
@@ -78,6 +77,7 @@ func run(c *cli.Context) {
 		} else {
 			cs.SetupNonMiner(bc, node)
 		}
+		bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
 		// bc.Start()
 		bcs.Start()
 		node.Start(config.Seeds[0])

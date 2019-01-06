@@ -116,6 +116,10 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 			return err
 		}
 	}
+	err = bc.Consensus.LoadConsensusStatus(block)
+	if err != nil {
+		return err
+	}
 	bc.GenesisBlock = block
 	return nil
 
@@ -244,16 +248,12 @@ func (bc *BlockChain) PutState(block *Block) error {
 	if err != nil {
 		return err
 	}
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		block.VoterState, err = NewAccountStateRootHash(parentBlock.Header.VoterHash, bc.Storage)
-		if err != nil {
-			return err
-		}
-		block.MinerState, err = bc.Consensus.NewMinerState(parentBlock.Header.MinerHash, bc.Storage)
-		if err != nil {
-			return err
-		}
+
+	err = bc.Consensus.LoadConsensusStatus(block)
+	if err != nil {
+		return err
 	}
+
 	bc.RewardForCoinbase(block)
 
 	if bc.Consensus.ConsensusType() == "DPOS" {
@@ -632,16 +632,11 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 	if err != nil {
 		return err
 	}
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-		if err != nil {
-			return err
-		}
-		block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
-		if err != nil {
-			return err
-		}
+	err = bc.Consensus.LoadConsensusStatus(block)
+	if err != nil {
+		return err
 	}
+
 	bc.Lib = block
 	return nil
 }
@@ -680,16 +675,11 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 	if err != nil {
 		return err
 	}
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-		if err != nil {
-			return err
-		}
-		block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
-		if err != nil {
-			return err
-		}
+	err = bc.Consensus.LoadConsensusStatus(block)
+	if err != nil {
+		return err
 	}
+
 	bc.Tail = block
 	return nil
 }

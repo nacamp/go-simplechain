@@ -55,6 +55,7 @@ func TestLoadBlockChainFromStorage(t *testing.T) {
 			cs2 = consensus.NewPoa(storage02)
 		}
 		bc := core.NewBlockChain(cs2, storage1)
+		cs2.SetupNonMiner(bc, nil)
 		bc.LoadBlockChainFromStorage()
 
 		assert.Equal(t, remoteBc.GenesisBlock.Hash(), bc.GenesisBlock.Hash(), "")
@@ -84,6 +85,7 @@ func TestSetup(t *testing.T) {
 			cs2.(*consensus.Poa).Period = 3
 		}
 		bc := core.NewBlockChain(cs2, storage1)
+		cs2.SetupNonMiner(bc, nil)
 		bc.LoadBlockChainFromStorage()
 
 		assert.Equal(t, remoteBc.GenesisBlock.Hash(), bc.GenesisBlock.Hash(), "")
@@ -204,7 +206,7 @@ func TestMakeBlockChain(t *testing.T) {
 			cs2.(*consensus.Poa).SetupNonMiner(bc, nil)
 			cs2.(*consensus.Poa).Period = 3
 		}
-
+		cs2.SetupNonMiner(bc, nil)
 		bc.Setup(voters)
 		bcs := NewMockBlockChainService(bc)
 		bcs.Start()
@@ -249,6 +251,7 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 	storage02, _ := storage.NewMemoryStorage()
 	for _, cs := range []core.Consensus{consensus.NewPoa(storage01), consensus.NewDpos()} {
 		remoteBc := core.NewBlockChain(cs, storage1)
+		cs.SetupNonMiner(remoteBc, nil)
 		remoteBc.Setup(voters)
 
 		block1 := tests.MakeBlock(remoteBc, remoteBc.GenesisBlock, tests.Addr0, tests.Addr0, tests.Addr1, new(big.Int).SetUint64(1), tests.None, nil)
@@ -276,6 +279,7 @@ func TestMakeBlockChainWhenRlpEncode(t *testing.T) {
 		if cs.ConsensusType() == "POA" {
 			cs2.(*consensus.Poa).SetupNonMiner(bc, nil)
 		}
+		cs2.SetupNonMiner(bc, nil)
 		bc.Setup(voters)
 		bcs := NewMockBlockChainService(bc)
 		bcs.Start()

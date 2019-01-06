@@ -211,3 +211,17 @@ func (cs *Dpos) SaveMiners(hash common.Hash, block *core.Block) error {
 func (cs *Dpos) VerifyMinerTurn(block *core.Block) error {
 	return nil
 }
+
+func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {
+	bc := cs.bc
+
+	block.VoterState, err = core.NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = cs.NewMinerState(block.Header.MinerHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	return nil
+}

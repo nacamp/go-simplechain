@@ -347,3 +347,7 @@ func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
 	}
 	return nil
 }
+
+func (cs *Poa) LoadConsensusStatus(block *core.Block) (err error) {
+	return nil
+}
