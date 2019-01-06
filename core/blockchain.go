@@ -106,16 +106,7 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 	if err != nil {
 		return err
 	}
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		block.VoterState, err = NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
-		if err != nil {
-			return err
-		}
-		block.MinerState, err = bc.Consensus.NewMinerState(block.Header.MinerHash, bc.Storage)
-		if err != nil {
-			return err
-		}
-	}
+
 	err = bc.Consensus.LoadConsensusStatus(block)
 	if err != nil {
 		return err
