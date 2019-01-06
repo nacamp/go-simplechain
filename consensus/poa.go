@@ -328,6 +328,9 @@ func (cs *Poa) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) 
 }
 
 func (cs *Poa) SaveMiners(block *core.Block) error {
+	if err := cs.VerifyMinerTurn(block); err != nil {
+		return err
+	}
 	snapshot, err := cs.LoadSnapshot(block.Header.ParentHash)
 	if err != nil {
 		log.CLog().Warning(err)

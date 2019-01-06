@@ -55,6 +55,9 @@ func TestUpdateLIB1(t *testing.T) {
 	storage01, _ := storage.NewMemoryStorage()
 	// storage02, _ := storage.NewMemoryStorage()
 	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		if cs.ConsensusType() == "POA" {
+			cs.(*consensus.Poa).Period = 3
+		}
 		bc := core.NewBlockChain(storage1)
 		bc.Setup(cs, voters)
 
@@ -95,6 +98,9 @@ func TestUpdateLIB2(t *testing.T) {
 	storage01, _ := storage.NewMemoryStorage()
 	// storage02, _ := storage.NewMemoryStorage()
 	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		if cs.ConsensusType() == "POA" {
+			cs.(*consensus.Poa).Period = 3
+		}
 		bc := core.NewBlockChain(storage1)
 		bc.Setup(cs, voters)
 
@@ -150,6 +156,9 @@ func TestUpdateLIB3(t *testing.T) {
 	storage01, _ := storage.NewMemoryStorage()
 	storage02, _ := storage.NewMemoryStorage()
 	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		if cs.ConsensusType() == "POA" {
+			cs.(*consensus.Poa).Period = 3
+		}
 		bc := core.NewBlockChain(storage1)
 		bc.Setup(cs, voters)
 

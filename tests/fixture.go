@@ -1,10 +1,12 @@
 package tests
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sort"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/najimmy/go-simplechain/cmd"
@@ -52,6 +54,21 @@ func MakeConfig() *cmd.Config {
 	return config
 }
 
+type signersAscending []common.Address
+
+func (s signersAscending) Len() int           { return len(s) }
+func (s signersAscending) Less(i, j int) bool { return bytes.Compare(s[i][:], s[j][:]) < 0 }
+func (s signersAscending) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
+func SignerSlice(signers []common.Address) []common.Address {
+	sigs := make([]common.Address, 0, len(signers))
+	for _, sig := range signers {
+		sigs = append(sigs, sig)
+	}
+	sort.Sort(signersAscending(sigs))
+	return sigs
+}
+
 func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to string, amount *big.Int, trickId trick, trickValue interface{}) *core.Block {
 	h := &core.Header{}
 	h.ParentHash = parentBlock.Hash()
@@ -69,7 +86,7 @@ func MakeBlock(bc *core.BlockChain, parentBlock *core.Block, coinbase, from, to 
 			h.Time++
 		}
 	} else {
-		gMinerGroup := bc.Signers
+		gMinerGroup := SignerSlice(bc.Signers)
 		for {
 			index := (h.Time % 9) / 3
 			if gMinerGroup[index] == common.HexToAddress(coinbase) {

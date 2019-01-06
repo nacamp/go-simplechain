@@ -196,10 +196,6 @@ func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
 	return nil, nil
 }
 
-func (cs *Dpos) VerifyMinerTurn(block *core.Block) error {
-	return nil
-}
-
 func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {
 	bc := cs.bc
 
@@ -274,8 +270,7 @@ func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block)
 
 func (cs *Dpos) SaveMiners(block *core.Block) (err error) {
 	bc := cs.bc
-	err = bc.PutMinerState(block)
-	if err != nil {
+	if err := bc.PutMinerState(block); err != nil {
 		return err
 	}
 	return nil

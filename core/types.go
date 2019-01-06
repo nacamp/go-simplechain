@@ -16,7 +16,7 @@ type Consensus interface {
 	UpdateLIB()
 	ConsensusType() string
 	GetMiners(hash common.Hash) ([]common.Address, error)
-	VerifyMinerTurn(block *Block) error
+	// VerifyMinerTurn(block *Block) error
 
 	SaveMiners(block *Block) error
 	LoadConsensusStatus(block *Block) (err error)
