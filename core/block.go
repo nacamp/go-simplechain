@@ -42,6 +42,7 @@ type Block struct {
 	TransactionState *TransactionState
 	MinerState       MinerState
 	VoterState       *AccountState
+	Snapshot         interface{}
 }
 
 func (b *BaseBlock) NewBlock() *Block {

@@ -54,6 +54,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	if err != nil {
 		log.CLog().Warning(err)
 	}
+
 	block.Header.Time = now
 	miners, err := cs.GetMiners(block.Header.ParentHash)
 	if len(miners) == 0 {
@@ -62,8 +63,8 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		}).Panic("Miner must be one more")
 	}
 	turn := (now % (uint64(len(miners)) * cs.Period)) / cs.Period
-	snapshot, err := cs.Snapshot(block.Header.ParentHash)
-	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
+	snapshot := block.Snapshot.(*Snapshot)
+	// snapshot, err := cs.Snapshot(block.Header.ParentHash)
 	if err != nil {
 		log.CLog().Warning(err)
 	}
@@ -156,6 +157,8 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		block.MakeHash()
 		newSnap.BlockHash = block.Hash()
 		newSnap.Store(cs.Storage)
+		//this code need, because of rlp encoding
+		block.Snapshot = nil
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
@@ -355,4 +358,9 @@ func (cs *Poa) MakeGenesisBlock(block *core.Block, voters []*core.Account) error
 
 func (cs *Poa) AddBlockChain(bc *core.BlockChain) {
 	cs.bc = bc
+}
+
+func (cs *Poa) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
+	block.Snapshot, err = cs.Snapshot(block.Header.ParentHash)
+	return nil
 }

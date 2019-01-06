@@ -190,7 +190,6 @@ func (c *Dpos) ConsensusType() string {
 	return "DPOS"
 }
 
-
 func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
 	return nil, nil
 }
@@ -251,3 +250,28 @@ func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) erro
 func (cs *Dpos) AddBlockChain(bc *core.BlockChain) {
 	cs.bc = bc
 }
+
+func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
+	block.VoterState, err = parentBlock.VoterState.Clone()
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = parentBlock.MinerState.Clone()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+/*
+	if bc.Consensus.ConsensusType() == "DPOS" {
+		block.VoterState, err = parentBlock.VoterState.Clone()
+		if err != nil {
+			return nil, err
+		}
+		block.MinerState, err = parentBlock.MinerState.Clone()
+		if err != nil {
+			return nil, err
+		}
+	}
+*/

@@ -24,10 +24,5 @@ type Consensus interface {
 	LoadConsensusStatus(block *Block) (err error)
 	MakeGenesisBlock(block *Block, voters []*Account) error
 	AddBlockChain(*BlockChain)
+	CloneFromParentBlock(block *Block, parentBlock *Block) (err error)
 }
-
-/*
-period
-
-
-*/

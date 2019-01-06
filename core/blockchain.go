@@ -448,16 +448,11 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 		BaseBlock: BaseBlock{Header: h},
 	}
 	//state
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		block.VoterState, err = parentBlock.VoterState.Clone()
-		if err != nil {
-			return nil, err
-		}
-		block.MinerState, err = parentBlock.MinerState.Clone()
-		if err != nil {
-			return nil, err
-		}
+	err = bc.Consensus.CloneFromParentBlock(block, parentBlock)
+	if err != nil {
+		return nil, err
 	}
+
 	block.AccountState, err = parentBlock.AccountState.Clone()
 	if err != nil {
 		return nil, err
