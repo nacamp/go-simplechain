@@ -158,7 +158,7 @@ func (d *Dpos) NewMinerState(rootHash common.Hash, storage storage.Storage) (cor
 	}, err
 }
 
-//---------- Consensus
+//----------    Consensus  ----------------//
 
 func (d *Dpos) UpdateLIB() {
 	bc := d.bc
@@ -190,10 +190,6 @@ func (d *Dpos) UpdateLIB() {
 
 func (c *Dpos) ConsensusType() string {
 	return "DPOS"
-}
-
-func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
-	return nil, nil
 }
 
 func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {

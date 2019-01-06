@@ -195,7 +195,6 @@ func (cs *Poa) LoadSnapshot(hash common.Hash) (*Snapshot, error) {
 	return LoadSnapshot(cs.Storage, hash)
 }
 
-//---------- Consensus
 func (cs *Poa) getMinerSize(block *core.Block) (int, error) {
 	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
 	if parentBlock == nil {
@@ -212,6 +211,31 @@ func (cs *Poa) getMinerSize(block *core.Block) (int, error) {
 	return minerSize, nil
 }
 
+func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
+	snap, err := cs.LoadSnapshot(hash)
+	if err != nil {
+		return nil, err
+	}
+	return snap.SignerSlice(), nil
+}
+
+func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
+	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
+	if parentBlock == nil {
+		return errors.New("parent block is nil")
+	}
+	miners, err := cs.GetMiners(parentBlock.Hash())
+	if err != nil {
+		return err
+	}
+	index := (block.Header.Time % (uint64(len(miners)) * cs.Period)) / cs.Period
+	if miners[index] != block.Header.Coinbase {
+		return errors.New("This turn is not this miner's turn ")
+	}
+	return nil
+}
+
+//----------    Consensus  ----------------//
 func (cs *Poa) UpdateLIB() {
 	bc := cs.bc
 	block := bc.Tail
@@ -266,30 +290,6 @@ func (cs *Poa) UpdateLIB() {
 
 func (cs *Poa) ConsensusType() string {
 	return "POA"
-}
-
-func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
-	snap, err := cs.LoadSnapshot(hash)
-	if err != nil {
-		return nil, err
-	}
-	return snap.SignerSlice(), nil
-}
-
-func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
-	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
-	if parentBlock == nil {
-		return errors.New("parent block is nil")
-	}
-	miners, err := cs.GetMiners(parentBlock.Hash())
-	if err != nil {
-		return err
-	}
-	index := (block.Header.Time % (uint64(len(miners)) * cs.Period)) / cs.Period
-	if miners[index] != block.Header.Coinbase {
-		return errors.New("This turn is not this miner's turn ")
-	}
-	return nil
 }
 
 func (cs *Poa) LoadConsensusStatus(block *core.Block) (err error) {
