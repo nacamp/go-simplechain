@@ -351,3 +351,16 @@ func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
 func (cs *Poa) LoadConsensusStatus(block *core.Block) (err error) {
 	return nil
 }
+
+func (cs *Poa) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
+	bc := cs.bc
+	bc.Signers = make([]common.Address, len(voters))
+	for i, account := range voters {
+		bc.Signers[i] = account.Address
+	}
+	// TODO: set c.GenesisBlock.Header.SnapshotHash
+	bc.GenesisBlock = block
+	// bc.GenesisBlock.MakeHash()
+	bc.Consensus.InitSaveSnapshot(bc.GenesisBlock, bc.Signers)
+	return nil
+}

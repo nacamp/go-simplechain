@@ -25,6 +25,7 @@ type Consensus interface {
 	SetupNonMiner(bc *BlockChain, node *net.Node)
 
 	LoadConsensusStatus(block *Block) (err error)
+	MakeGenesisBlock(block *Block, voters []*Account) error
 }
 
 /*

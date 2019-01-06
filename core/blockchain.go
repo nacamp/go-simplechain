@@ -147,46 +147,10 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	txs.PutTransaction(&Transaction{})
 	block.TransactionState = txs
 	header.TransactionHash = txs.RootHash()
-
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		//VoterState
-		vs, err := NewAccountState(bc.Storage)
-		if err != nil {
-			return err
-		}
-		for _, account := range voters {
-			vs.PutAccount(account)
-		}
-		block.VoterState = vs
-		header.VoterHash = vs.RootHash()
-		bc.GenesisBlock = block
-
-		// MinerState
-		ms, err := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
-		if err != nil {
-			return err
-		}
-		bc.GenesisBlock.MinerState = ms
-		minerGroup, _, err := ms.GetMinerGroup(bc, block)
-		if err != nil {
-			return err
-		}
-		ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
-		bc.GenesisBlock = block
-		bc.GenesisBlock.Header.MinerHash = ms.RootHash()
-		bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
-		bc.GenesisBlock.MakeHash()
-	} else {
-		bc.Signers = make([]common.Address, len(voters))
-		for i, account := range voters {
-			bc.Signers[i] = account.Address
-		}
-		// TODO: set c.GenesisBlock.Header.SnapshotHash
-		bc.GenesisBlock = block
-		// bc.GenesisBlock.MakeHash()
-		bc.Consensus.InitSaveSnapshot(bc.GenesisBlock, bc.Signers)
+	err = bc.Consensus.MakeGenesisBlock(block, voters)
+	if err != nil {
+		return err
 	}
-
 	bc.SetLib(bc.GenesisBlock)
 	bc.SetTail(bc.GenesisBlock)
 	return nil

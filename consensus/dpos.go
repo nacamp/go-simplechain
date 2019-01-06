@@ -225,3 +225,35 @@ func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {
 	}
 	return nil
 }
+
+func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
+	bc := cs.bc
+	//VoterState
+	vs, err := core.NewAccountState(bc.Storage)
+	if err != nil {
+		return err
+	}
+	for _, account := range voters {
+		vs.PutAccount(account)
+	}
+	block.VoterState = vs
+	block.Header.VoterHash = vs.RootHash()
+	bc.GenesisBlock = block
+
+	// MinerState
+	ms, err := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
+	if err != nil {
+		return err
+	}
+	bc.GenesisBlock.MinerState = ms
+	minerGroup, _, err := ms.GetMinerGroup(bc, block)
+	if err != nil {
+		return err
+	}
+	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
+	bc.GenesisBlock = block
+	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
+	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
+	bc.GenesisBlock.MakeHash()
+	return nil
+}
