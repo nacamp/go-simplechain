@@ -192,11 +192,7 @@ func (cs *Poa) loop() {
 	}
 }
 
-func (cs *Poa) Snapshot(hash common.Hash) (*Snapshot, error) {
-	block := cs.bc.GetBlockByHash(hash)
-	if block.Header.Height == uint64(0) {
-		return NewSnapshot(hash, cs.bc.Signers), nil
-	}
+func (cs *Poa) LoadSnapshot(hash common.Hash) (*Snapshot, error) {
 	return LoadSnapshot(cs.Storage, hash)
 }
 
@@ -281,7 +277,7 @@ func (cs *Poa) ConsensusType() string {
 }
 
 func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
-	snap, err := cs.Snapshot(hash)
+	snap, err := cs.LoadSnapshot(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +285,7 @@ func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
 }
 
 func (cs *Poa) SaveMiners(hash common.Hash, block *core.Block) error {
-	snapshot, err := cs.Snapshot(block.Header.ParentHash)
+	snapshot, err := cs.LoadSnapshot(block.Header.ParentHash)
 	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 	if err != nil {
 		log.CLog().Warning(err)
@@ -361,6 +357,6 @@ func (cs *Poa) AddBlockChain(bc *core.BlockChain) {
 }
 
 func (cs *Poa) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
-	block.Snapshot, err = cs.Snapshot(block.Header.ParentHash)
+	block.Snapshot, err = cs.LoadSnapshot(block.Header.ParentHash)
 	return nil
 }
