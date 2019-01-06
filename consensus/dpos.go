@@ -35,13 +35,11 @@ type Dpos struct {
 // 	ErrAddressNotEqual = errors.New("address not equal")
 // )
 
-func NewDpos() *Dpos {
-	return &Dpos{}
+func NewDpos(node *net.Node) *Dpos {
+	return &Dpos{node: node}
 }
 
-func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) {
-	dpos.bc = bc
-	dpos.node = node
+func (dpos *Dpos) Setup(address common.Address, bpriv []byte) {
 	dpos.enableMining = true
 	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
 	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
@@ -160,11 +158,6 @@ func (d *Dpos) NewMinerState(rootHash common.Hash, storage storage.Storage) (cor
 	}, err
 }
 
-func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
-	dpos.bc = bc
-	dpos.node = node
-}
-
 func (d *Dpos) UpdateLIB() {
 	bc := d.bc
 	block := bc.Tail
@@ -256,4 +249,8 @@ func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) erro
 	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
 	bc.GenesisBlock.MakeHash()
 	return nil
+}
+
+func (cs *Dpos) AddBlockChain(bc *core.BlockChain) {
+	cs.bc = bc
 }

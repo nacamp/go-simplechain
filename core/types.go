@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/storage"
 )
 
@@ -22,10 +21,10 @@ type Consensus interface {
 	GetMiners(hash common.Hash) ([]common.Address, error)
 	SaveMiners(hash common.Hash, block *Block) error
 	VerifyMinerTurn(block *Block) error
-	SetupNonMiner(bc *BlockChain, node *net.Node)
 
 	LoadConsensusStatus(block *Block) (err error)
 	MakeGenesisBlock(block *Block, voters []*Account) error
+	AddBlockChain(*BlockChain)
 }
 
 /*

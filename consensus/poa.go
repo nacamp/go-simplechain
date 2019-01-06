@@ -29,14 +29,12 @@ type Poa struct {
 	Period       uint64
 }
 
-func NewPoa(storage storage.Storage) *Poa {
-	return &Poa{Storage: storage}
+func NewPoa(node *net.Node, storage storage.Storage) *Poa {
+	return &Poa{node: node, Storage: storage}
 }
 
 //Same as dpos
-func (cs *Poa) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte, period int) {
-	cs.bc = bc
-	cs.node = node
+func (cs *Poa) Setup(address common.Address, bpriv []byte, period int) {
 	cs.enableMining = true
 	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
 	cs.coinbase = common.BytesToAddress(pub.SerializeCompressed())
@@ -47,12 +45,6 @@ func (cs *Poa) Setup(bc *core.BlockChain, node *net.Node, address common.Address
 			"Address": common.Address2Hex(cs.coinbase),
 		}).Panic("Privatekey is different")
 	}
-}
-
-//Same as dpos
-func (cs *Poa) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
-	cs.bc = bc
-	cs.node = node
 }
 
 //To be changed
@@ -363,4 +355,8 @@ func (cs *Poa) MakeGenesisBlock(block *core.Block, voters []*core.Account) error
 	// bc.GenesisBlock.MakeHash()
 	bc.Consensus.InitSaveSnapshot(bc.GenesisBlock, bc.Signers)
 	return nil
+}
+
+func (cs *Poa) AddBlockChain(bc *core.BlockChain) {
+	cs.bc = bc
 }

@@ -43,7 +43,7 @@ type BlockChain struct {
 	Signers []common.Address
 }
 
-func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
+func NewBlockChain(storage storage.Storage) *BlockChain {
 	futureBlocks, _ := lru.New(maxFutureBlocks)
 	bc := BlockChain{
 		Storage:             storage,
@@ -52,12 +52,12 @@ func NewBlockChain(consensus Consensus, storage storage.Storage) *BlockChain {
 		MessageToRandomNode: make(chan *net.Message, 1),
 		NewTXMessage:        make(chan *Transaction, 1),
 	}
-
-	bc.Consensus = consensus
 	return &bc
 }
 
-func (bc *BlockChain) Setup(voters []*Account) {
+func (bc *BlockChain) Setup(consensus Consensus, voters []*Account) {
+	consensus.AddBlockChain(bc)
+	bc.Consensus = consensus
 	err := bc.LoadBlockChainFromStorage()
 	if err != nil {
 		if err == storage.ErrKeyNotFound {

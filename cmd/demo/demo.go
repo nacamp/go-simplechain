@@ -40,20 +40,17 @@ func run(c *cli.Context) {
 	}
 	//TODO: remove duplicated code
 	if config.Consensus == "dpos" {
-		cs := consensus.NewDpos()
-		bc := core.NewBlockChain(cs, db)
+		cs := consensus.NewDpos(node)
+		bc := core.NewBlockChain(db)
 		bcs := core.NewBlockChainService(bc, node)
-		// bc.SetNode(node)
 		if config.EnableMining {
 			log.CLog().WithFields(logrus.Fields{
 				"Address":   config.MinerAddress,
 				"Consensus": config.Consensus,
 			}).Info("Miner Info")
-			cs.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
-		} else {
-			cs.SetupNonMiner(bc, node)
+			cs.Setup(common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
 		}
-		bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
+		bc.Setup(cs, cmd.MakeVoterAccountsFromConfig(config))
 		// bc.Start()
 		bcs.Start()
 		node.Start(config.Seeds[0])
@@ -64,8 +61,8 @@ func run(c *cli.Context) {
 		rpcService.Setup(rpcServer, config, bc)
 		rpcServer.Start()
 	} else {
-		cs := consensus.NewPoa(db)
-		bc := core.NewBlockChain(cs, db)
+		cs := consensus.NewPoa(node, db)
+		bc := core.NewBlockChain(db)
 		bcs := core.NewBlockChainService(bc, node)
 		// bc.SetNode(node)
 		if config.EnableMining {
@@ -73,11 +70,9 @@ func run(c *cli.Context) {
 				"Address":   config.MinerAddress,
 				"Consensus": config.Consensus,
 			}).Info("Miner Info")
-			cs.Setup(bc, node, common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey), 3)
-		} else {
-			cs.SetupNonMiner(bc, node)
+			cs.Setup(common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey), 3)
 		}
-		bc.Setup(cmd.MakeVoterAccountsFromConfig(config))
+		bc.Setup(cs, cmd.MakeVoterAccountsFromConfig(config))
 		// bc.Start()
 		bcs.Start()
 		node.Start(config.Seeds[0])
