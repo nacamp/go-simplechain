@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/storage"
 )
 
 type MinerState interface {
@@ -14,7 +13,6 @@ type MinerState interface {
 }
 
 type Consensus interface {
-	NewMinerState(rootHash common.Hash, storage storage.Storage) (MinerState, error)
 	UpdateLIB()
 	ConsensusType() string
 	GetMiners(hash common.Hash) ([]common.Address, error)

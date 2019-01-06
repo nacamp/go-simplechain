@@ -14,7 +14,6 @@ import (
 	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/storage"
-	"github.com/najimmy/go-simplechain/trie"
 	"github.com/sirupsen/logrus"
 )
 
@@ -197,13 +196,6 @@ func (cs *Poa) LoadSnapshot(hash common.Hash) (*Snapshot, error) {
 }
 
 //---------- Consensus
-func (cs *Poa) NewMinerState(rootHash common.Hash, storage storage.Storage) (core.MinerState, error) {
-	tr, err := trie.NewTrie(common.HashToBytes(rootHash), storage, false)
-	return &MinerState{
-		Trie: tr,
-	}, err
-}
-
 func (cs *Poa) getMinerSize(block *core.Block) (int, error) {
 	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
 	if parentBlock == nil {

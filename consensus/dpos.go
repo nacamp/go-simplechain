@@ -150,13 +150,14 @@ func (dpos *Dpos) loop() {
 	}
 }
 
-//---------- Consensus
 func (d *Dpos) NewMinerState(rootHash common.Hash, storage storage.Storage) (core.MinerState, error) {
 	tr, err := trie.NewTrie(common.HashToBytes(rootHash), storage, false)
 	return &MinerState{
 		Trie: tr,
 	}, err
 }
+
+//---------- Consensus
 
 func (d *Dpos) UpdateLIB() {
 	bc := d.bc
@@ -230,7 +231,7 @@ func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) erro
 	bc.GenesisBlock = block
 
 	// MinerState
-	ms, err := bc.Consensus.NewMinerState(common.Hash{}, bc.Storage)
+	ms, err := cs.NewMinerState(common.Hash{}, bc.Storage)
 	if err != nil {
 		return err
 	}
@@ -262,16 +263,3 @@ func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block)
 	}
 	return nil
 }
-
-/*
-	if bc.Consensus.ConsensusType() == "DPOS" {
-		block.VoterState, err = parentBlock.VoterState.Clone()
-		if err != nil {
-			return nil, err
-		}
-		block.MinerState, err = parentBlock.MinerState.Clone()
-		if err != nil {
-			return nil, err
-		}
-	}
-*/
