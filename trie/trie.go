@@ -25,7 +25,7 @@ import (
 
 	"github.com/najimmy/go-simplechain/crypto"
 	"github.com/najimmy/go-simplechain/storage"
-	"github.com/nebulasio/go-nebulas/common/trie/pb"
+	triepb "github.com/najimmy/go-simplechain/trie/pb"
 )
 
 // Errors
