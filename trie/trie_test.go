@@ -19,6 +19,7 @@
 package trie
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -28,7 +29,7 @@ import (
 	"github.com/najimmy/go-simplechain/common"
 	"github.com/najimmy/go-simplechain/crypto"
 	"github.com/najimmy/go-simplechain/storage"
-	"github.com/najimmy/go-simplechain/trie/pb"
+	triepb "github.com/najimmy/go-simplechain/trie/pb"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -193,13 +194,12 @@ func TestTrie_Operation(t *testing.T) {
 	}
 }
 
-func TestValueNotChangedAtParentHashWithSamekey(t *testing.T) {
+func TestHashIfValueChangedWithSamekey(t *testing.T) {
 	storage, _ := storage.NewMemoryStorage()
 	tr, _ := NewTrie(nil, storage, false)
 	if !reflect.DeepEqual([]byte(nil), tr.rootHash) {
 		t.Errorf("3 Trie.Del() = %v, want %v", nil, tr.rootHash)
 	}
-	val := []byte("0x0")
 	addr1 := common.FromHex("1f345678e9")
 	val1 := []byte("value1")
 	tr.Put(addr1, val1)
@@ -212,68 +212,76 @@ func TestValueNotChangedAtParentHashWithSamekey(t *testing.T) {
 	val3 := []byte("value3")
 	tr.Put(addr3, val3)
 
-	// val, _ = tr.Get(addr1)
-	// fmt.Printf("%s\n", val)
-	// val, _ = tr.Get(addr2)
-	// fmt.Printf("%s\n", val)
-	// val, _ = tr.Get(addr3)
-	// fmt.Printf("%s\n", val)
-	//fmt.Printf("%#v\n", val)
-
 	parentHash := tr.rootHash
 	tr2, _ := NewTrie(parentHash, storage, false)
+	assert.Equal(t, parentHash, tr2.rootHash)
 	tr2.Put(addr1, []byte("value11"))
 	tr2.Put(addr2, []byte("value21"))
 	tr2.Put(addr3, []byte("value31"))
 	assert.NotEqual(t, parentHash, tr2.rootHash)
+}
 
-	// // Iterator
-	// iter, err := tr2.Iterator(nil)
-	// if err != nil {
-	// 	fmt.Println("Iterator Error ", err)
-	// 	return
-	// }
-	// exist, err := iter.Next()
-	// if err != nil {
-	// 	fmt.Println("Next Error1 ", err)
-	// 	return
-	// }
-	// for exist {
-	// 	fmt.Printf("%#v-%s\n", iter.Key(), iter.Value())
-	// 	exist, err = iter.Next()
-	// }
+func TestIterator(t *testing.T) {
+	storage, _ := storage.NewMemoryStorage()
+	tr, _ := NewTrie(nil, storage, false)
+	addr1 := common.FromHex("1f345678e9")
+	val1 := []byte("value1")
+	tr.Put(addr1, val1)
 
-	// val, _ = tr2.Get(addr1)
-	// fmt.Printf("%s\n", val)
-	// val, _ = tr2.Get(addr2)
-	// fmt.Printf("%s\n", val)
-	// val, _ = tr2.Get(addr3)
-	// fmt.Printf("%s\n", val)
+	addr2 := common.FromHex("1f245678e9")
+	val2 := []byte("value2")
+	tr.Put(addr2, val2)
 
-	tr1, _ := NewTrie(parentHash, storage, false)
-	val, _ = tr.Get(addr1)
-	val1, _ = tr1.Get(addr1)
-	assert.Equal(t, val, val1, "")
-	val, _ = tr.Get(addr2)
-	val1, _ = tr1.Get(addr2)
-	assert.Equal(t, val, val1, "")
-	val, _ = tr.Get(addr3)
-	val1, _ = tr1.Get(addr3)
-	assert.Equal(t, val, val1, "")
+	addr3 := common.FromHex("1f235678e9")
+	val3 := []byte("value3")
+	tr.Put(addr3, val3)
 
-	// // Iterator
-	// iter, err = tr1.Iterator(nil)
-	// if err != nil {
-	// 	fmt.Println("Iterator Error ", err)
-	// 	return
-	// }
-	// exist, err = iter.Next()
-	// if err != nil {
-	// 	fmt.Println("Next Error1 ", err)
-	// 	return
-	// }
-	// for exist {
-	// 	fmt.Printf("%#v-%s\n", iter.Key(), iter.Value())
-	// 	exist, err = iter.Next()
-	// }
+	// Iterator
+	fmt.Println(">>>>>>>>iterator nil")
+	iter, err := tr.Iterator(nil)
+	if err != nil {
+		fmt.Println("Iterator Error ", err)
+		return
+	}
+	exist, err := iter.Next()
+	if err != nil {
+		fmt.Println("Next Error1 ", err)
+		return
+	}
+	for exist {
+		fmt.Printf("%#v-%s\n", iter.Key(), iter.Value())
+		exist, err = iter.Next()
+	}
+
+	fmt.Println(">>>>>>>>iterator 1f")
+	iter, err = tr.Iterator(common.FromHex("1f"))
+	if err != nil {
+		fmt.Println("Iterator Error ", err)
+		return
+	}
+	exist, err = iter.Next()
+	if err != nil {
+		fmt.Println("Next Error1 ", err)
+		return
+	}
+	for exist {
+		fmt.Printf("%#v-%s\n", iter.Key(), iter.Value())
+		exist, err = iter.Next()
+	}
+
+	fmt.Println(">>>>>>>>iterator 1f23")
+	iter, err = tr.Iterator(common.FromHex("1f23"))
+	if err != nil {
+		fmt.Println("Iterator Error ", err)
+		return
+	}
+	exist, err = iter.Next()
+	if err != nil {
+		fmt.Println("Next Error1 ", err)
+		return
+	}
+	for exist {
+		fmt.Printf("%#v-%s\n", iter.Key(), iter.Value())
+		exist, err = iter.Next()
+	}
 }
