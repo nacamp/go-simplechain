@@ -21,11 +21,9 @@ package trie
 import (
 	"errors"
 
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/najimmy/go-simplechain/crypto"
+	"github.com/najimmy/go-simplechain/rlp"
 	"github.com/najimmy/go-simplechain/storage"
-	triepb "github.com/najimmy/go-simplechain/trie/pb"
 )
 
 // Errors
@@ -72,27 +70,13 @@ type node struct {
 	Val   [][]byte
 }
 
-func (n *node) ToProto() (proto.Message, error) {
-	return &triepb.Node{
-		Val: n.Val,
-	}, nil
-}
-
-func (n *node) FromProto(msg proto.Message) error {
-	if msg, ok := msg.(*triepb.Node); ok {
-		if msg != nil {
-			bytes, err := proto.Marshal(msg)
-			if err != nil {
-				return err
-			}
-			n.Bytes = bytes
-			n.Hash = crypto.Sha3b256(n.Bytes)
-			n.Val = msg.Val
-			return nil
-		}
-		return ErrInvalidProtoToNode
+func (n *node) EncodeAndHash() (err error) {
+	n.Bytes, err = rlp.EncodeToBytes(n.Val)
+	if err != nil {
+		return err
 	}
-	return ErrInvalidProtoToNode
+	n.Hash = crypto.Sha3b256(n.Bytes)
+	return nil
 }
 
 // Type of node, e.g. Branch, Extension, Leaf Node
@@ -140,30 +124,21 @@ func (t *Trie) fetchNode(hash []byte) (*node, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	pb := new(triepb.Node)
-	if err := proto.Unmarshal(ir, pb); err != nil {
-		return nil, err
-	}
 	n := new(node)
-	if err := n.FromProto(pb); err != nil {
+	err = rlp.DecodeBytes(ir, &n.Val)
+	if err != nil {
 		return nil, err
 	}
+	n.Bytes = ir
+	n.Hash = crypto.Sha3b256(n.Bytes)
 	return n, nil
 }
 
 // CommitNode node in trie into storage
 func (t *Trie) commitNode(n *node) error {
-	pb, err := n.ToProto()
-	if err != nil {
+	if err := n.EncodeAndHash(); err != nil {
 		return err
 	}
-	n.Bytes, err = proto.Marshal(pb)
-	if err != nil {
-		return err
-	}
-	n.Hash = crypto.Sha3b256(n.Bytes)
-
 	return t.storage.Put(n.Hash, n.Bytes)
 }
 
@@ -696,9 +671,10 @@ func routeToKey(route []byte) []byte {
 
 func emptyBranchNode() *node {
 	empty := &node{Val: [][]byte{nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}}
-	pb, _ := empty.ToProto()
-	empty.Bytes, _ = proto.Marshal(pb)
-	empty.Hash = crypto.Sha3b256(empty.Bytes)
+	if err := empty.EncodeAndHash(); err != nil {
+		//TODO: ?
+		return nil
+	}
 	return empty
 }
 
