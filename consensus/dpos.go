@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -35,13 +36,11 @@ type Dpos struct {
 // 	ErrAddressNotEqual = errors.New("address not equal")
 // )
 
-func NewDpos() *Dpos {
-	return &Dpos{}
+func NewDpos(node *net.Node) *Dpos {
+	return &Dpos{node: node}
 }
 
-func (dpos *Dpos) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte) {
-	dpos.bc = bc
-	dpos.node = node
+func (dpos *Dpos) Setup(address common.Address, bpriv []byte) {
 	dpos.enableMining = true
 	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
 	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
@@ -152,7 +151,6 @@ func (dpos *Dpos) loop() {
 	}
 }
 
-//---------- Consensus
 func (d *Dpos) NewMinerState(rootHash common.Hash, storage storage.Storage) (core.MinerState, error) {
 	tr, err := trie.NewTrie(common.HashToBytes(rootHash), storage, false)
 	return &MinerState{
@@ -160,10 +158,7 @@ func (d *Dpos) NewMinerState(rootHash common.Hash, storage storage.Storage) (cor
 	}, err
 }
 
-func (dpos *Dpos) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
-	dpos.bc = bc
-	dpos.node = node
-}
+//----------    Consensus  ----------------//
 
 func (d *Dpos) UpdateLIB() {
 	bc := d.bc
@@ -197,17 +192,82 @@ func (c *Dpos) ConsensusType() string {
 	return "DPOS"
 }
 
-func (c *Dpos) InitSaveSnapshot(block *core.Block, addresses []common.Address) {
+func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {
+	bc := cs.bc
 
-}
-
-func (cs *Dpos) GetMiners(hash common.Hash) ([]common.Address, error) {
-	return nil, nil
-}
-
-func (cs *Dpos) SaveMiners(hash common.Hash, block *core.Block) error {
+	block.VoterState, err = core.NewAccountStateRootHash(block.Header.VoterHash, bc.Storage)
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = cs.NewMinerState(block.Header.MinerHash, bc.Storage)
+	if err != nil {
+		return err
+	}
 	return nil
 }
-func (cs *Dpos) VerifyMinerTurn(block *core.Block) error {
+
+func (cs *Dpos) VerifyConsensusStatusHash(block *core.Block) (err error) {
+	if block.VoterState.RootHash() != block.Header.VoterHash {
+		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
+	}
+	if block.MinerState.RootHash() != block.Header.MinerHash {
+		return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
+	}
+	return nil
+}
+
+func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
+	bc := cs.bc
+	//VoterState
+	vs, err := core.NewAccountState(bc.Storage)
+	if err != nil {
+		return err
+	}
+	for _, account := range voters {
+		vs.PutAccount(account)
+	}
+	block.VoterState = vs
+	block.Header.VoterHash = vs.RootHash()
+	bc.GenesisBlock = block
+
+	// MinerState
+	ms, err := cs.NewMinerState(common.Hash{}, bc.Storage)
+	if err != nil {
+		return err
+	}
+	bc.GenesisBlock.MinerState = ms
+	minerGroup, _, err := ms.GetMinerGroup(bc, block)
+	if err != nil {
+		return err
+	}
+	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
+	bc.GenesisBlock = block
+	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
+	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
+	bc.GenesisBlock.MakeHash()
+	return nil
+}
+
+func (cs *Dpos) AddBlockChain(bc *core.BlockChain) {
+	cs.bc = bc
+}
+
+func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
+	block.VoterState, err = parentBlock.VoterState.Clone()
+	if err != nil {
+		return err
+	}
+	block.MinerState, err = parentBlock.MinerState.Clone()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cs *Dpos) SaveMiners(block *core.Block) (err error) {
+	bc := cs.bc
+	if err := bc.PutMinerState(block); err != nil {
+		return err
+	}
 	return nil
 }

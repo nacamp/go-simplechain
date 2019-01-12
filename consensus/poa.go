@@ -14,7 +14,6 @@ import (
 	"github.com/najimmy/go-simplechain/log"
 	"github.com/najimmy/go-simplechain/net"
 	"github.com/najimmy/go-simplechain/storage"
-	"github.com/najimmy/go-simplechain/trie"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,14 +28,12 @@ type Poa struct {
 	Period       uint64
 }
 
-func NewPoa(storage storage.Storage) *Poa {
-	return &Poa{Storage: storage}
+func NewPoa(node *net.Node, storage storage.Storage) *Poa {
+	return &Poa{node: node, Storage: storage}
 }
 
 //Same as dpos
-func (cs *Poa) Setup(bc *core.BlockChain, node *net.Node, address common.Address, bpriv []byte, period int) {
-	cs.bc = bc
-	cs.node = node
+func (cs *Poa) Setup(address common.Address, bpriv []byte, period int) {
 	cs.enableMining = true
 	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
 	cs.coinbase = common.BytesToAddress(pub.SerializeCompressed())
@@ -49,12 +46,6 @@ func (cs *Poa) Setup(bc *core.BlockChain, node *net.Node, address common.Address
 	}
 }
 
-//Same as dpos
-func (cs *Poa) SetupNonMiner(bc *core.BlockChain, node *net.Node) {
-	cs.bc = bc
-	cs.node = node
-}
-
 //To be changed
 func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	bc := cs.bc
@@ -62,6 +53,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	if err != nil {
 		log.CLog().Warning(err)
 	}
+
 	block.Header.Time = now
 	miners, err := cs.GetMiners(block.Header.ParentHash)
 	if len(miners) == 0 {
@@ -70,8 +62,8 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		}).Panic("Miner must be one more")
 	}
 	turn := (now % (uint64(len(miners)) * cs.Period)) / cs.Period
-	snapshot, err := cs.Snapshot(block.Header.ParentHash)
-	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
+	snapshot := block.Snapshot.(*Snapshot)
+	// snapshot, err := cs.Snapshot(block.Header.ParentHash)
 	if err != nil {
 		log.CLog().Warning(err)
 	}
@@ -164,6 +156,8 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		block.MakeHash()
 		newSnap.BlockHash = block.Hash()
 		newSnap.Store(cs.Storage)
+		//this code need, because of rlp encoding
+		block.Snapshot = nil
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
@@ -197,20 +191,8 @@ func (cs *Poa) loop() {
 	}
 }
 
-func (cs *Poa) Snapshot(hash common.Hash) (*Snapshot, error) {
-	block := cs.bc.GetBlockByHash(hash)
-	if block.Header.Height == uint64(0) {
-		return NewSnapshot(hash, cs.bc.Signers), nil
-	}
+func (cs *Poa) LoadSnapshot(hash common.Hash) (*Snapshot, error) {
 	return LoadSnapshot(cs.Storage, hash)
-}
-
-//---------- Consensus
-func (cs *Poa) NewMinerState(rootHash common.Hash, storage storage.Storage) (core.MinerState, error) {
-	tr, err := trie.NewTrie(common.HashToBytes(rootHash), storage, false)
-	return &MinerState{
-		Trie: tr,
-	}, err
 }
 
 func (cs *Poa) getMinerSize(block *core.Block) (int, error) {
@@ -229,6 +211,31 @@ func (cs *Poa) getMinerSize(block *core.Block) (int, error) {
 	return minerSize, nil
 }
 
+func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
+	snap, err := cs.LoadSnapshot(hash)
+	if err != nil {
+		return nil, err
+	}
+	return snap.SignerSlice(), nil
+}
+
+func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
+	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
+	if parentBlock == nil {
+		return errors.New("parent block is nil")
+	}
+	miners, err := cs.GetMiners(parentBlock.Hash())
+	if err != nil {
+		return err
+	}
+	index := (block.Header.Time % (uint64(len(miners)) * cs.Period)) / cs.Period
+	if miners[index] != block.Header.Coinbase {
+		return errors.New("This turn is not this miner's turn ")
+	}
+	return nil
+}
+
+//----------    Consensus  ----------------//
 func (cs *Poa) UpdateLIB() {
 	bc := cs.bc
 	block := bc.Tail
@@ -285,26 +292,46 @@ func (cs *Poa) ConsensusType() string {
 	return "POA"
 }
 
-func (cs *Poa) InitSaveSnapshot(block *core.Block, addresses []common.Address) {
-	snap := NewSnapshot(common.Hash{}, addresses)
+func (cs *Poa) LoadConsensusStatus(block *core.Block) (err error) {
+	return nil
+}
+
+func (cs *Poa) VerifyConsensusStatusHash(block *core.Block) (err error) {
+	return nil
+}
+
+func (cs *Poa) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
+	bc := cs.bc
+	bc.Signers = make([]common.Address, len(voters))
+	for i, account := range voters {
+		bc.Signers[i] = account.Address
+	}
+	// TODO: set c.GenesisBlock.Header.SnapshotHash
+	bc.GenesisBlock = block
+	// bc.GenesisBlock.MakeHash()
+
+	snap := NewSnapshot(common.Hash{}, bc.Signers)
 	block.Header.SnapshotHash = snap.CalcHash()
 	block.MakeHash()
 	snap.BlockHash = block.Hash()
 	snap.Store(cs.Storage)
-
+	return nil
 }
 
-func (cs *Poa) GetMiners(hash common.Hash) ([]common.Address, error) {
-	snap, err := cs.Snapshot(hash)
-	if err != nil {
-		return nil, err
+func (cs *Poa) AddBlockChain(bc *core.BlockChain) {
+	cs.bc = bc
+}
+
+func (cs *Poa) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
+	block.Snapshot, err = cs.LoadSnapshot(block.Header.ParentHash)
+	return nil
+}
+
+func (cs *Poa) SaveMiners(block *core.Block) error {
+	if err := cs.VerifyMinerTurn(block); err != nil {
+		return err
 	}
-	return snap.SignerSlice(), nil
-}
-
-func (cs *Poa) SaveMiners(hash common.Hash, block *core.Block) error {
-	snapshot, err := cs.Snapshot(block.Header.ParentHash)
-	// minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
+	snapshot, err := cs.LoadSnapshot(block.Header.ParentHash)
 	if err != nil {
 		log.CLog().Warning(err)
 		return err
@@ -325,25 +352,9 @@ func (cs *Poa) SaveMiners(hash common.Hash, block *core.Block) error {
 		}
 	}
 	h := newSnap.CalcHash()
-	if h != hash {
+	if h != block.Header.SnapshotHash {
 		return errors.New("Hash is different")
 	}
 	newSnap.Store(cs.Storage)
-	return nil
-}
-
-func (cs *Poa) VerifyMinerTurn(block *core.Block) error {
-	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
-	if parentBlock == nil {
-		return errors.New("parent block is nil")
-	}
-	miners, err := cs.GetMiners(parentBlock.Hash())
-	if err != nil {
-		return err
-	}
-	index := (block.Header.Time % (uint64(len(miners)) * cs.Period)) / cs.Period
-	if miners[index] != block.Header.Coinbase {
-		return errors.New("This turn is not this miner's turn ")
-	}
 	return nil
 }
