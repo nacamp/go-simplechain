@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/nacamp/go-simplechain/common"
 	"golang.org/x/crypto/sha3"
 
-	// "github.com/btcsuite/btcd/btcec"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,24 +16,22 @@ func TestHash(t *testing.T) {
 	assert.Equal(t, hex.EncodeToString(Sha3b256([]byte("dummy test"))), "6151d993d53d37941297e3f3e31a26a7cdc1d5fb3efc4a5a25132cdd38e05b15", "test sha3-256")
 }
 
-// func TestAddress(t *testing.T) {
-// 	priv, err := btcec.NewPrivateKey(btcec.S256())
-// 	if err != nil {
-// 		return
-// 	}
-// 	/*
-// 		priv/pub
-// 		0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1 / 0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0
-// 		0xf390e256b6ed8a1b283d3ea80b103b868c14c31e5b7114fc32fff21c4cb263eb / 0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3
-// 		0xb385aca81e134722cca902bf85443528c3d3a783cf54008cfc34a2ca563fc5b6 / 0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1
-// 	*/
-// 	pubkey := priv.PubKey()
-// 	address := common.BytesToAddress(pubkey.SerializeCompressed())
-// 	// fmt.Println(common.ToHex(priv.Serialize()))
-// 	// fmt.Println(common.ToHex(pubkey.SerializeCompressed()))
-// 	//fmt.Println(common.ToHex(pubkey.SerializeUncompressed()))
-// 	assert.Equal(t, pubkey.SerializeCompressed(), address[:], "")
-// }
+func TestAddress(t *testing.T) {
+	priv, address := CreateAddress()
+	/*
+		address: d182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44
+		priv:  	 0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff
+
+		address: fdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2
+		priv:    0x47661aa6cccada84454842404ec0cca83760254191232f1d4cc11653d397ac2e
+
+		address: c6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d
+		priv:    0x8a21cd44e684dd2d8d9205b0bfb69339435c7bd016ebc21fddaddffd0d47ed63
+	*/
+	//TODO: 0xHex, Hex, Fixed to be made consistently
+	fmt.Println("address: ", common.Address2Hex(address))
+	fmt.Println("priv: ", common.ToHex((*btcec.PrivateKey)(priv).Serialize()))
+}
 
 func TestCreateAndEcrecover(t *testing.T) {
 	priv, address := CreateAddress()
