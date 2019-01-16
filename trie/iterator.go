@@ -21,7 +21,7 @@ package trie
 import (
 	"errors"
 
-	"github.com/najimmy/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/crypto"
 )
 
 // errors constants

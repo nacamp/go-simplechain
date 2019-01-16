@@ -9,9 +9,9 @@ import (
 	"sort"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/najimmy/go-simplechain/cmd"
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/cmd"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/core"
 )
 
 var Addr0 = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")

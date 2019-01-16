@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/core"
-	"github.com/najimmy/go-simplechain/crypto"
-	"github.com/najimmy/go-simplechain/rlp"
-	"github.com/najimmy/go-simplechain/tests"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/tests"
 	"github.com/stretchr/testify/assert"
 )
 

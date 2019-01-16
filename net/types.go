@@ -3,7 +3,7 @@ package net
 import (
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
-	"github.com/najimmy/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/rlp"
 )
 
 const (

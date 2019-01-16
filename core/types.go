@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/najimmy/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/common"
 )
 
 type MinerState interface {

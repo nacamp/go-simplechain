@@ -13,8 +13,8 @@ import (
 	crypto "github.com/libp2p/go-libp2p-crypto"
 	peer "github.com/libp2p/go-libp2p-peer"
 	b58 "github.com/mr-tron/base58/base58"
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/core"
 )
 
 type ConfigAccount struct {

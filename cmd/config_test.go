@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/najimmy/go-simplechain/cmd"
+	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -6,14 +6,14 @@ import (
 
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
-	"github.com/najimmy/go-simplechain/cmd"
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/consensus"
-	"github.com/najimmy/go-simplechain/core"
-	"github.com/najimmy/go-simplechain/net"
-	"github.com/najimmy/go-simplechain/rlp"
-	"github.com/najimmy/go-simplechain/storage"
-	"github.com/najimmy/go-simplechain/tests"
+	"github.com/nacamp/go-simplechain/cmd"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/consensus"
+	"github.com/nacamp/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/net"
+	"github.com/nacamp/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/tests"
 	"github.com/stretchr/testify/assert"
 )
 

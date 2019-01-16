@@ -4,8 +4,8 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/crypto"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/stretchr/testify/assert"

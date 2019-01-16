@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/storage"
-	"github.com/najimmy/go-simplechain/tests"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/tests"
 	"github.com/stretchr/testify/assert"
 )
 

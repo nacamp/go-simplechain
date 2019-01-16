@@ -21,9 +21,9 @@ package trie
 import (
 	"errors"
 
-	"github.com/najimmy/go-simplechain/crypto"
-	"github.com/najimmy/go-simplechain/rlp"
-	"github.com/najimmy/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/storage"
 )
 
 // Errors

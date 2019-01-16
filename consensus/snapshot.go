@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/common/hexutil"
-	"github.com/najimmy/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/common/hexutil"
+	"github.com/nacamp/go-simplechain/storage"
 	"golang.org/x/crypto/sha3"
 )
 

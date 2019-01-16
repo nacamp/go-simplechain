@@ -21,7 +21,7 @@ package storage
 import (
 	"sync"
 
-	"github.com/najimmy/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/common"
 )
 
 /*

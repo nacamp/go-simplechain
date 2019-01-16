@@ -11,7 +11,7 @@ import (
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/najimmy/go-simplechain/log"
+	"github.com/nacamp/go-simplechain/log"
 	"github.com/sirupsen/logrus"
 )
 

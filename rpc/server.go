@@ -3,7 +3,7 @@ package rpc
 import (
 	"net/http"
 
-	"github.com/najimmy/go-simplechain/log"
+	"github.com/nacamp/go-simplechain/log"
 
 	"github.com/osamingo/jsonrpc"
 )

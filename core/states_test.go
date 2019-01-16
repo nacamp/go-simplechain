@@ -4,9 +4,9 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/core"
-	"github.com/najimmy/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/storage"
 	"github.com/stretchr/testify/assert"
 )
 

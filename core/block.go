@@ -5,9 +5,9 @@ import (
 	"errors"
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/crypto"
-	"github.com/najimmy/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/rlp"
 )
 
 // Simple Header

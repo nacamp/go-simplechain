@@ -10,7 +10,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/najimmy/go-simplechain/log"
+	"github.com/nacamp/go-simplechain/log"
 	"github.com/sirupsen/logrus"
 )
 

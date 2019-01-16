@@ -6,14 +6,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/najimmy/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/rlp"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/core"
-	"github.com/najimmy/go-simplechain/log"
-	"github.com/najimmy/go-simplechain/net"
-	"github.com/najimmy/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/log"
+	"github.com/nacamp/go-simplechain/net"
+	"github.com/nacamp/go-simplechain/storage"
 	"github.com/sirupsen/logrus"
 )
 

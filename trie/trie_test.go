@@ -26,12 +26,12 @@ import (
 	// "github.com/gogo/protobuf/proto"
 
 	// "github.com/medibloc/go-medibloc/crypto/hash"
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/crypto"
-	"github.com/najimmy/go-simplechain/rlp"
-	"github.com/najimmy/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/storage"
 
-	// triepb "github.com/najimmy/go-simplechain/trie/pb"
+	// triepb "github.com/nacamp/go-simplechain/trie/pb"
 	"github.com/stretchr/testify/assert"
 )
 

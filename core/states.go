@@ -5,10 +5,10 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/rlp"
-	"github.com/najimmy/go-simplechain/storage"
-	"github.com/najimmy/go-simplechain/trie"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/trie"
 )
 
 var (
