@@ -24,7 +24,7 @@ const (
 	maxFutureBlocks = 256
 )
 
-var GenesisCoinbaseAddress = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")
+var GenesisCoinbaseAddress = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
 
 type BlockChain struct {
 	mu                  sync.RWMutex
