@@ -4,10 +4,10 @@ import (
 	"crypto/ecdsa"
 	"errors"
 
-	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/rlp"
+	"golang.org/x/crypto/sha3"
 )
 
 // Simple Header
