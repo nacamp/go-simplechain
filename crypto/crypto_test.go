@@ -65,3 +65,19 @@ func TestValidateAddress(t *testing.T) {
 	address[0] += 0x01
 	assert.False(t, ValidateAddress(address))
 }
+
+func TestGcm(t *testing.T) {
+	key := []byte{0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf}
+	plainData := []byte("This is plaintext")
+	_, cipherData, _ := GcmEncrypt(plainData, key, true)
+	plainData2, _ := GcmDecrypt(nil, cipherData, key)
+	assert.Equal(t, plainData, plainData2)
+}
+
+func TestHashPassword(t *testing.T) {
+
+	hash1, _ := HashPassword("This is plaintext")
+	hash2, _ := HashPassword("This is plaintext")
+	assert.Equal(t, hash1, hash2)
+	assert.Equal(t, 32, len(hash1))
+}
