@@ -38,6 +38,11 @@ func CreatePrivatekey() *ecdsa.PrivateKey {
 	return (*ecdsa.PrivateKey)(priv)
 }
 
+func ByteToPrivatekey(bpriv []byte) *ecdsa.PrivateKey {
+	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
+	return (*ecdsa.PrivateKey)(priv)
+}
+
 func CreateAddressFromPrivatekey(priv *ecdsa.PrivateKey) common.Address {
 	priv2 := (*btcec.PrivateKey)(priv)
 	pub := priv2.PubKey().SerializeUncompressed()
