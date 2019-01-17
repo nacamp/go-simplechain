@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/rlp"
@@ -64,35 +63,36 @@ func (tx *Transaction) Sign(prv *ecdsa.PrivateKey) {
 
 func (tx *Transaction) VerifySign() (bool, error) {
 	pub, err := crypto.Ecrecover(tx.Hash[:], tx.Sig[:])
-	if common.BytesToAddress(pub) == tx.From {
+	if crypto.CreateAddressFromPublickeyByte(pub) == tx.From {
 		return true, nil
 	}
 	return false, err
 }
 
 //FIXME: temporary Keystore
-var Addr0 = string("0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0")
-var Addr1 = string("0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1")
-var Addr2 = string("0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3")
+var Addr0 = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
+var Addr1 = string("0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44")
+var Addr2 = string("0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
+
 var Keystore = map[string]string{ //0, 2, 1
-	Addr0: "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
-	Addr2: "0xf390e256b6ed8a1b283d3ea80b103b868c14c31e5b7114fc32fff21c4cb263eb",
-	Addr1: "0xb385aca81e134722cca902bf85443528c3d3a783cf54008cfc34a2ca563fc5b6",
+	Addr0: "0x8a21cd44e684dd2d8d9205b0bfb69339435c7bd016ebc21fddaddffd0d47ed63",
+	Addr1: "0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff",
+	Addr2: "0x47661aa6cccada84454842404ec0cca83760254191232f1d4cc11653d397ac2e",
 }
 
 func MakeTransaction(from, to string, amount *big.Int, nonce uint64) *Transaction {
 	tx := NewTransaction(common.HexToAddress(from), common.HexToAddress(to), amount, nonce)
 	tx.MakeHash()
-	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[from]))
-	tx.Sign((*ecdsa.PrivateKey)(priv))
+	crypto.ByteToPrivatekey(common.FromHex(Keystore[from]))
+	tx.Sign(crypto.ByteToPrivatekey(common.FromHex(Keystore[from])))
 	return tx
 }
 
 func MakeTransactionPayload(from, to string, amount *big.Int, nonce uint64, payload []byte) *Transaction {
 	tx := NewTransactionPayload(common.HexToAddress(from), common.HexToAddress(to), amount, nonce, payload)
 	tx.MakeHash()
-	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[from]))
-	tx.Sign((*ecdsa.PrivateKey)(priv))
+	crypto.ByteToPrivatekey(common.FromHex(Keystore[from]))
+	tx.Sign(crypto.ByteToPrivatekey(common.FromHex(Keystore[from])))
 	return tx
 }
 

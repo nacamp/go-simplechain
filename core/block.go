@@ -4,10 +4,10 @@ import (
 	"crypto/ecdsa"
 	"errors"
 
-	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/rlp"
+	"golang.org/x/crypto/sha3"
 )
 
 // Simple Header
@@ -75,14 +75,18 @@ func (b *Block) CalcHash() (hash common.Hash) {
 	return hash
 }
 
-func (b *Block) Sign(prv *ecdsa.PrivateKey) {
-	bytes, _ := crypto.Sign(common.HashToBytes(b.Hash()), prv)
+func (b *Block) Sign(prv *ecdsa.PrivateKey) error {
+	bytes, err := crypto.Sign(common.HashToBytes(b.Hash()), prv)
+	if err != nil {
+		return err
+	}
 	copy(b.Header.Sig[:], bytes)
+	return nil
 }
 
 func (b *Block) VerifySign() (bool, error) {
-	pub, err := crypto.Ecrecover(common.HashToBytes(b.Hash()), b.Header.Sig[:])
-	if common.BytesToAddress(pub) == b.Header.Coinbase {
+	pub, err := crypto.Ecrecover(b.Header.Hash[:], b.Header.Sig[:])
+	if crypto.CreateAddressFromPublickeyByte(pub) == b.Header.Coinbase {
 		return true, nil
 	}
 	return false, err

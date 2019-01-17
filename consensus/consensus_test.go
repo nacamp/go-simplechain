@@ -1,8 +1,11 @@
 package consensus_test
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
+
+	// "github.com/medibloc/go-medibloc/consensus/dpos"
 
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/common"
@@ -14,6 +17,39 @@ import (
 	"github.com/nacamp/go-simplechain/consensus"
 	"github.com/nacamp/go-simplechain/core"
 )
+
+func TestFixtureAddressOrder(t *testing.T) {
+	config := tests.MakeConfig()
+	voters := cmd.MakeVoterAccountsFromConfig(config)
+	storage1, _ := storage.NewMemoryStorage()
+
+	storage01, _ := storage.NewMemoryStorage()
+	// storage02, _ := storage.NewMemoryStorage()
+	for _, cs := range []core.Consensus{consensus.NewPoa(nil, storage01), consensus.NewDpos(nil)} {
+		bc := core.NewBlockChain(storage1)
+		bc.Setup(cs, voters)
+
+		if cs.ConsensusType() == "DPOS" {
+			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
+			minerGroup, _, err := bc.GenesisBlock.MinerState.GetMinerGroup(bc, bc.GenesisBlock)
+			fmt.Println("Dpos minerGroup order in tests.fixture")
+			for _, addr := range minerGroup {
+				fmt.Printf("%v\n", common.Address2Hex(addr))
+			}
+			if err != nil {
+				fmt.Println(err)
+			}
+		} else {
+			cs.(*consensus.Poa).Setup(common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
+
+			snapshot := consensus.NewSnapshot(common.Hash{}, bc.Signers)
+			fmt.Println("Poa SignerSlice order in tests.fixture")
+			for _, addr := range snapshot.SignerSlice() {
+				fmt.Printf("%v\n", common.Address2Hex(addr))
+			}
+		}
+	}
+}
 
 func TestMakeBlock(t *testing.T) {
 	config := tests.MakeConfig()

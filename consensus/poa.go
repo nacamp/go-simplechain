@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/rlp"
 
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/log"
@@ -35,9 +35,8 @@ func NewPoa(node *net.Node, storage storage.Storage) *Poa {
 //Same as dpos
 func (cs *Poa) Setup(address common.Address, bpriv []byte, period int) {
 	cs.enableMining = true
-	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
-	cs.coinbase = common.BytesToAddress(pub.SerializeCompressed())
-	cs.priv = (*ecdsa.PrivateKey)(priv)
+	cs.priv = crypto.ByteToPrivatekey(bpriv)
+	cs.coinbase = crypto.CreateAddressFromPrivatekey(cs.priv)
 	cs.Period = uint64(period)
 	if cs.coinbase != address {
 		log.CLog().WithFields(logrus.Fields{
