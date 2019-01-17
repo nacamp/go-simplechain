@@ -14,7 +14,7 @@ It is pilot project for blockchain
 ```
 When sample1 run,  node_pub.id is generated in node_key_path
 Replace nodeid to node_pub.id
-In sample2.json, sample3.json
+in sample2.json, sample3.json
 "seeds" :["/ip4/127.0.0.1/tcp/9991/ipfs/nodeid"]
 
 ```
