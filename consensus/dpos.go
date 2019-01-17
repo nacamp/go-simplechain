@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/log"
 	"github.com/nacamp/go-simplechain/net"
 	"github.com/nacamp/go-simplechain/storage"
@@ -40,14 +40,13 @@ func NewDpos(node *net.Node) *Dpos {
 	return &Dpos{node: node}
 }
 
-func (dpos *Dpos) Setup(address common.Address, bpriv []byte) {
-	dpos.enableMining = true
-	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
-	dpos.coinbase = common.BytesToAddress(pub.SerializeCompressed())
-	dpos.priv = (*ecdsa.PrivateKey)(priv)
-	if dpos.coinbase != address {
+func (cs *Dpos) Setup(address common.Address, bpriv []byte) {
+	cs.enableMining = true
+	cs.priv = crypto.ByteToPrivatekey(bpriv)
+	cs.coinbase = crypto.CreateAddressFromPrivatekey(cs.priv)
+	if cs.coinbase != address {
 		log.CLog().WithFields(logrus.Fields{
-			"Address": common.Address2Hex(dpos.coinbase),
+			"Address": common.Address2Hex(cs.coinbase),
 		}).Panic("Privatekey is different")
 	}
 }
