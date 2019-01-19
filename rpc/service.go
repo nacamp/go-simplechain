@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"strconv"
 
+	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/rlp"
 
@@ -131,6 +132,8 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
+	//TODO: 1. check address to exist and be unlocked
+	//TODO: 2. and sign, send
 	amount, _ := new(big.Int).SetString(p.Amount, 10)
 	nonce, _ := strconv.ParseUint(p.Nonce, 10, 64)
 	var tx *core.Transaction
@@ -194,17 +197,56 @@ func (h *GetTransactionByHashHandler) Result() interface{} {
 
 // getTransactionByHash <<<<<<<<<<
 
+// newAccount >>>>>>>>>>>
+// type TempAccount struct {
+// 	Address  string `json:"address"`
+// 	Password string `json:"password"`
+// }
+type NewAccountHandler struct {
+	w *account.Wallet
+}
+
+func NewNewAccountHandler(w *account.Wallet) *NewAccountHandler {
+
+	return &NewAccountHandler{w: w}
+}
+
+func (h *NewAccountHandler) Name() string {
+	return "newAccount"
+}
+
+func (h *NewAccountHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+	p := []string{}
+	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+
+	key := account.NewKey()
+	h.w.StoreKey(key, p[0])
+
+	return common.Address2Hex(key.Address), nil
+}
+
+func (h *NewAccountHandler) Params() interface{} {
+	return []string{}
+}
+func (h *NewAccountHandler) Result() interface{} {
+	return ""
+}
+// newAccount <<<<<<<<<<
+
 type RpcService struct {
 	server *RpcServer
 }
 
-func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.BlockChain) {
+func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.BlockChain, w *account.Wallet) {
 	rs.server = server
 	rs.server.RegisterHandler(NewAccountsHandler(config))
 	rs.server.RegisterHandler(NewGetBalanceHandler(bc))
 	rs.server.RegisterHandler(NewGetTransactionCountHandler(bc))
 	rs.server.RegisterHandler(NewSendTransactionHandler(bc))
 	rs.server.RegisterHandler(NewGetTransactionByHashHandler(bc))
+	rs.server.RegisterHandler(NewNewAccountHandler(w))
 }
 
 /*
@@ -277,4 +319,6 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","param
     "s":"0x4ba69724e8f69de52f0125ad8b3c5c2cef33019bac3249e2c0a2192766d1721c"
   }
 }
+
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "newAccount", "params":["password"]}' http://localhost:8080/jrpc
 */

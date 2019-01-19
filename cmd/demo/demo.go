@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/rpc"
 	"github.com/sirupsen/logrus"
 
@@ -56,9 +57,11 @@ func run(c *cli.Context) {
 		node.Start(config.Seeds[0])
 		cs.Start()
 
+		wallet := account.NewWallet("./keystore.dat")
+
 		rpcServer := rpc.NewRpcServer(config.RpcAddress)
 		rpcService := &rpc.RpcService{}
-		rpcService.Setup(rpcServer, config, bc)
+		rpcService.Setup(rpcServer, config, bc, wallet)
 		rpcServer.Start()
 	} else {
 		cs := consensus.NewPoa(node, db)
@@ -78,9 +81,11 @@ func run(c *cli.Context) {
 		node.Start(config.Seeds[0])
 		cs.Start()
 
+		wallet := account.NewWallet("./keystore.dat")
+
 		rpcServer := rpc.NewRpcServer(config.RpcAddress)
 		rpcService := &rpc.RpcService{}
-		rpcService.Setup(rpcServer, config, bc)
+		rpcService.Setup(rpcServer, config, bc, wallet)
 		rpcServer.Start()
 	}
 
