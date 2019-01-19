@@ -29,13 +29,13 @@ func TestStoreAndGet(t *testing.T) {
 
 	key2, err = w.GetKey(key.Address, "test")
 	assert.Equal(t, key.Address, key2.Address)
-	assert.Equal(t, crypto.PrivatekeyToByte(key.PrivateKey), crypto.PrivatekeyToByte(key2.PrivateKey))
+	assert.Equal(t, crypto.PrivateKeyToByte(key.PrivateKey), crypto.PrivateKeyToByte(key2.PrivateKey))
 
 	key = NewKey()
 	w.StoreKey(key, "test")
 	key2, _ = w.GetKey(key.Address, "test")
 	assert.Equal(t, key.Address, key2.Address)
-	assert.Equal(t, crypto.PrivatekeyToByte(key.PrivateKey), crypto.PrivatekeyToByte(key2.PrivateKey))
+	assert.Equal(t, crypto.PrivateKeyToByte(key.PrivateKey), crypto.PrivateKeyToByte(key2.PrivateKey))
 
 	assert.Equal(t, 2, len(w.keys))
 
@@ -43,11 +43,11 @@ func TestStoreAndGet(t *testing.T) {
 	w.keys = make(map[common.Address]*keyByte)
 	key2, _ = w.GetKey(key.Address, "test")
 	assert.Equal(t, key.Address, key2.Address)
-	assert.Equal(t, crypto.PrivatekeyToByte(key.PrivateKey), crypto.PrivatekeyToByte(key2.PrivateKey))
+	assert.Equal(t, crypto.PrivateKeyToByte(key.PrivateKey), crypto.PrivateKeyToByte(key2.PrivateKey))
 
 	//check reading address from map
 	os.Remove(path)
 	key2, _ = w.GetKey(key.Address, "test")
 	assert.Equal(t, key.Address, key2.Address)
-	assert.Equal(t, crypto.PrivatekeyToByte(key.PrivateKey), crypto.PrivatekeyToByte(key2.PrivateKey))
+	assert.Equal(t, crypto.PrivateKeyToByte(key.PrivateKey), crypto.PrivateKeyToByte(key2.PrivateKey))
 }

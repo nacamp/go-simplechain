@@ -63,7 +63,7 @@ func (tx *Transaction) Sign(prv *ecdsa.PrivateKey) {
 
 func (tx *Transaction) VerifySign() (bool, error) {
 	pub, err := crypto.Ecrecover(tx.Hash[:], tx.Sig[:])
-	if crypto.CreateAddressFromPublickeyByte(pub) == tx.From {
+	if crypto.CreateAddressFromPublicKeyByte(pub) == tx.From {
 		return true, nil
 	}
 	return false, err
@@ -83,16 +83,16 @@ var Keystore = map[string]string{ //0, 2, 1
 func MakeTransaction(from, to string, amount *big.Int, nonce uint64) *Transaction {
 	tx := NewTransaction(common.HexToAddress(from), common.HexToAddress(to), amount, nonce)
 	tx.MakeHash()
-	crypto.ByteToPrivatekey(common.FromHex(Keystore[from]))
-	tx.Sign(crypto.ByteToPrivatekey(common.FromHex(Keystore[from])))
+	crypto.ByteToPrivateKey(common.FromHex(Keystore[from]))
+	tx.Sign(crypto.ByteToPrivateKey(common.FromHex(Keystore[from])))
 	return tx
 }
 
 func MakeTransactionPayload(from, to string, amount *big.Int, nonce uint64, payload []byte) *Transaction {
 	tx := NewTransactionPayload(common.HexToAddress(from), common.HexToAddress(to), amount, nonce, payload)
 	tx.MakeHash()
-	crypto.ByteToPrivatekey(common.FromHex(Keystore[from]))
-	tx.Sign(crypto.ByteToPrivatekey(common.FromHex(Keystore[from])))
+	crypto.ByteToPrivateKey(common.FromHex(Keystore[from]))
+	tx.Sign(crypto.ByteToPrivateKey(common.FromHex(Keystore[from])))
 	return tx
 }
 

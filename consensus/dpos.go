@@ -42,12 +42,12 @@ func NewDpos(node *net.Node) *Dpos {
 
 func (cs *Dpos) Setup(address common.Address, bpriv []byte) {
 	cs.enableMining = true
-	cs.priv = crypto.ByteToPrivatekey(bpriv)
-	cs.coinbase = crypto.CreateAddressFromPrivatekey(cs.priv)
+	cs.priv = crypto.ByteToPrivateKey(bpriv)
+	cs.coinbase = crypto.CreateAddressFromPrivateKey(cs.priv)
 	if cs.coinbase != address {
 		log.CLog().WithFields(logrus.Fields{
 			"Address": common.Address2Hex(cs.coinbase),
-		}).Panic("Privatekey is different")
+		}).Panic("PrivateKey is different")
 	}
 }
 

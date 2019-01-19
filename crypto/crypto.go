@@ -33,25 +33,25 @@ import (
 //Keccak256 ealry sha-3
 //our address : ECDSA(secp256k1)=>(priv, pub), sha3-256(publickey) + checksum sha3-256(sha3-256(publickey))[0:4]
 func CreateAddress() (*ecdsa.PrivateKey, common.Address) {
-	priv := CreatePrivatekey()
-	return priv, CreateAddressFromPrivatekey(priv)
+	priv := CreatePrivateKey()
+	return priv, CreateAddressFromPrivateKey(priv)
 }
 
-func CreatePrivatekey() *ecdsa.PrivateKey {
+func CreatePrivateKey() *ecdsa.PrivateKey {
 	priv, _ := btcec.NewPrivateKey(btcec.S256())
 	return (*ecdsa.PrivateKey)(priv)
 }
 
-func ByteToPrivatekey(bpriv []byte) *ecdsa.PrivateKey {
+func ByteToPrivateKey(bpriv []byte) *ecdsa.PrivateKey {
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
 	return (*ecdsa.PrivateKey)(priv)
 }
 
-func PrivatekeyToByte(priv *ecdsa.PrivateKey) []byte {
+func PrivateKeyToByte(priv *ecdsa.PrivateKey) []byte {
 	return (*btcec.PrivateKey)(priv).Serialize()
 }
 
-func CreateAddressFromPrivatekey(priv *ecdsa.PrivateKey) common.Address {
+func CreateAddressFromPrivateKey(priv *ecdsa.PrivateKey) common.Address {
 	priv2 := (*btcec.PrivateKey)(priv)
 	pub := priv2.PubKey().SerializeUncompressed()
 	hash := Sha3b256(pub)
@@ -61,7 +61,7 @@ func CreateAddressFromPrivatekey(priv *ecdsa.PrivateKey) common.Address {
 	return address
 }
 
-func CreateAddressFromPublickeyByte(pub []byte) common.Address {
+func CreateAddressFromPublicKeyByte(pub []byte) common.Address {
 	hash := Sha3b256(pub)
 	hash = append(hash, Sha3b256(hash)[0:4]...)
 	address := common.BytesToAddress(hash)

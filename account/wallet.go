@@ -33,7 +33,7 @@ func (w *Wallet) StoreKey(key *Key, auth string) error {
 		return err
 	}
 
-	_, cipherData, err := crypto.GcmEncrypt(crypto.PrivatekeyToByte(key.PrivateKey), authHash, true)
+	_, cipherData, err := crypto.GcmEncrypt(crypto.PrivateKeyToByte(key.PrivateKey), authHash, true)
 	kb.PrivateKey = cipherData
 
 	file, err := os.Create(w.filePath)
@@ -59,7 +59,7 @@ func (w *Wallet) GetKey(address common.Address, auth string) (key *Key, err erro
 			return nil, err
 		}
 		key.Address = address
-		key.PrivateKey = crypto.ByteToPrivatekey(plainData)
+		key.PrivateKey = crypto.ByteToPrivateKey(plainData)
 		return key, nil
 	}
 
@@ -80,7 +80,7 @@ func (w *Wallet) GetKey(address common.Address, auth string) (key *Key, err erro
 			return nil, err
 		}
 		key.Address = address
-		key.PrivateKey = crypto.ByteToPrivatekey(plainData)
+		key.PrivateKey = crypto.ByteToPrivateKey(plainData)
 		return key, nil
 	}
 	return nil, errors.New("not founded")

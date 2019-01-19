@@ -35,13 +35,13 @@ func NewPoa(node *net.Node, storage storage.Storage) *Poa {
 //Same as dpos
 func (cs *Poa) Setup(address common.Address, bpriv []byte, period int) {
 	cs.enableMining = true
-	cs.priv = crypto.ByteToPrivatekey(bpriv)
-	cs.coinbase = crypto.CreateAddressFromPrivatekey(cs.priv)
+	cs.priv = crypto.ByteToPrivateKey(bpriv)
+	cs.coinbase = crypto.CreateAddressFromPrivateKey(cs.priv)
 	cs.Period = uint64(period)
 	if cs.coinbase != address {
 		log.CLog().WithFields(logrus.Fields{
 			"Address": common.Address2Hex(cs.coinbase),
-		}).Panic("Privatekey is different")
+		}).Panic("PrivateKey is different")
 	}
 }
 

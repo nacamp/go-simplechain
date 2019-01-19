@@ -31,14 +31,14 @@ func TestMakeAddress(t *testing.T) {
 	//TODO: 0xHex, Hex, Fixed to be made consistently
 	fmt.Println("address: ", common.Address2Hex(address))
 	fmt.Println("priv: ", common.ToHex((*btcec.PrivateKey)(priv).Serialize()))
-	assert.Equal(t, CreateAddressFromPrivatekey(ByteToPrivatekey(common.FromHex("0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff"))),
+	assert.Equal(t, CreateAddressFromPrivateKey(ByteToPrivateKey(common.FromHex("0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff"))),
 		common.HexToAddress("0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44"), "")
 }
 
 func TestCreateAndEcrecover(t *testing.T) {
 	priv, address := CreateAddress()
 	fmt.Println(common.Address2Hex(address))
-	assert.Equal(t, CreateAddressFromPrivatekey(priv), address, "")
+	assert.Equal(t, CreateAddressFromPrivateKey(priv), address, "")
 
 	hash := make([]byte, 32)
 	hasher := sha3.New256()
@@ -50,12 +50,12 @@ func TestCreateAndEcrecover(t *testing.T) {
 	signed, _ := Sign(hash, priv)
 	pub, err := Ecrecover(hash, signed)
 	assert.NoError(t, err)
-	assert.Equal(t, address, CreateAddressFromPublickeyByte(pub))
+	assert.Equal(t, address, CreateAddressFromPublicKeyByte(pub))
 
 	hasher.Write([]byte("."))
 	hash = hasher.Sum(nil)
 	pub, _ = Ecrecover(hash, signed)
-	assert.NotEqual(t, address, CreateAddressFromPublickeyByte(pub))
+	assert.NotEqual(t, address, CreateAddressFromPublicKeyByte(pub))
 }
 
 func TestValidateAddress(t *testing.T) {
