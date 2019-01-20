@@ -120,3 +120,16 @@ func (w *Wallet) expire(addr common.Address, u *Key, timeout time.Duration) {
 		w.mu.Unlock()
 	}
 }
+
+func (w *Wallet) SignHash(addr common.Address, hash []byte) ([]byte, error) {
+	// Look up the key to sign with and abort if it cannot be found
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+
+	unlockedKey, found := w.unlockKeys[addr]
+	if !found {
+		return nil, errors.New("not founded")
+	}
+	// Sign the hash using plain ECDSA operations
+	return crypto.Sign(hash, unlockedKey.PrivateKey)
+}

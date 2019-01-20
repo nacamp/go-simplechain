@@ -61,6 +61,10 @@ func (tx *Transaction) Sign(prv *ecdsa.PrivateKey) {
 	copy(tx.Sig[:], sign)
 }
 
+func (tx *Transaction) SignWithSignature(sign []byte) {
+	copy(tx.Sig[:], sign)
+}
+
 func (tx *Transaction) VerifySign() (bool, error) {
 	pub, err := crypto.Ecrecover(tx.Hash[:], tx.Sig[:])
 	if crypto.CreateAddressFromPublicKeyByte(pub) == tx.From {
@@ -95,9 +99,3 @@ func MakeTransactionPayload(from, to string, amount *big.Int, nonce uint64, payl
 	tx.Sign(crypto.ByteToPrivateKey(common.FromHex(Keystore[from])))
 	return tx
 }
-
-/*TODO
-where privatekey , keystore
-unique : nonce  or timestamp
-if encodeing, how ?
-*/

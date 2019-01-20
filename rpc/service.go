@@ -117,11 +117,12 @@ type TempTx struct {
 
 type SendTransactionHandler struct {
 	bc *core.BlockChain
+	w  *account.Wallet
 }
 
-func NewSendTransactionHandler(bc *core.BlockChain) *SendTransactionHandler {
+func NewSendTransactionHandler(bc *core.BlockChain, w *account.Wallet) *SendTransactionHandler {
 
-	return &SendTransactionHandler{bc: bc}
+	return &SendTransactionHandler{bc: bc, w: w}
 }
 
 func (h *SendTransactionHandler) Name() string {
@@ -133,19 +134,22 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
-	//TODO: 1. check address to exist and be unlocked
-	//TODO: 2. and sign, send
 	amount, _ := new(big.Int).SetString(p.Amount, 10)
 	nonce, _ := strconv.ParseUint(p.Nonce, 10, 64)
 	var tx *core.Transaction
 	if p.Payload == "" {
-		tx = core.MakeTransaction(p.From, p.To, amount, nonce)
+		tx = core.NewTransaction(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce)
 	} else {
 		payload, _ := strconv.ParseBool(p.Payload)
 		bytePpayload, _ := rlp.EncodeToBytes(payload)
-		tx = core.MakeTransactionPayload(p.From, p.To, amount, nonce, bytePpayload)
+		tx = core.NewTransactionPayload(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce, bytePpayload)
 	}
-
+	tx.MakeHash()
+	sig, err := h.w.SignHash(common.HexToAddress(p.From), tx.Hash[:])
+	if err != nil {
+		return "", nil
+	}
+	tx.SignWithSignature(sig)
 	h.bc.TxPool.Put(tx)
 	h.bc.NewTXMessage <- tx
 	return common.Hash2Hex(tx.Hash), nil
@@ -285,7 +289,7 @@ func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.Bloc
 	rs.server.RegisterHandler(NewAccountsHandler(config))
 	rs.server.RegisterHandler(NewGetBalanceHandler(bc))
 	rs.server.RegisterHandler(NewGetTransactionCountHandler(bc))
-	rs.server.RegisterHandler(NewSendTransactionHandler(bc))
+	rs.server.RegisterHandler(NewSendTransactionHandler(bc, w))
 	rs.server.RegisterHandler(NewGetTransactionByHashHandler(bc))
 	rs.server.RegisterHandler(NewNewAccountHandler(w))
 	rs.server.RegisterHandler(NewUnlockHandler(w))
@@ -322,8 +326,7 @@ params: [
   "result": "0x1"
 }
 
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0","to": "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1","amount": "1", "nonce": "1"}
-}' http://localhost:8080/jrpc
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0","to": "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1","amount": "1", "nonce": "1"}}' http://localhost:8080/jrpc
 curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendTransaction","params":[{see above}],"id":1}'
 params: [{
   "from": "0xb60e8dd61c5d32be8058bb8eb970870f07233155",
@@ -364,5 +367,8 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","param
 
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "newAccount", "params":["password"]}' http://localhost:8080/jrpc
 
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "unlock", "params": {"address": "0xd90c548dcb4f7394e66d0dced33449da0ab833e3004e296bc7126c4dad6a3b81b64632ff","password": "password","timeout": 30}}' http://localhost:8080/jrpc
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "unlock", "params": {"address": "0x3068c6c17a079f67b3f29a9844cbf6137a2bd7a3a58f0d0eac11b8afcd4564b8e4173af7","password": "password","timeout": 300}}' http://localhost:8080/jrpc
+
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0x3068c6c17a079f67b3f29a9844cbf6137a2bd7a3a58f0d0eac11b8afcd4564b8e4173af7","to": "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1","amount": "1", "nonce": "1"}}' http://localhost:8080/jrpc
+
 */
