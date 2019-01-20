@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"strconv"
+	"time"
 
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/cmd"
@@ -233,7 +234,47 @@ func (h *NewAccountHandler) Params() interface{} {
 func (h *NewAccountHandler) Result() interface{} {
 	return ""
 }
+
 // newAccount <<<<<<<<<<
+
+// unlock >>>>>>>>>>>
+type TempAccount struct {
+	Address  string `json:"address"`
+	Password string `json:"password"`
+	Timeout  int    `json:"timeout"`
+}
+type UnlockHandler struct {
+	w *account.Wallet
+}
+
+func NewUnlockHandler(w *account.Wallet) *UnlockHandler {
+	return &UnlockHandler{w: w}
+}
+
+func (h *UnlockHandler) Name() string {
+	return "unlock"
+}
+
+func (h *UnlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+	var p TempAccount
+	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+	err := h.w.TimedUnlock(common.HexToAddress(p.Address), p.Password, time.Duration(p.Timeout)*time.Second)
+	if err != nil {
+		return err.Error(), nil
+	}
+	return "", nil
+}
+
+func (h *UnlockHandler) Params() interface{} {
+	return TempAccount{}
+}
+func (h *UnlockHandler) Result() interface{} {
+	return ""
+}
+
+// unlock <<<<<<<<<<
 
 type RpcService struct {
 	server *RpcServer
@@ -247,6 +288,7 @@ func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.Bloc
 	rs.server.RegisterHandler(NewSendTransactionHandler(bc))
 	rs.server.RegisterHandler(NewGetTransactionByHashHandler(bc))
 	rs.server.RegisterHandler(NewNewAccountHandler(w))
+	rs.server.RegisterHandler(NewUnlockHandler(w))
 }
 
 /*
@@ -321,4 +363,6 @@ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_getTransactionByHash","param
 }
 
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "newAccount", "params":["password"]}' http://localhost:8080/jrpc
+
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "unlock", "params": {"address": "0xd90c548dcb4f7394e66d0dced33449da0ab833e3004e296bc7126c4dad6a3b81b64632ff","password": "password","timeout": 30}}' http://localhost:8080/jrpc
 */
