@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/nacamp/go-simplechain/account"
+	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/rpc"
 	"github.com/sirupsen/logrus"
 
@@ -57,7 +58,7 @@ func run(c *cli.Context) {
 		node.Start(config.Seeds[0])
 		cs.Start()
 
-		wallet := account.NewWallet("./keystore.dat")
+		wallet := account.NewWallet(config.KeystoreFile)
 
 		rpcServer := rpc.NewRpcServer(config.RpcAddress)
 		rpcService := &rpc.RpcService{}
@@ -81,7 +82,7 @@ func run(c *cli.Context) {
 		node.Start(config.Seeds[0])
 		cs.Start()
 
-		wallet := account.NewWallet("./keystore.dat")
+		wallet := account.NewWallet(config.KeystoreFile)
 
 		rpcServer := rpc.NewRpcServer(config.RpcAddress)
 		rpcService := &rpc.RpcService{}
@@ -93,10 +94,30 @@ func run(c *cli.Context) {
 
 }
 
+func AccountImportAction(c *cli.Context) {
+	if c.String("config") == "" {
+		log.CLog().Fatal("not found config")
+		return
+	}
+	config := cmd.NewConfigFromFile(c.String("config"))
+	if len(c.Args()) < 2 {
+		log.CLog().Fatal("need privatekey passphrase")
+	}
+	accountImportAction(config.KeystoreFile, c.Args()[0], c.Args()[1])
+}
+
+func accountImportAction(path string, priv string, passphrase string) {
+	//TODO: priv validate
+	key := new(account.Key)
+	key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
+	key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
+	//fmt.Printf("%v\n", common.Address2Hex(key.Address))
+	wallet := account.NewWallet(path)
+	wallet.StoreKey(key, passphrase)
+}
+
 func main() {
 	app := cli.NewApp()
-
-	//TODO: input passphrase, to decrypt  encryped privatekey
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "config, c",
@@ -104,7 +125,23 @@ func main() {
 			Usage: "config file path",
 		},
 	}
-
+	app.Commands = []cli.Command{
+		{
+			Name:  "account",
+			Usage: "account import|new ...",
+			Subcommands: []cli.Command{
+				{
+					Name:        "import",
+					Flags:       app.Flags,
+					Usage:       "Import address privatekey",
+					ArgsUsage:   "<privatekey>",
+					Action:      AccountImportAction,
+					Category:    "ACCOUNT COMMANDS",
+					Description: `demo account import privatekey`,
+				},
+			},
+		},
+	}
 	app.Action = run
 	err := app.Run(os.Args)
 	if err != nil {
