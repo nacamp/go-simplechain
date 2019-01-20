@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/crypto"
@@ -40,6 +41,7 @@ func run(c *cli.Context) {
 	} else {
 		db, _ = storage.NewLevelDBStorage(config.DBPath)
 	}
+	wallet := account.NewWallet(config.KeystoreFile)
 	//TODO: remove duplicated code
 	if config.Consensus == "dpos" {
 		cs := consensus.NewDpos(node)
@@ -50,7 +52,11 @@ func run(c *cli.Context) {
 				"Address":   config.MinerAddress,
 				"Consensus": config.Consensus,
 			}).Info("Miner Info")
-			cs.Setup(common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey))
+			err := wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
+			if err != nil {
+				log.CLog().Fatal(err)
+			}
+			cs.Setup(common.HexToAddress(config.MinerAddress), wallet)
 		}
 		bc.Setup(cs, cmd.MakeVoterAccountsFromConfig(config))
 		// bc.Start()
@@ -74,7 +80,11 @@ func run(c *cli.Context) {
 				"Address":   config.MinerAddress,
 				"Consensus": config.Consensus,
 			}).Info("Miner Info")
-			cs.Setup(common.HexToAddress(config.MinerAddress), common.FromHex(config.MinerPrivateKey), 3)
+			err := wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
+			if err != nil {
+				log.CLog().Fatal(err)
+			}
+			cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
 		}
 		bc.Setup(cs, cmd.MakeVoterAccountsFromConfig(config))
 		// bc.Start()
@@ -125,6 +135,7 @@ func main() {
 			Usage: "config file path",
 		},
 	}
+	//TODO: read passphrase securely 
 	app.Commands = []cli.Command{
 		{
 			Name:  "account",
@@ -133,11 +144,11 @@ func main() {
 				{
 					Name:        "import",
 					Flags:       app.Flags,
-					Usage:       "Import address privatekey",
+					Usage:       "import privatekey passphrase",
 					ArgsUsage:   "<privatekey>",
 					Action:      AccountImportAction,
 					Category:    "ACCOUNT COMMANDS",
-					Description: `demo account import privatekey`,
+					Description: `demo account import privatekey passphrase`,
 				},
 			},
 		},

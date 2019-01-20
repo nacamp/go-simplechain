@@ -98,11 +98,9 @@ func (w *Wallet) TimedUnlock(address common.Address, auth string, timeout time.D
 	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
+	w.unlockKeys[address] = key
 	if timeout > 0 {
-		w.unlockKeys[address] = key
 		go w.expire(address, key, timeout)
-	} else {
-		return errors.New("timeout is not minus")
 	}
 	return nil
 }
