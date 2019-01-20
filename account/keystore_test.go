@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"
@@ -50,4 +51,21 @@ func TestStoreAndGet(t *testing.T) {
 	key2, _ = w.GetKey(key.Address, "test")
 	assert.Equal(t, key.Address, key2.Address)
 	assert.Equal(t, crypto.PrivateKeyToByte(key.PrivateKey), crypto.PrivateKeyToByte(key2.PrivateKey))
+}
+
+func TestUnlock(t *testing.T) {
+	path := "./test.dat"
+	defer os.Remove(path)
+
+	w := NewWallet(path)
+	key := NewKey()
+	w.StoreKey(key, "test")
+
+	err := w.TimedUnlock(key.Address, "test", 1*time.Millisecond)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	assert.Equal(t, 1, len(w.unlockKeys))
+	time.Sleep(10 * time.Millisecond)
+	assert.Equal(t, 0, len(w.unlockKeys))
 }

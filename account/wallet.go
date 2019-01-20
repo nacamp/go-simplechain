@@ -4,6 +4,8 @@ import (
 	"encoding/gob"
 	"errors"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"
@@ -15,14 +17,17 @@ type wallet interface {
 type Wallet struct {
 	wallet wallet
 	keyStore
-	keys     map[common.Address]*keyByte //map[common.Address]*Key //insecure
-	filePath string
+	unlockKeys map[common.Address]*Key     //insecure
+	keys       map[common.Address]*keyByte //map[common.Address]*Key //insecure
+	filePath   string
+	mu         sync.RWMutex
 }
 
 func NewWallet(filePath string) *Wallet {
 	return &Wallet{
-		filePath: filePath,
-		keys:     make(map[common.Address]*keyByte),
+		filePath:   filePath,
+		keys:       make(map[common.Address]*keyByte),
+		unlockKeys: make(map[common.Address]*Key),
 	}
 }
 
@@ -84,4 +89,34 @@ func (w *Wallet) GetKey(address common.Address, auth string) (key *Key, err erro
 		return key, nil
 	}
 	return nil, errors.New("not founded")
+}
+
+func (w *Wallet) TimedUnlock(address common.Address, auth string, timeout time.Duration) error {
+	key, err := w.GetKey(address, auth)
+	if err != nil {
+		return err
+	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if timeout > 0 {
+		w.unlockKeys[address] = key
+		go w.expire(address, key, timeout)
+	} else {
+		return errors.New("timeout is not minus")
+	}
+	return nil
+}
+
+func (w *Wallet) expire(addr common.Address, u *Key, timeout time.Duration) {
+	t := time.NewTimer(timeout)
+	defer t.Stop()
+	select {
+	case <-t.C:
+		w.mu.Lock()
+		if w.unlockKeys[addr] == u {
+			//zeroKey(u.PrivateKey)
+			delete(w.unlockKeys, addr)
+		}
+		w.mu.Unlock()
+	}
 }
