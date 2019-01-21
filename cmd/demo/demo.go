@@ -133,6 +133,28 @@ func accountImportAction(path string, priv string, passphrase string) {
 	wallet.StoreKey(key, passphrase)
 }
 
+func AccountNewAction(c *cli.Context) {
+	if c.String("config") == "" {
+		log.CLog().Fatal("not found config")
+		return
+	}
+	config := cmd.NewConfigFromFile(c.String("config"))
+	passphrase := getPassPhrase("", true, 0, []string{})
+	accountNewAction(config.KeystoreFile, passphrase)
+}
+
+func accountNewAction(path string, passphrase string) {
+	//TODO: priv validate
+	priv, address := crypto.CreateAddress()
+	key := new(account.Key)
+	key.PrivateKey = priv
+	key.Address = address
+	fmt.Printf("address : %v\n", common.Address2Hex(key.Address))
+	wallet := account.NewWallet(path)
+	wallet.Load()
+	wallet.StoreKey(key, passphrase)
+}
+
 func getPassPhrase(prompt string, confirmation bool, i int, passwords []string) string {
 	// If a list of passwords was supplied, retrieve from them
 	if len(passwords) > 0 {
@@ -192,6 +214,14 @@ func main() {
 					Action:      AccountImportAction,
 					Category:    "ACCOUNT COMMANDS",
 					Description: `demo account import`,
+				},
+				{
+					Name:        "new",
+					Flags:       app.Flags,
+					Usage:       "new",
+					Action:      AccountNewAction,
+					Category:    "ACCOUNT COMMANDS",
+					Description: `demo account new`,
 				},
 			},
 		},
