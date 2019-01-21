@@ -45,6 +45,7 @@ func run(c *cli.Context) {
 		db, _ = storage.NewLevelDBStorage(config.DBPath)
 	}
 	wallet := account.NewWallet(config.KeystoreFile)
+	wallet.Load()
 	//TODO: remove duplicated code
 	if config.Consensus == "dpos" {
 		cs := consensus.NewDpos(node)
@@ -113,14 +114,12 @@ func AccountImportAction(c *cli.Context) {
 		return
 	}
 	config := cmd.NewConfigFromFile(c.String("config"))
-	if len(c.Args()) < 1 {
-		log.CLog().Fatal("need privatekey passphrase")
-	}
+	// if len(c.Args()) < 1 {
+	// 	log.CLog().Fatal("need privatekey passphrase")
+	// }
+	privateKey := getPrivateKey()
 	passphrase := getPassPhrase("", true, 0, []string{})
-	// fmt.Println("prompt:")
-	// password, _ := console.Stdin.PromptPassword("Passphrase: ")
-	fmt.Println(passphrase)
-	accountImportAction(config.KeystoreFile, c.Args()[0], passphrase)
+	accountImportAction(config.KeystoreFile, privateKey, passphrase)
 }
 
 func accountImportAction(path string, priv string, passphrase string) {
@@ -128,8 +127,9 @@ func accountImportAction(path string, priv string, passphrase string) {
 	key := new(account.Key)
 	key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
 	key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
-	//fmt.Printf("%v\n", common.Address2Hex(key.Address))
+	fmt.Printf("address : %v\n", common.Address2Hex(key.Address))
 	wallet := account.NewWallet(path)
+	wallet.Load()
 	wallet.StoreKey(key, passphrase)
 }
 
@@ -161,6 +161,14 @@ func getPassPhrase(prompt string, confirmation bool, i int, passwords []string) 
 	return password
 }
 
+func getPrivateKey() string {
+	privateKey, err := console.Stdin.PromptPassword("PrivateKey: ")
+	if err != nil {
+		utils.Fatalf("Failed to read privateKey: %v", err)
+	}
+	return privateKey
+}
+
 func main() {
 	app := cli.NewApp()
 	app.Flags = []cli.Flag{
@@ -183,7 +191,7 @@ func main() {
 					ArgsUsage:   "<privatekey>",
 					Action:      AccountImportAction,
 					Category:    "ACCOUNT COMMANDS",
-					Description: `demo account import privatekey`,
+					Description: `demo account import`,
 				},
 			},
 		},
