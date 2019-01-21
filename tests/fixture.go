@@ -9,9 +9,11 @@ import (
 	"sort"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/crypto"
 )
 
 var Addr0 = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
@@ -176,4 +178,15 @@ func MakeTransaction(from, to string, amount *big.Int, nonce uint64) *core.Trans
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[from]))
 	tx.Sign((*ecdsa.PrivateKey)(priv))
 	return tx
+}
+
+func MakeWallet() *account.Wallet {
+	wallet := account.NewWallet("./test_keystore.dat")
+	for _, priv := range Keystore {
+		key := new(account.Key)
+		key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
+		key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
+		wallet.StoreKey(key, "test")
+	}
+	return wallet
 }
