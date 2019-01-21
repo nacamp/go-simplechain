@@ -17,8 +17,12 @@
 package crypto
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"fmt"
+	"io"
 	"reflect"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -29,21 +33,25 @@ import (
 //Keccak256 ealry sha-3
 //our address : ECDSA(secp256k1)=>(priv, pub), sha3-256(publickey) + checksum sha3-256(sha3-256(publickey))[0:4]
 func CreateAddress() (*ecdsa.PrivateKey, common.Address) {
-	priv := CreatePrivatekey()
-	return priv, CreateAddressFromPrivatekey(priv)
+	priv := CreatePrivateKey()
+	return priv, CreateAddressFromPrivateKey(priv)
 }
 
-func CreatePrivatekey() *ecdsa.PrivateKey {
+func CreatePrivateKey() *ecdsa.PrivateKey {
 	priv, _ := btcec.NewPrivateKey(btcec.S256())
 	return (*ecdsa.PrivateKey)(priv)
 }
 
-func ByteToPrivatekey(bpriv []byte) *ecdsa.PrivateKey {
+func ByteToPrivateKey(bpriv []byte) *ecdsa.PrivateKey {
 	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), bpriv)
 	return (*ecdsa.PrivateKey)(priv)
 }
 
-func CreateAddressFromPrivatekey(priv *ecdsa.PrivateKey) common.Address {
+func PrivateKeyToByte(priv *ecdsa.PrivateKey) []byte {
+	return (*btcec.PrivateKey)(priv).Serialize()
+}
+
+func CreateAddressFromPrivateKey(priv *ecdsa.PrivateKey) common.Address {
 	priv2 := (*btcec.PrivateKey)(priv)
 	pub := priv2.PubKey().SerializeUncompressed()
 	hash := Sha3b256(pub)
@@ -53,7 +61,7 @@ func CreateAddressFromPrivatekey(priv *ecdsa.PrivateKey) common.Address {
 	return address
 }
 
-func CreateAddressFromPublickeyByte(pub []byte) common.Address {
+func CreateAddressFromPublicKeyByte(pub []byte) common.Address {
 	hash := Sha3b256(pub)
 	hash = append(hash, Sha3b256(hash)[0:4]...)
 	address := common.BytesToAddress(hash)
@@ -91,4 +99,55 @@ func Sign(hash []byte, prv *ecdsa.PrivateKey) ([]byte, error) {
 		return nil, err
 	}
 	return sig, nil
+}
+
+func GcmDecrypt(nonce, cipherData, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	var plainData []byte
+	if nonce == nil || len(nonce) == 0 {
+		nonceSize := aesgcm.NonceSize()
+		plainData, err = aesgcm.Open(nil, cipherData[:nonceSize], cipherData[nonceSize:], nil)
+	} else {
+		plainData, err = aesgcm.Open(nil, nonce, cipherData, nil)
+
+	}
+	if err != nil {
+		return nil, err
+	}
+	return plainData, nil
+}
+
+func GcmEncrypt(plainData, key []byte, nonceIncluded bool) ([]byte, []byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	nonce := make([]byte, 12)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, nil, err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var ciphertext []byte
+	if nonceIncluded {
+		ciphertext = aesgcm.Seal(nonce, nonce, plainData, nil)
+	} else {
+		ciphertext = aesgcm.Seal(nil, nonce, plainData, nil)
+	}
+	return nonce, ciphertext, nil
+
 }

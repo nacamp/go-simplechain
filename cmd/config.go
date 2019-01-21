@@ -22,17 +22,18 @@ type ConfigAccount struct {
 	Balance *big.Int `json:"balance"`
 }
 type Config struct {
-	HostId          string `json:"host_id"`
-	RpcAddress      string `json:"rpc_address"`
-	DBPath          string `json:"db_path"`
-	MinerAddress    string `json:"miner_address"`
-	MinerPrivateKey string `json:"miner_private_key"`
-	Port         int             `json:"port"`
-	Seeds        []string        `json:"seeds"`
-	Voters       []ConfigAccount `json:"voters"`
-	EnableMining bool            `json:"enable_mining"`
-	Consensus    string          `json:"consensus"`
-	NodeKeyPath  string          `json:"node_key_path"`
+	HostId          string          `json:"host_id"`
+	RpcAddress      string          `json:"rpc_address"`
+	DBPath          string          `json:"db_path"`
+	MinerAddress    string          `json:"miner_address"`
+	MinerPassphrase string          `json:"miner_passphrase"`
+	Port            int             `json:"port"`
+	Seeds           []string        `json:"seeds"`
+	Voters          []ConfigAccount `json:"voters"`
+	EnableMining    bool            `json:"enable_mining"`
+	Consensus       string          `json:"consensus"`
+	NodeKeyPath     string          `json:"node_key_path"`
+	KeystoreFile    string          `json:"keystore_file"`
 }
 
 func MakeVoterAccountsFromConfig(config *Config) (voters []*core.Account) {

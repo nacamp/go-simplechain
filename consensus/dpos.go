@@ -1,13 +1,12 @@
 package consensus
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"time"
 
+	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
-	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/log"
 	"github.com/nacamp/go-simplechain/net"
 	"github.com/nacamp/go-simplechain/storage"
@@ -27,7 +26,7 @@ type Dpos struct {
 	bc           *core.BlockChain
 	node         *net.Node
 	coinbase     common.Address
-	priv         *ecdsa.PrivateKey
+	wallet       *account.Wallet
 	enableMining bool
 }
 
@@ -40,15 +39,10 @@ func NewDpos(node *net.Node) *Dpos {
 	return &Dpos{node: node}
 }
 
-func (cs *Dpos) Setup(address common.Address, bpriv []byte) {
+func (cs *Dpos) Setup(address common.Address, wallet *account.Wallet) {
 	cs.enableMining = true
-	cs.priv = crypto.ByteToPrivatekey(bpriv)
-	cs.coinbase = crypto.CreateAddressFromPrivatekey(cs.priv)
-	if cs.coinbase != address {
-		log.CLog().WithFields(logrus.Fields{
-			"Address": common.Address2Hex(cs.coinbase),
-		}).Panic("Privatekey is different")
-	}
+	cs.coinbase = address
+	cs.wallet = wallet
 }
 
 func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
@@ -132,19 +126,25 @@ func (dpos *Dpos) Start() {
 	}
 }
 
-func (dpos *Dpos) loop() {
+func (cs *Dpos) loop() {
 	ticker := time.NewTicker(3 * time.Second)
 	for {
 		select {
 		case now := <-ticker.C:
-			block := dpos.MakeBlock(uint64(now.Unix()))
+			block := cs.MakeBlock(uint64(now.Unix()))
 			if block != nil {
-				block.Sign(dpos.priv)
-				dpos.bc.PutBlockByCoinbase(block)
-				dpos.bc.Consensus.UpdateLIB()
-				dpos.bc.RemoveOrphanBlock()
+				sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
+				if err != nil {
+					log.CLog().WithFields(logrus.Fields{
+						"Msg": err,
+					}).Warning("SignHash")
+				}
+				block.SignWithSignature(sig)
+				cs.bc.PutBlockByCoinbase(block)
+				cs.bc.Consensus.UpdateLIB()
+				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.BaseBlock)
-				dpos.node.BroadcastMessage(&message)
+				cs.node.BroadcastMessage(&message)
 			}
 		}
 	}

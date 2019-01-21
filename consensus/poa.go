@@ -1,12 +1,11 @@
 package consensus
 
 import (
-	"crypto/ecdsa"
 	"errors"
 	"sync"
 	"time"
 
-	"github.com/nacamp/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/rlp"
 
 	"github.com/nacamp/go-simplechain/common"
@@ -18,14 +17,15 @@ import (
 )
 
 type Poa struct {
-	mu           sync.RWMutex
-	bc           *core.BlockChain
-	node         *net.Node
-	coinbase     common.Address
-	priv         *ecdsa.PrivateKey
+	mu       sync.RWMutex
+	bc       *core.BlockChain
+	node     *net.Node
+	coinbase common.Address
+	// priv         *ecdsa.PrivateKey
 	enableMining bool
 	Storage      storage.Storage
 	Period       uint64
+	wallet       *account.Wallet
 }
 
 func NewPoa(node *net.Node, storage storage.Storage) *Poa {
@@ -33,16 +33,11 @@ func NewPoa(node *net.Node, storage storage.Storage) *Poa {
 }
 
 //Same as dpos
-func (cs *Poa) Setup(address common.Address, bpriv []byte, period int) {
+func (cs *Poa) Setup(address common.Address, wallet *account.Wallet, period int) {
 	cs.enableMining = true
-	cs.priv = crypto.ByteToPrivatekey(bpriv)
-	cs.coinbase = crypto.CreateAddressFromPrivatekey(cs.priv)
+	cs.coinbase = address
+	cs.wallet = wallet
 	cs.Period = uint64(period)
-	if cs.coinbase != address {
-		log.CLog().WithFields(logrus.Fields{
-			"Address": common.Address2Hex(cs.coinbase),
-		}).Panic("Privatekey is different")
-	}
 }
 
 //To be changed
@@ -179,7 +174,13 @@ func (cs *Poa) loop() {
 		case now := <-ticker.C:
 			block := cs.MakeBlock(uint64(now.Unix()))
 			if block != nil {
-				block.Sign(cs.priv)
+				sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
+				if err != nil {
+					log.CLog().WithFields(logrus.Fields{
+						"Msg": err,
+					}).Warning("SignHash")
+				}
+				block.SignWithSignature(sig)
 				cs.bc.PutBlockByCoinbase(block)
 				cs.bc.Consensus.UpdateLIB()
 				cs.bc.RemoveOrphanBlock()

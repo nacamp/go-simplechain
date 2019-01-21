@@ -34,7 +34,7 @@ func TestRlp(t *testing.T) {
 }
 
 func TestSignAndVerify(t *testing.T) {
-	priv := crypto.ByteToPrivatekey(common.FromHex(tests.Keystore[tests.Addr0]))
+	priv := crypto.ByteToPrivateKey(common.FromHex(tests.Keystore[tests.Addr0]))
 	h := core.Header{Coinbase: common.HexToAddress(tests.Addr0), ParentHash: common.Hash{0x01, 0x02, 0x03}, Time: 1540854071} //big.NewInt(1540854071)
 	block := core.Block{BaseBlock: core.BaseBlock{Header: &h}}
 	block.MakeHash()

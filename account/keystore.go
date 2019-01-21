@@ -3,16 +3,18 @@ package account
 import (
 	"crypto/ecdsa"
 
-	// "github.com/ethereum/go-ethereum/crypto"
-	// "github.com/ethereum/go-ethereum/crypto"
-
-	"github.com/najimmy/go-simplechain/common"
-	"github.com/najimmy/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/crypto"
 )
 
 type Key struct {
 	Address    common.Address
 	PrivateKey *ecdsa.PrivateKey
+}
+
+type keyByte struct {
+	Address    common.Address
+	PrivateKey []byte
 }
 
 func NewKey() *Key {

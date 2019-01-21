@@ -84,9 +84,13 @@ func (b *Block) Sign(prv *ecdsa.PrivateKey) error {
 	return nil
 }
 
+func (b *Block) SignWithSignature(sign []byte) {
+	copy(b.Header.Sig[:], sign)
+}
+
 func (b *Block) VerifySign() (bool, error) {
 	pub, err := crypto.Ecrecover(b.Header.Hash[:], b.Header.Sig[:])
-	if crypto.CreateAddressFromPublickeyByte(pub) == b.Header.Coinbase {
+	if crypto.CreateAddressFromPublicKeyByte(pub) == b.Header.Coinbase {
 		return true, nil
 	}
 	return false, err

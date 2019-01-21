@@ -11,7 +11,6 @@ import (
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/storage"
 	"github.com/nacamp/go-simplechain/tests"
-
 	"github.com/stretchr/testify/assert"
 
 	"github.com/nacamp/go-simplechain/consensus"
@@ -30,7 +29,7 @@ func TestFixtureAddressOrder(t *testing.T) {
 		bc.Setup(cs, voters)
 
 		if cs.ConsensusType() == "DPOS" {
-			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
+			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet())
 			minerGroup, _, err := bc.GenesisBlock.MinerState.GetMinerGroup(bc, bc.GenesisBlock)
 			fmt.Println("Dpos minerGroup order in tests.fixture")
 			for _, addr := range minerGroup {
@@ -40,7 +39,7 @@ func TestFixtureAddressOrder(t *testing.T) {
 				fmt.Println(err)
 			}
 		} else {
-			cs.(*consensus.Poa).Setup(common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
+			cs.(*consensus.Poa).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet(), 3)
 
 			snapshot := consensus.NewSnapshot(common.Hash{}, bc.Signers)
 			fmt.Println("Poa SignerSlice order in tests.fixture")
@@ -64,10 +63,10 @@ func TestMakeBlock(t *testing.T) {
 
 		var block *core.Block
 		if cs.ConsensusType() == "DPOS" {
-			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]))
+			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet())
 			block = cs.(*consensus.Dpos).MakeBlock(uint64(1)) // minerGroup[0]
 		} else {
-			cs.(*consensus.Poa).Setup(common.HexToAddress(tests.Addr0), common.FromHex(tests.Keystore[tests.Addr0]), 3)
+			cs.(*consensus.Poa).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet(), 3)
 			block = cs.(*consensus.Poa).MakeBlock(uint64(9 + 1)) // minerGroup[0]
 		}
 		assert.NotNil(t, block, "")
