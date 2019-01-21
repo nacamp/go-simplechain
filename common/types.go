@@ -66,11 +66,11 @@ func HashToBytes(hash Hash) []byte {
 
 }
 
-func Hash2Hex(hash Hash) string {
+func HashToHex(hash Hash) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func Address2Hex(address Address) string {
+func AddressToHex(address Address) string {
 	return hex.EncodeToString(address[:])
 }
 

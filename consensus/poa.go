@@ -64,7 +64,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	if snapshot == nil {
 		log.CLog().WithFields(logrus.Fields{
 			"Height":     block.Header.Height,
-			"ParentHash": common.Hash2Hex(block.Header.ParentHash),
+			"ParentHash": common.HashToHex(block.Header.ParentHash),
 		}).Warning("Snapshot is nil")
 		return nil
 	}
@@ -74,13 +74,13 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		//if (parent != nil) && (now-parent.Header.Time < ((uint64(len(miners)) * cs.Period) - 1)) { //(3 * 3)
 		if (parent != nil) && (now-parent.Header.Time < cs.Period) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
-				"address": common.Address2Hex(cs.coinbase),
+				"address": common.AddressToHex(cs.coinbase),
 			}).Debug("Interval is short")
 			return nil
 		}
 
 		log.CLog().WithFields(logrus.Fields{
-			"address": common.Bytes2Hex(cs.coinbase[:]),
+			"address": common.BytesToHex(cs.coinbase[:]),
 		}).Debug("my turn")
 		block.Header.Coinbase = cs.coinbase
 
@@ -98,7 +98,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 			//TODO: check at txpool
 			if fromAccount == nil {
 				log.CLog().WithFields(logrus.Fields{
-					"Address": common.Address2Hex(tx.From),
+					"Address": common.AddressToHex(tx.From),
 				}).Warning("Not found account")
 			} else if fromAccount.Nonce+1 == tx.Nonce {
 				// if signer is miner, include  voting tx
@@ -118,7 +118,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 				bc.TxPool.Put(tx)
 			} else {
 				log.CLog().WithFields(logrus.Fields{
-					"Address": common.Address2Hex(tx.From),
+					"Address": common.AddressToHex(tx.From),
 				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
@@ -155,7 +155,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
-			"address": common.Bytes2Hex(cs.coinbase[:]),
+			"address": common.BytesToHex(cs.coinbase[:]),
 		}).Debug("not my turn")
 		return nil
 	}

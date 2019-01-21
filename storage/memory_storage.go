@@ -51,7 +51,7 @@ func NewMemoryStorage() (*MemoryStorage, error) {
 
 // Get return value to the key in Storage
 func (db *MemoryStorage) Get(key []byte) ([]byte, error) {
-	if entry, ok := db.data.Load(common.Bytes2Hex(key)); ok {
+	if entry, ok := db.data.Load(common.BytesToHex(key)); ok {
 		return entry.([]byte), nil
 	}
 	return nil, ErrKeyNotFound
@@ -59,13 +59,13 @@ func (db *MemoryStorage) Get(key []byte) ([]byte, error) {
 
 // Put put the key-value entry to Storage
 func (db *MemoryStorage) Put(key []byte, value []byte) error {
-	db.data.Store(common.Bytes2Hex(key), value)
+	db.data.Store(common.BytesToHex(key), value)
 	return nil
 }
 
 // Del delete the key in Storage.
 func (db *MemoryStorage) Del(key []byte) error {
-	db.data.Delete(common.Bytes2Hex(key))
+	db.data.Delete(common.BytesToHex(key))
 	return nil
 }
 

@@ -33,7 +33,7 @@ func TestFixtureAddressOrder(t *testing.T) {
 			minerGroup, _, err := bc.GenesisBlock.MinerState.GetMinerGroup(bc, bc.GenesisBlock)
 			fmt.Println("Dpos minerGroup order in tests.fixture")
 			for _, addr := range minerGroup {
-				fmt.Printf("%v\n", common.Address2Hex(addr))
+				fmt.Printf("%v\n", common.AddressToHex(addr))
 			}
 			if err != nil {
 				fmt.Println(err)
@@ -44,7 +44,7 @@ func TestFixtureAddressOrder(t *testing.T) {
 			snapshot := consensus.NewSnapshot(common.Hash{}, bc.Signers)
 			fmt.Println("Poa SignerSlice order in tests.fixture")
 			for _, addr := range snapshot.SignerSlice() {
-				fmt.Printf("%v\n", common.Address2Hex(addr))
+				fmt.Printf("%v\n", common.AddressToHex(addr))
 			}
 		}
 	}

@@ -28,7 +28,7 @@ func TestAccountState(t *testing.T) {
 	accountState, _ := core.NewAccountState(storage)
 	var hexAddress = "036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0"
 	account := core.Account{}
-	copy(account.Address[:], common.Hex2Bytes(hexAddress))
+	copy(account.Address[:], common.HexToBytes(hexAddress))
 	account.AddBalance(new(big.Int).SetUint64(10))
 	accountState.PutAccount(&account)
 
