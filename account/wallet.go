@@ -67,18 +67,10 @@ func (w *Wallet) GetKey(address common.Address, auth string) (key *Key, err erro
 		key.PrivateKey = crypto.ByteToPrivateKey(plainData)
 		return key, nil
 	}
-
-	file, err := os.Open(w.filePath)
-	keys := make(map[common.Address]*keyByte)
-	defer file.Close()
-	if err == nil {
-		decoder := gob.NewDecoder(file)
-		err = decoder.Decode(&keys)
-		if err != nil {
-			return nil, err
-		}
+	err = w.Load()
+	if err != nil {
+		return nil, err
 	}
-	w.keys = keys
 	if k, ok := w.keys[address]; ok {
 		plainData, err := crypto.GcmDecrypt(nil, k.PrivateKey, authHash)
 		if err != nil {
@@ -89,6 +81,22 @@ func (w *Wallet) GetKey(address common.Address, auth string) (key *Key, err erro
 		return key, nil
 	}
 	return nil, errors.New("not founded")
+}
+
+func (w *Wallet) Load() error {
+	file, err := os.Open(w.filePath)
+	keys := make(map[common.Address]*keyByte)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+	decoder := gob.NewDecoder(file)
+	err = decoder.Decode(&keys)
+	if err != nil {
+		return err
+	}
+	w.keys = keys
+	return nil
 }
 
 func (w *Wallet) TimedUnlock(address common.Address, auth string, timeout time.Duration) error {
