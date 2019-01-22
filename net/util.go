@@ -14,7 +14,7 @@ import (
 	//08021220b7d27774a2671c280d12c15878ecdc0ff8917704c154782445a25a25d962bae8
 */
 
-func PrivkeyToHexString(privKey crypto.PrivKey) (string, error) {
+func PrivateKeyToHex(privKey crypto.PrivKey) (string, error) {
 	// priv, _, _ := crypto.GenerateKeyPair(crypto.Secp256k1, 256)
 	b, err := crypto.MarshalPrivateKey(privKey)
 	if err != nil {
@@ -23,7 +23,7 @@ func PrivkeyToHexString(privKey crypto.PrivKey) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func HexStringToPrivkeyTo(privKey string) (crypto.PrivKey, error) {
+func HexToPrivateKey(privKey string) (crypto.PrivKey, error) {
 	b, err := hex.DecodeString(privKey)
 	if err != nil {
 		//errors.New("invalid hex string")
