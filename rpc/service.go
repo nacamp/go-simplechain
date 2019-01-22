@@ -152,7 +152,7 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	tx.SignWithSignature(sig)
 	h.bc.TxPool.Put(tx)
 	h.bc.NewTXMessage <- tx
-	return common.Hash2Hex(tx.Hash), nil
+	return common.HashToHex(tx.Hash), nil
 }
 
 func (h *SendTransactionHandler) Params() interface{} {
@@ -186,8 +186,8 @@ func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fa
 	tx := h.bc.Tail.TransactionState.GetTransaction(common.HexToHash(p[0]))
 
 	rtx := &TempTx{}
-	rtx.From = common.Address2Hex(tx.From)
-	rtx.To = common.Address2Hex(tx.To)
+	rtx.From = common.AddressToHex(tx.From)
+	rtx.To = common.AddressToHex(tx.To)
 	rtx.Nonce = strconv.FormatUint(tx.Nonce, 10)
 	rtx.Amount = tx.Amount.String()
 	return rtx, nil
@@ -229,7 +229,7 @@ func (h *NewAccountHandler) ServeJSONRPC(c context.Context, params *fastjson.Raw
 	key := account.NewKey()
 	h.w.StoreKey(key, p[0])
 
-	return common.Address2Hex(key.Address), nil
+	return common.AddressToHex(key.Address), nil
 }
 
 func (h *NewAccountHandler) Params() interface{} {

@@ -40,13 +40,11 @@ func TestSignAndVerify(t *testing.T) {
 	block.MakeHash()
 	err := block.Sign(priv)
 	assert.NoError(t, err, "")
-	b, err := block.VerifySign()
-	assert.True(t, b, "")
+	err = block.VerifySign()
 	assert.NoError(t, err, "")
 
 	block.Header.Coinbase = common.HexToAddress(tests.Addr1)
-	b, err = block.VerifySign()
-	assert.False(t, b, "")
-	// assert.Error(t, err, "")
+	err = block.VerifySign()
+	assert.Error(t, err, "")
 
 }

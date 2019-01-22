@@ -17,18 +17,23 @@
 // Package common contains various helper functions.
 package common
 
-import "encoding/hex"
+import (
+	"encoding/hex"
+
+	"github.com/nacamp/go-simplechain/common/hexutil"
+)
 
 // ToHex returns the hex representation of b, prefixed with '0x'.
 // For empty slices, the return value is "0x0".
 //
 // Deprecated: use hexutil.Encode instead.
 func ToHex(b []byte) string {
-	hex := Bytes2Hex(b)
-	if len(hex) == 0 {
-		hex = "0"
-	}
-	return "0x" + hex
+	return hexutil.Encode(b)
+	// hex := BytesToHex(b)
+	// if len(hex) == 0 {
+	// 	hex = "0"
+	// }
+	// return "0x" + hex
 }
 
 // ToHexArray creates a array of hex-string based on []byte
@@ -51,7 +56,7 @@ func FromHex(s string) []byte {
 	if len(s)%2 == 1 {
 		s = "0" + s
 	}
-	return Hex2Bytes(s)
+	return HexToBytes(s)
 }
 
 // CopyBytes returns an exact copy of the provided bytes.
@@ -88,19 +93,19 @@ func isHex(str string) bool {
 	return true
 }
 
-// Bytes2Hex returns the hexadecimal encoding of d.
-func Bytes2Hex(d []byte) string {
+// BytesToHex returns the hexadecimal encoding of d.
+func BytesToHex(d []byte) string {
 	return hex.EncodeToString(d)
 }
 
-// Hex2Bytes returns the bytes represented by the hexadecimal string str.
-func Hex2Bytes(str string) []byte {
+// HexToBytes returns the bytes represented by the hexadecimal string str.
+func HexToBytes(str string) []byte {
 	h, _ := hex.DecodeString(str)
 	return h
 }
 
-// Hex2BytesFixed returns bytes of a specified fixed length flen.
-func Hex2BytesFixed(str string, flen int) []byte {
+// HexToBytesFixed returns bytes of a specified fixed length flen.
+func HexToBytesFixed(str string, flen int) []byte {
 	h, _ := hex.DecodeString(str)
 	if len(h) == flen {
 		return h

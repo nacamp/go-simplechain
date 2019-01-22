@@ -64,13 +64,13 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 
 		if (parent != nil) && (now-parent.Header.Time < 3) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
-				"address": common.Address2Hex(dpos.coinbase),
+				"address": common.AddressToHex(dpos.coinbase),
 			}).Warning("Interval is short")
 			return nil
 		}
 
 		log.CLog().WithFields(logrus.Fields{
-			"address": common.Bytes2Hex(dpos.coinbase[:]),
+			"address": common.BytesToHex(dpos.coinbase[:]),
 		}).Debug("my turn")
 		block.Header.Coinbase = dpos.coinbase
 		block.Header.SnapshotVoterTime = bc.Tail.Header.SnapshotVoterTime // voterBlock.Header.Time
@@ -89,7 +89,7 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 			//TODO: check at txpool
 			if fromAccount == nil {
 				log.CLog().WithFields(logrus.Fields{
-					"Address": common.Address2Hex(tx.From),
+					"Address": common.AddressToHex(tx.From),
 				}).Warning("Not found account")
 			} else if fromAccount.Nonce+1 == tx.Nonce {
 				block.Transactions = append(block.Transactions, tx)
@@ -98,7 +98,7 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 				bc.TxPool.Put(tx)
 			} else {
 				log.CLog().WithFields(logrus.Fields{
-					"Address": common.Address2Hex(tx.From),
+					"Address": common.AddressToHex(tx.From),
 				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
@@ -114,7 +114,7 @@ func (dpos *Dpos) MakeBlock(now uint64) *core.Block {
 		return block
 	} else {
 		log.CLog().WithFields(logrus.Fields{
-			"address": common.Bytes2Hex(dpos.coinbase[:]),
+			"address": common.BytesToHex(dpos.coinbase[:]),
 		}).Debug("not my turn")
 		return nil
 	}

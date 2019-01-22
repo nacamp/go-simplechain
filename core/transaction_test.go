@@ -26,6 +26,6 @@ func TestSign(t *testing.T) {
 	tx := core.NewTransaction(from, to, new(big.Int).SetInt64(100), uint64(0))
 	tx.MakeHash()
 	tx.Sign(priv)
-	sig, _ := tx.VerifySign()
-	assert.True(t, sig, "")
+	err := tx.VerifySign()
+	assert.NoError(t, err, "")
 }

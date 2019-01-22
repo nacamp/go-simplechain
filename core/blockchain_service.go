@@ -102,8 +102,8 @@ func (bcs *BlockChainService) HandleMessage(message *net.Message) error {
 			}).Warning("DecodeBytes")
 		}
 		log.CLog().WithFields(logrus.Fields{
-			"From":   common.Address2Hex(tx.From),
-			"To":     common.Address2Hex(tx.To),
+			"From":   common.AddressToHex(tx.From),
+			"To":     common.AddressToHex(tx.To),
 			"Amount": tx.Amount,
 		}).Info("Received tx")
 		bc.TxPool.Put(tx)

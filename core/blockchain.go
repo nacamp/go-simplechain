@@ -117,9 +117,9 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 }
 
 func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
-	common.Hex2Bytes(GenesisCoinbaseAddress)
+	common.FromHex(GenesisCoinbaseAddress)
 	header := &Header{
-		Coinbase: common.BytesToAddress(common.FromHex(GenesisCoinbaseAddress)),
+		Coinbase: common.HexToAddress(GenesisCoinbaseAddress),
 		Height:   0,
 		Time:     0,
 	}
@@ -163,7 +163,7 @@ func (bc *BlockChain) GetBlockByHash(hash common.Hash) *Block {
 			return nil
 		}
 		log.CLog().WithFields(logrus.Fields{
-			"Hash": common.Hash2Hex(hash),
+			"Hash": common.HashToHex(hash),
 		}).Panic("")
 		return nil
 	}
@@ -309,9 +309,9 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 	}
 
 	//2.signer check
-	v, err := block.VerifySign()
-	if !v || err != nil {
-		return errors.New("Signature is invalid")
+	err = block.VerifySign()
+	if err != nil {
+		return err
 	}
 
 	//3. verify transaction
@@ -399,7 +399,7 @@ func (bc *BlockChain) PutBlockIfParentExist(block *Block) error {
 func (bc *BlockChain) AddFutureBlock(block *Block) error {
 	log.CLog().WithFields(logrus.Fields{
 		"Height": block.Header.Height,
-		"hash":   common.Hash2Hex(block.Hash()),
+		"hash":   common.HashToHex(block.Hash()),
 	}).Debug("Inserted block into  future blocks")
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
 	//FIXME: temporarily, must send hash

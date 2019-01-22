@@ -127,7 +127,7 @@ func accountImportAction(path string, priv string, passphrase string) {
 	key := new(account.Key)
 	key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
 	key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
-	fmt.Printf("address : %v\n", common.Address2Hex(key.Address))
+	fmt.Printf("address : %v\n", common.AddressToHex(key.Address))
 	wallet := account.NewWallet(path)
 	wallet.Load()
 	wallet.StoreKey(key, passphrase)
@@ -149,7 +149,7 @@ func accountNewAction(path string, passphrase string) {
 	key := new(account.Key)
 	key.PrivateKey = priv
 	key.Address = address
-	fmt.Printf("address : %v\n", common.Address2Hex(key.Address))
+	fmt.Printf("address : %v\n", common.AddressToHex(key.Address))
 	wallet := account.NewWallet(path)
 	wallet.Load()
 	wallet.StoreKey(key, passphrase)

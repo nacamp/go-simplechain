@@ -29,7 +29,7 @@ func TestMakeAddress(t *testing.T) {
 		priv:    0x47661aa6cccada84454842404ec0cca83760254191232f1d4cc11653d397ac2e
 	*/
 	//TODO: 0xHex, Hex, Fixed to be made consistently
-	fmt.Println("address: ", common.Address2Hex(address))
+	fmt.Println("address: ", common.AddressToHex(address))
 	fmt.Println("priv: ", common.ToHex((*btcec.PrivateKey)(priv).Serialize()))
 	assert.Equal(t, CreateAddressFromPrivateKey(ByteToPrivateKey(common.FromHex("0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff"))),
 		common.HexToAddress("0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44"), "")
@@ -37,7 +37,7 @@ func TestMakeAddress(t *testing.T) {
 
 func TestCreateAndEcrecover(t *testing.T) {
 	priv, address := CreateAddress()
-	fmt.Println(common.Address2Hex(address))
+	fmt.Println(common.AddressToHex(address))
 	assert.Equal(t, CreateAddressFromPrivateKey(priv), address, "")
 
 	hash := make([]byte, 32)

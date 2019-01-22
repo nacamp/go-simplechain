@@ -1,7 +1,6 @@
 package common
 
 import (
-	"encoding/hex"
 	"reflect"
 
 	"github.com/nacamp/go-simplechain/common/hexutil"
@@ -9,9 +8,9 @@ import (
 
 //first naive publickey
 const (
-	HashLength    = 32
-	AddressLength = 36
-	SigLength     = 65
+	HashLength      = 32
+	AddressLength   = 36
+	SignatureLength = 65
 )
 
 var (
@@ -26,8 +25,9 @@ type Address [AddressLength]byte
 type Hash [HashLength]byte
 
 //Signature
-type Sig [SigLength]byte
+type Signature [SignatureLength]byte
 
+// ethereum start
 // BytesToHash sets b to hash.
 // If b is larger than len(h), b will be cropped from the left.
 func BytesToHash(b []byte) Hash {
@@ -57,23 +57,6 @@ func BytesToAddress(b []byte) Address {
 }
 func HexToAddress(s string) Address { return BytesToAddress(FromHex(s)) }
 
-func HashToBytes(hash Hash) []byte {
-	if hash == (Hash{}) {
-		return nil
-	} else {
-		return hash[:]
-	}
-
-}
-
-func Hash2Hex(hash Hash) string {
-	return hex.EncodeToString(hash[:])
-}
-
-func Address2Hex(address Address) string {
-	return hex.EncodeToString(address[:])
-}
-
 // MarshalText returns the hex representation of a.
 func (a Address) MarshalText() ([]byte, error) {
 	return hexutil.Bytes(a[:]).MarshalText()
@@ -87,4 +70,24 @@ func (a *Address) UnmarshalText(input []byte) error {
 // UnmarshalJSON parses a hash in hex syntax.
 func (a *Address) UnmarshalJSON(input []byte) error {
 	return hexutil.UnmarshalFixedJSON(addressT, input, a[:])
+}
+
+// ethereum end
+
+//new--------------------------
+func HashToBytes(hash Hash) []byte {
+	if hash == (Hash{}) {
+		return nil
+	} else {
+		return hash[:]
+	}
+
+}
+
+func HashToHex(hash Hash) string {
+	return ToHex(hash[:])
+}
+
+func AddressToHex(address Address) string {
+	return ToHex(address[:])
 }
