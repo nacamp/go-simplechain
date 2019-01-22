@@ -17,18 +17,23 @@
 // Package common contains various helper functions.
 package common
 
-import "encoding/hex"
+import (
+	"encoding/hex"
+
+	"github.com/nacamp/go-simplechain/common/hexutil"
+)
 
 // ToHex returns the hex representation of b, prefixed with '0x'.
 // For empty slices, the return value is "0x0".
 //
 // Deprecated: use hexutil.Encode instead.
 func ToHex(b []byte) string {
-	hex := BytesToHex(b)
-	if len(hex) == 0 {
-		hex = "0"
-	}
-	return "0x" + hex
+	return hexutil.Encode(b)
+	// hex := BytesToHex(b)
+	// if len(hex) == 0 {
+	// 	hex = "0"
+	// }
+	// return "0x" + hex
 }
 
 // ToHexArray creates a array of hex-string based on []byte
