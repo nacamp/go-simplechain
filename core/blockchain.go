@@ -117,7 +117,7 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 }
 
 func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
-	common.HexToBytes(GenesisCoinbaseAddress)
+	common.FromHex(GenesisCoinbaseAddress)
 	header := &Header{
 		Coinbase: common.HexToAddress(GenesisCoinbaseAddress),
 		Height:   0,
