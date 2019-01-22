@@ -21,7 +21,6 @@ type Poa struct {
 	bc       *core.BlockChain
 	node     *net.Node
 	coinbase common.Address
-	// priv         *ecdsa.PrivateKey
 	enableMining bool
 	Storage      storage.Storage
 	Period       uint64

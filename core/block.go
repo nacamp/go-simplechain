@@ -88,12 +88,15 @@ func (b *Block) SignWithSignature(sign []byte) {
 	copy(b.Header.Signature[:], sign)
 }
 
-func (b *Block) VerifySign() (bool, error) {
+func (b *Block) VerifySign() error {
 	pub, err := crypto.Ecrecover(b.Header.Hash[:], b.Header.Signature[:])
-	if crypto.CreateAddressFromPublicKeyByte(pub) == b.Header.Coinbase {
-		return true, nil
+	if err != nil {
+		return err
 	}
-	return false, err
+	if crypto.CreateAddressFromPublicKeyByte(pub) == b.Header.Coinbase {
+		return nil
+	}
+	return errors.New("Public key cannot generate correct address") ////Signature is invalid
 }
 
 func (b *Block) VerifyTransacion() error {
@@ -101,9 +104,9 @@ func (b *Block) VerifyTransacion() error {
 		if tx.Hash != tx.CalcHash() {
 			return errors.New("tx.Hash != tx.CalcHash()")
 		}
-		status, err := tx.VerifySign()
-		if status != true || err != nil {
-			return errors.New("tx.VerifySign")
+		err := tx.VerifySign()
+		if err != nil {
+			return err
 		}
 	}
 	return nil

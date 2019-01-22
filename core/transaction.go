@@ -2,6 +2,7 @@ package core
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"math/big"
 	"time"
 
@@ -17,7 +18,7 @@ type Transaction struct {
 	To        common.Address
 	Amount    *big.Int
 	Nonce     uint64
-	Time      uint64           // int64 rlp encoding error
+	Time      uint64 // int64 rlp encoding error
 	Signature common.Signature
 	Payload   []byte
 }
@@ -65,10 +66,13 @@ func (tx *Transaction) SignWithSignature(sign []byte) {
 	copy(tx.Signature[:], sign)
 }
 
-func (tx *Transaction) VerifySign() (bool, error) {
+func (tx *Transaction) VerifySign() error {
 	pub, err := crypto.Ecrecover(tx.Hash[:], tx.Signature[:])
-	if crypto.CreateAddressFromPublicKeyByte(pub) == tx.From {
-		return true, nil
+	if err != nil {
+		return err
 	}
-	return false, err
+	if crypto.CreateAddressFromPublicKeyByte(pub) == tx.From {
+		return nil
+	}
+	return errors.New("Public key cannot generate correct address") //Signature is invalid
 }

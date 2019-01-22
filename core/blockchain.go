@@ -309,9 +309,9 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 	}
 
 	//2.signer check
-	v, err := block.VerifySign()
-	if !v || err != nil {
-		return errors.New("Signature is invalid")
+	err = block.VerifySign()
+	if err != nil {
+		return err
 	}
 
 	//3. verify transaction
