@@ -25,7 +25,7 @@ type Header struct {
 	SnapshotVoterTime uint64
 	//not need signature at pow
 	//need signature, to prevent malicious behavior like to skip deliberately block in the previous turn
-	Sig common.Sig
+	Signature common.Signature
 }
 
 // Simple Block
@@ -80,16 +80,16 @@ func (b *Block) Sign(prv *ecdsa.PrivateKey) error {
 	if err != nil {
 		return err
 	}
-	copy(b.Header.Sig[:], bytes)
+	copy(b.Header.Signature[:], bytes)
 	return nil
 }
 
 func (b *Block) SignWithSignature(sign []byte) {
-	copy(b.Header.Sig[:], sign)
+	copy(b.Header.Signature[:], sign)
 }
 
 func (b *Block) VerifySign() (bool, error) {
-	pub, err := crypto.Ecrecover(b.Header.Hash[:], b.Header.Sig[:])
+	pub, err := crypto.Ecrecover(b.Header.Hash[:], b.Header.Signature[:])
 	if crypto.CreateAddressFromPublicKeyByte(pub) == b.Header.Coinbase {
 		return true, nil
 	}

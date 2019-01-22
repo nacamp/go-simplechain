@@ -8,9 +8,9 @@ import (
 
 //first naive publickey
 const (
-	HashLength    = 32
-	AddressLength = 36
-	SigLength     = 65
+	HashLength      = 32
+	AddressLength   = 36
+	SignatureLength = 65
 )
 
 var (
@@ -25,7 +25,7 @@ type Address [AddressLength]byte
 type Hash [HashLength]byte
 
 //Signature
-type Sig [SigLength]byte
+type Signature [SignatureLength]byte
 
 // ethereum start
 // BytesToHash sets b to hash.
