@@ -1,26 +1,44 @@
 package net
 
 import (
+	"time"
+
 	kb "github.com/libp2p/go-libp2p-kbucket"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 )
 
 const (
-	kConcurrency = 3
-	kBucketSize  = 16
+	ConcurrencyLimit = 3
+	BucketSize       = 16
 )
 
 type Discovery struct {
 	peerstore    peerstore.Peerstore
 	routingTable *kb.RoutingTable
+	_findnode    func(peerInfo *peerstore.PeerInfo, targetID peer.ID) []*peerstore.PeerInfo
+	_bond        func(peerInfo *peerstore.PeerInfo) *peerstore.PeerInfo
 }
 
-func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, reply chan<- []*peerstore.PeerInfo) ([]interface{}, error) {
-	return nil, nil
+func NewDiscovery(hostID peer.ID, metrics peerstore.Metrics, peerstore peerstore.Peerstore) *Discovery {
+	d := &Discovery{}
+	d.routingTable =
+		kb.NewRoutingTable(16, kb.ConvertPeerID(hostID), time.Minute, metrics)
+	d.peerstore = peerstore
+	return d
 }
 
-func (d *Discovery) bond(peerInfo *peerstore.PeerInfo) {
+func (d *Discovery) Update(peerInfo *peerstore.PeerInfo) {
+	d.routingTable.Update(peerInfo.ID)
+	d.peerstore.AddAddrs(peerInfo.ID, peerInfo.Addrs, time.Duration(3600)*time.Second)
+}
+
+func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, reply chan<- []*peerstore.PeerInfo) {
+	reply <- d._findnode(peerInfo, targetID)
+}
+
+func (d *Discovery) bond(peerInfo *peerstore.PeerInfo, reply chan<- *peerstore.PeerInfo) {
+	reply <- d._bond(peerInfo)
 }
 
 func sortByDistance(peerInfos []*peerstore.PeerInfo, targetID peer.ID) []*peerstore.PeerInfo {
@@ -32,12 +50,12 @@ func sortByDistance(peerInfos []*peerstore.PeerInfo, targetID peer.ID) []*peerst
 	}
 
 	peers := kb.SortClosestPeers(IDs, kb.ConvertPeerID(targetID))
-	closestSize := kConcurrency
-	if len(peers) < kConcurrency {
+	closestSize := ConcurrencyLimit
+	if len(peers) < ConcurrencyLimit {
 		closestSize = len(peers)
 	}
 	closet := make([]*peerstore.PeerInfo, 0, closestSize)
-	for _, ID := range peers {
+	for _, ID := range peers[:closestSize] {
 		closet = append(closet, infos[ID])
 	}
 	return closet
@@ -45,54 +63,64 @@ func sortByDistance(peerInfos []*peerstore.PeerInfo, targetID peer.ID) []*peerst
 
 func (d *Discovery) lookup(peerID peer.ID) error {
 	var (
-		ask       = make([]*peerstore.PeerInfo, 3)
-		asked     = make(map[peer.ID]bool) // called findnode
-		seen      = make(map[peer.ID]bool) // called bond
-		reply     = make(chan []*peerstore.PeerInfo, kConcurrency)
-		seenInfos = make([]*peerstore.PeerInfo, 1)
-		pending   = 0
+		ask         = make([]*peerstore.PeerInfo, ConcurrencyLimit)
+		asked       = make(map[peer.ID]bool) // called findnode
+		seen        = make(map[peer.ID]bool) // called bond
+		reply       = make(chan []*peerstore.PeerInfo, ConcurrencyLimit)
+		seenInfos   = make([]*peerstore.PeerInfo, 0)
+		bondReply   = make(chan *peerstore.PeerInfo, BucketSize*ConcurrencyLimit)
+		askPending  = 0
+		bondPending = 0
 	)
 
-	closest := d.routingTable.NearestPeers(kb.ConvertPeerID(peerID), kBucketSize)
-	tmp := make([]*peerstore.PeerInfo, kBucketSize)
+	closest := d.routingTable.NearestPeers(kb.ConvertPeerID(peerID), BucketSize)
+	closestPeerInfo := make([]*peerstore.PeerInfo, 0, BucketSize)
 	for _, id := range closest {
 		p := d.peerstore.PeerInfo(id)
-		tmp = append(tmp, &p)
+		closestPeerInfo = append(closestPeerInfo, &p)
 	}
-	ask = sortByDistance(tmp, peerID)
+	ask = sortByDistance(closestPeerInfo, peerID)
 
+outer:
 	for len(ask) > 0 {
-		if pending == 0 {
+		if askPending == 0 {
 			for _, v := range ask {
-				pending++
+				askPending++
 				asked[v.ID] = true
+				//fmt.Println("asked ", len(asked))
 				go d.findnode(v, peerID, reply)
 			}
 		}
 		for _, n := range <-reply {
-			if n != nil && !seen[n.ID] && !asked[n.ID] {
-				seen[peerID] = true
-				//go d.bond(n)
-				seenInfos = append(seenInfos, n)
+			//if n != nil && !seen[n.ID] && !asked[n.ID] {
+			if n != nil && !asked[n.ID] {
+				if !seen[n.ID] {
+					seen[peerID] = true
+					bondPending++
+					//fmt.Println(bondPending)
+					go d.bond(n, bondReply)
+				}
+				//seenInfos = append(seenInfos, n)
 			}
 		}
-		pending--
-		if pending == 0 {
+		askPending--
+		if askPending == 0 {
+			if bondPending == 0 {
+				break outer
+			}
+			for n := range bondReply {
+				seenInfos = append(seenInfos, n)
+				bondPending--
+				//fmt.Println(bondPending)
+				if bondPending == 0 {
+					break
+				}
+			}
 			ask = sortByDistance(seenInfos, peerID)
 			seenInfos = seenInfos[:0]
+			//fmt.Println("ask ", len(ask))
 		}
 
 	}
 	return nil
 }
-
-/*
-	nodeRoute.routingTable.Update(peerid)
-		targetPeerAddr, _ := ma.NewMultiaddr(
-		fmt.Sprintf("/ipfs/%s", peer.IDB58Encode(peerid)))
-	targetAddr := ipfsaddr.Decapsulate(targetPeerAddr) //  /ip4/127.0.0.1/tcp/9990
-	nodeRoute.Update(peerid, targetAddr)
-	nodeRoute.node.host.Peerstore().AddAddr(peerid, targetAddr, pstore.PermanentAddrTTL)
-	nodeRoute.node.seedID = peerid
-
-*/
