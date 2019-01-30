@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 
 	crypto "github.com/libp2p/go-libp2p-crypto"
+	kb "github.com/libp2p/go-libp2p-kbucket"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-func MakePeerInfo() []*peerstore.PeerInfo {
-	ids :=
-		`16Uiu2HAmUPKnHgcfwzhZLheKfpfKP5d9ysRJ7GYmiPkXtRhd9Lha
+var IDS = `16Uiu2HAmUPKnHgcfwzhZLheKfpfKP5d9ysRJ7GYmiPkXtRhd9Lha
 16Uiu2HAmP2AoC5Z9vNKJR9ejnVePzoiFWqCzxMCBDV98YpLKtgVv
 16Uiu2HAmRMh1XZApwoZcpgkrsH1rrUFf6hKhomGH5cyVxS9mg1N5
 16Uiu2HAm4NqKeXrnyVMjvR9xBLYpoE46pE3Com6FFgkJJ9Rd1nxv
@@ -116,12 +118,15 @@ func MakePeerInfo() []*peerstore.PeerInfo {
 16Uiu2HAmD2T5hUkzf8juKXhXxNWbavqSD6m7tcKwMaEgxdXsSBET
 16Uiu2HAkyN6nmD6F5Mzf354YeXKxpvRc7D7m1RF2v8vjk3VurpBY
 `
-	scanner := bufio.NewScanner(strings.NewReader(ids))
+
+func MakePeerInfo() []*peerstore.PeerInfo {
+	scanner := bufio.NewScanner(strings.NewReader(IDS))
 	i := 0
 	peerInfos := make([]*peerstore.PeerInfo, 0, 100)
 	for scanner.Scan() {
 		addr, _ := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", i))
-		info := peerstore.PeerInfo{ID: peer.ID(scanner.Text()), Addrs: []ma.Multiaddr{addr}}
+		id, _ := peer.IDB58Decode(scanner.Text())
+		info := peerstore.PeerInfo{ID: id, Addrs: []ma.Multiaddr{addr}}
 		// fmt.Println(info)
 		peerInfos = append(peerInfos, &info)
 		i++
@@ -133,11 +138,14 @@ func MakeIds() {
 	for i := 0; i < 100; i++ {
 		_, pub, _ := crypto.GenerateKeyPair(crypto.Secp256k1, 256)
 		id, _ := peer.IDFromPublicKey(pub)
-		fmt.Println(peer.IDB58Encode(id)) //fmt.Println(id) => <peer.ID 16*GXkYQW>
+		fmt.Println(id.Pretty()) // = fmt.Println(peer.IDB58Encode(id))
+		//fmt.Println(id) => <peer.ID 16*GXkYQW>
+		// //decoding
+		// id2, _ := peer.IDB58Decode(id.Pretty())
+		// fmt.Println(id2.Pretty())
 	}
 }
-
-func TestDiscovery(t *testing.T) {
+func TestLookup(t *testing.T) {
 	peerInfos := MakePeerInfo()
 
 	index := 0
@@ -145,29 +153,44 @@ func TestDiscovery(t *testing.T) {
 		if index == 100 {
 			index = 0
 		}
-		index = index + 10
+		index = index + 5
 		//fmt.Println(index)
-		return peerInfos[index-10 : index]
+		return peerInfos[index-5 : index]
 	}
 	_bond := func(peerInfo *peerstore.PeerInfo) *peerstore.PeerInfo {
 		return peerInfo
 	}
 
-	d := NewDiscovery(peerInfos[0].ID, peerstore.NewMetrics(), pstoremem.NewPeerstore())
+	// d := NewDiscovery(peerInfos[0].ID, peerstore.NewMetrics(), pstoremem.NewPeerstore())
+	d := &Discovery{}
+	//100, prevent peer evicted
+	d.routingTable = kb.NewRoutingTable(100, kb.ConvertPeerID(peerInfos[0].ID), time.Minute, peerstore.NewMetrics())
+	d.peerstore = pstoremem.NewPeerstore()
+
 	d._findnode = _findnode
 	d._bond = _bond
-	for _, pi := range peerInfos[1:] {
-		d.Update(pi)
-	}
 
-	// closest := d.routingTable.NearestPeers(kb.ConvertPeerID(peerInfos[0].ID), BucketSize)
-	//assert.Equal(t, BucketSize, len(closest), "") not equal BucketSize
-	// for _, id := range closest {
-	// 	fmt.Println(id)
-	// }
-	d.lookup(peerInfos[0].ID)
+	d.Update(peerInfos[1])
+
+	d.lookup(peerInfos[1].ID)
+	assert.Equal(t, 100, d.routingTable.Size())
 }
 
-func TestPeerInfo(t *testing.T) {
-	MakePeerInfo()
+func TestDistance(t *testing.T) {
+	peerInfos := MakePeerInfo()
+	ids := make([]peer.ID, 0, len(peerInfos))
+	infos := make(map[peer.ID]*peerstore.PeerInfo)
+	for i, id := range peerInfos {
+		ids = append(ids, id.ID)
+		infos[id.ID] = peerInfos[i]
+	}
+	fmt.Printf("%.8b\n", kb.ConvertPeerID(peerInfos[0].ID)[:10])
+	fmt.Println("--------------------------")
+	peers := kb.SortClosestPeers(ids[1:], kb.ConvertPeerID(ids[0]))
+
+	assert.Equal(t, "16Uiu2HAmQkpXr9HjhCrghbE6HYWY9ZVqeTM3kQoTo8Fdcz8tHAJ2", peers[0].Pretty())
+	assert.Equal(t, "16Uiu2HAm2Uf175v4GA49zzayW2AD79EkYVhJJeE4Cw5AeqR2Djob", peers[1].Pretty())
+	fmt.Printf("%.8b\n", kb.ConvertPeerID(peers[0])[:10])
+	fmt.Printf("%.8b\n", kb.ConvertPeerID(peers[1])[:10])
+
 }

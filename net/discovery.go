@@ -23,7 +23,7 @@ type Discovery struct {
 func NewDiscovery(hostID peer.ID, metrics peerstore.Metrics, peerstore peerstore.Peerstore) *Discovery {
 	d := &Discovery{}
 	d.routingTable =
-		kb.NewRoutingTable(16, kb.ConvertPeerID(hostID), time.Minute, metrics)
+		kb.NewRoutingTable(BucketSize, kb.ConvertPeerID(hostID), time.Minute, metrics)
 	d.peerstore = peerstore
 	return d
 }
@@ -39,6 +39,7 @@ func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, rep
 
 func (d *Discovery) bond(peerInfo *peerstore.PeerInfo, reply chan<- *peerstore.PeerInfo) {
 	reply <- d._bond(peerInfo)
+	d.Update(peerInfo)
 }
 
 func sortByDistance(peerInfos []*peerstore.PeerInfo, targetID peer.ID) []*peerstore.PeerInfo {
@@ -81,7 +82,6 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 	}
 	ask = sortByDistance(closestPeerInfo, peerID)
 
-outer:
 	for len(ask) > 0 {
 		if askPending == 0 {
 			for _, v := range ask {
@@ -100,27 +100,29 @@ outer:
 					//fmt.Println(bondPending)
 					go d.bond(n, bondReply)
 				}
-				//seenInfos = append(seenInfos, n)
 			}
 		}
 		askPending--
 		if askPending == 0 {
 			if bondPending == 0 {
-				break outer
-			}
-			for n := range bondReply {
-				seenInfos = append(seenInfos, n)
-				bondPending--
-				//fmt.Println(bondPending)
-				if bondPending == 0 {
-					break
+				ask = ask[:0]
+			} else {
+				for n := range bondReply {
+					seenInfos = append(seenInfos, n)
+					bondPending--
+					//fmt.Println(bondPending)
+					if bondPending == 0 {
+						break
+					}
 				}
+				ask = sortByDistance(seenInfos, peerID)
+				seenInfos = seenInfos[:0]
+				//fmt.Println("ask ", len(ask))
 			}
-			ask = sortByDistance(seenInfos, peerID)
-			seenInfos = seenInfos[:0]
-			//fmt.Println("ask ", len(ask))
 		}
 
 	}
+	close(reply)
+	close(bondReply)
 	return nil
 }
