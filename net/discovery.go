@@ -1,6 +1,8 @@
 package net
 
 import (
+	"errors"
+	"math/rand"
 	"time"
 
 	kb "github.com/libp2p/go-libp2p-kbucket"
@@ -33,6 +35,17 @@ func (d *Discovery) Update(peerInfo *peerstore.PeerInfo) {
 	d.peerstore.AddAddrs(peerInfo.ID, peerInfo.Addrs, time.Duration(3600)*time.Second)
 }
 
+func (d *Discovery) RandomPeerInfo() (peerstore.PeerInfo, error) {
+	ids := d.peerstore.Peers()
+	size := len(ids)
+	if size == 0 {
+		return peerstore.PeerInfo{}, errors.New("Not found peerinfo")
+	}
+	rand.Seed(time.Now().Unix())
+	id := ids[rand.Intn(len(ids))]
+	return d.peerstore.PeerInfo(id), nil
+}
+
 func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, reply chan<- []*peerstore.PeerInfo) {
 	reply <- d._findnode(peerInfo, targetID)
 }
@@ -60,6 +73,19 @@ func sortByDistance(peerInfos []*peerstore.PeerInfo, targetID peer.ID) []*peerst
 		closet = append(closet, infos[ID])
 	}
 	return closet
+}
+
+func (d *Discovery) randomLookup() error {
+	//TODO: rlock
+	peers := d.routingTable.ListPeers()
+	size := len(peers)
+	if size == 0 {
+		return errors.New("Not found peer")
+	}
+	rand.Seed(time.Now().Unix())
+	id := peers[rand.Intn(size)]
+
+	return d.lookup(id)
 }
 
 func (d *Discovery) lookup(peerID peer.ID) error {

@@ -176,6 +176,17 @@ func TestLookup(t *testing.T) {
 	assert.Equal(t, 100, d.routingTable.Size())
 }
 
+func TestRandomPeerInfo(t *testing.T) {
+	peerInfos := MakePeerInfo()
+
+	d := NewDiscovery(peerInfos[0].ID, peerstore.NewMetrics(), pstoremem.NewPeerstore())
+	_, err := d.RandomPeerInfo()
+	assert.Error(t, err)
+	d.Update(peerInfos[1])
+	_, err = d.RandomPeerInfo()
+	assert.NoError(t, err)
+}
+
 func TestDistance(t *testing.T) {
 	peerInfos := MakePeerInfo()
 	ids := make([]peer.ID, 0, len(peerInfos))
