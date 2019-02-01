@@ -3,14 +3,18 @@ package net
 import (
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/nacamp/go-simplechain/rlp"
 )
 
 const (
-	MSG_HELLO     = 0x00
-	MSG_HELLO_ACK = 0x01
-	MSG_PEERS     = 0x02
-	MSG_PEERS_ACK = 0x03
+	MsgHello           = uint64(0x00)
+	MsgHelloAck        = uint64(0x01)
+	MSG_PEERS          = 0x02
+	MSG_PEERS_ACK      = 0x03
+	MsgNearestPeers    = uint64(0x04)
+	MsgNearestPeersAck = uint64(0x05)
 
 	MSG_NEW_BLOCK         = 0x10
 	MSG_MISSING_BLOCK     = 0x12
@@ -44,4 +48,18 @@ type INode interface {
 	SendMessage(message *Message, peerID peer.ID)
 	SendMessageToRandomNode(message *Message)
 	BroadcastMessage(message *Message)
+}
+
+type PeerInfo2 struct {
+	ID   peer.ID
+	Addr []byte
+}
+
+func ToPeerInfo2(info *peerstore.PeerInfo) *PeerInfo2 {
+	return &PeerInfo2{ID: info.ID, Addr: info.Addrs[0].Bytes()}
+}
+
+func FromPeerInfo2(info *PeerInfo2) *peerstore.PeerInfo {
+	addr, _ := ma.NewMultiaddrBytes(info.Addr)
+	return &peerstore.PeerInfo{ID: info.ID, Addrs: []ma.Multiaddr{addr}}
 }
