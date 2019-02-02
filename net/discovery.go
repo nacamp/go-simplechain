@@ -2,12 +2,14 @@ package net
 
 import (
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
 	kb "github.com/libp2p/go-libp2p-kbucket"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/nacamp/go-simplechain/rlp"
 )
 
 const (
@@ -20,6 +22,10 @@ type Discovery struct {
 	routingTable *kb.RoutingTable
 	_findnode    func(peerInfo *peerstore.PeerInfo, targetID peer.ID) []*peerstore.PeerInfo
 	_bond        func(peerInfo *peerstore.PeerInfo) *peerstore.PeerInfo
+
+	MsgNearestPeersCh    chan interface{}
+	MsgNearestPeersAckCh chan interface{}
+	node                 *Node
 }
 
 func NewDiscovery(hostID peer.ID, metrics peerstore.Metrics, peerstore peerstore.Peerstore) *Discovery {
@@ -44,10 +50,6 @@ func (d *Discovery) RandomPeerInfo() (peerstore.PeerInfo, error) {
 	rand.Seed(time.Now().Unix())
 	id := ids[rand.Intn(len(ids))]
 	return d.peerstore.PeerInfo(id), nil
-}
-
-func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, reply chan<- []*peerstore.PeerInfo) {
-	reply <- d._findnode(peerInfo, targetID)
 }
 
 func (d *Discovery) bond(peerInfo *peerstore.PeerInfo, reply chan<- *peerstore.PeerInfo) {
@@ -86,6 +88,106 @@ func (d *Discovery) randomLookup() error {
 	id := peers[rand.Intn(size)]
 
 	return d.lookup(id)
+}
+
+func (d *Discovery) NearestPeers(peerID peer.ID) []*peerstore.PeerInfo {
+	closest := d.routingTable.NearestPeers(kb.ConvertPeerID(peerID), BucketSize)
+	closestPeerInfo := make([]*peerstore.PeerInfo, 0, BucketSize)
+	for _, id := range closest {
+		p := d.peerstore.PeerInfo(id)
+		closestPeerInfo = append(closestPeerInfo, &p)
+	}
+	return closestPeerInfo
+}
+
+func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, reply chan<- []*peerstore.PeerInfo) {
+	if d._findnode != nil {
+		reply <- d._findnode(peerInfo, targetID)
+		return
+	}
+
+	peerStream, err := d.node.Connect(peerInfo.ID, peerInfo.Addrs[0])
+	//TODO:
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	//TODO: make func
+	if peerStream.status != statusHandshakeSucceed {
+		peerStream.SendHello(d.node.maddr)
+		//TODO: timeout
+		<-peerStream.HandshakeSucceedCh
+	}
+
+	msg, _ := NewRLPMessage(MsgNearestPeers, targetID)
+	replyAck := make(chan interface{}, 1)
+	peerStream.SendMessageReply(&msg, replyAck)
+	ack := <-replyAck
+	reply <- ack.([]*peerstore.PeerInfo)
+}
+
+func (d *Discovery) Register(peerStream *PeerStream) {
+	peerStream.Register(MsgNearestPeers, d.MsgNearestPeersCh)
+	peerStream.Register(MsgNearestPeersAck, d.MsgNearestPeersAckCh)
+}
+
+func (d *Discovery) startHandler() {
+	go d.handleMsgNearestPeers()
+	go d.handleMsgNearestPeersAck()
+}
+
+func (d *Discovery) SendNearestPeers(targetID peer.ID, ps *PeerStream) error {
+	closestPeerInfo := d.NearestPeers(targetID)
+	payload := make([]*PeerInfo2, 0)
+	for _, info := range closestPeerInfo {
+		// p := d.peerstore.PeerInfo(id)
+		payload = append(payload, ToPeerInfo2(info))
+	}
+	if msg, err := NewRLPMessage(MSG_PEERS_ACK, &payload); err != nil {
+		return err
+	} else {
+		ps.SendMessage(&msg)
+	}
+	return nil
+}
+
+func (d *Discovery) handleMsgNearestPeers() {
+	for {
+		select {
+		case ch := <-d.MsgNearestPeersCh:
+			// fmt.Println(msg)
+			msg := ch.(*Message)
+			fmt.Println(msg.Code)
+			var targetID peer.ID
+			_ = rlp.DecodeBytes(msg.Payload, &targetID)
+			ps, _ := d.node.StreamPool.GetStream(msg.PeerID)
+			d.SendNearestPeers(targetID, ps)
+		}
+	}
+}
+
+func (d *Discovery) handleMsgNearestPeersAck() {
+	for {
+		select {
+		case ch := <-d.MsgNearestPeersAckCh:
+			msg := ch.(*Message)
+			ps, _ := d.node.StreamPool.GetStream(msg.PeerID)
+			v, ok := ps.replys.Load(msg.Code)
+			if ok {
+				payload := make([]*PeerInfo2, 0)
+				_ = rlp.DecodeBytes(msg.Payload, &payload)
+
+				reply := make([]*peerstore.PeerInfo, 0)
+				for _, info := range payload {
+					// p := d.peerstore.PeerInfo(id)
+					reply = append(reply, FromPeerInfo2(info))
+				}
+
+				replyCh := v.(chan interface{})
+				replyCh <- reply
+			}
+		}
+	}
 }
 
 func (d *Discovery) lookup(peerID peer.ID) error {

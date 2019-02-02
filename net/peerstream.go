@@ -83,7 +83,7 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 				continue
 			}
 		}
-
+		message.PeerID = ps.stream.Conn().RemotePeer()
 		v, ok := ps.handlers.Load(message.Code)
 		if ok {
 			handler := v.(chan interface{})

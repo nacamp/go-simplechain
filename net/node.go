@@ -10,6 +10,8 @@ import (
 	host "github.com/libp2p/go-libp2p-host"
 	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/nacamp/go-simplechain/log"
 	"github.com/sirupsen/logrus"
@@ -24,6 +26,8 @@ type Node struct {
 	nodeRoute     *NodeRoute
 	p2pStreamMap  *sync.Map
 	subsriberPool *SubscriberPool
+	StreamPool    *PeerStreamPool
+	discovery     *Discovery
 }
 
 //TODO: 127.0.0.1 from parameter
@@ -47,6 +51,8 @@ func (node *Node) Start(seed string) {
 		libp2p.ListenAddrs(node.maddr),
 		libp2p.Identity(node.privKey),
 	)
+	node.discovery = NewDiscovery(host.ID(), peerstore.NewMetrics(), host.Peerstore())
+	node.discovery.node = node
 
 	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
 	addr := host.Addrs()[0]
@@ -101,4 +107,19 @@ func (node *Node) BroadcastMessage(message *Message) {
 		p2pStream.sendMessage(message)
 		return true
 	})
+}
+
+func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
+	if peerStream, err := node.StreamPool.GetStream(id); err == nil {
+		return peerStream, nil
+	}
+	node.host.Peerstore().AddAddr(id, addr, pstore.PermanentAddrTTL)
+	s, err := node.host.NewStream(context.Background(), id, "/simplechain/0.0.1")
+	if err != nil {
+		return nil, err
+	}
+	peerStream, err := NewPeerStream(s)
+	node.StreamPool.AddStream(peerStream)
+
+	return peerStream, nil
 }
