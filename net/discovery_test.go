@@ -15,6 +15,7 @@ import (
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	ma "github.com/multiformats/go-multiaddr"
+	multiaddr "github.com/multiformats/go-multiaddr"
 )
 
 var IDS = `16Uiu2HAmUPKnHgcfwzhZLheKfpfKP5d9ysRJ7GYmiPkXtRhd9Lha
@@ -145,6 +146,14 @@ func MakeIds() {
 		// fmt.Println(id2.Pretty())
 	}
 }
+
+// type TestNode struct {
+// }
+
+// func (node *TestNode) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
+// 	return nil, nil
+// }
+
 func TestLookup(t *testing.T) {
 	peerInfos := MakePeerInfo()
 
@@ -178,8 +187,9 @@ func TestLookup(t *testing.T) {
 
 func TestRandomPeerInfo(t *testing.T) {
 	peerInfos := MakePeerInfo()
-
-	d := NewDiscovery(peerInfos[0].ID, peerstore.NewMetrics(), pstoremem.NewPeerstore())
+	//multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/8080")
+	addr, _ := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/8080")
+	d := NewDiscovery(peerInfos[0].ID, addr, peerstore.NewMetrics(), pstoremem.NewPeerstore(), NewPeerStreamPool(), nil)
 	_, err := d.RandomPeerInfo()
 	assert.Error(t, err)
 	d.Update(peerInfos[1])

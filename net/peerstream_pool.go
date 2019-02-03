@@ -8,7 +8,8 @@ import (
 )
 
 type PeerStreamHandler interface {
-	Register(stream *PeerStream) error
+	Register(stream *PeerStream)
+	StartHandler()
 }
 
 type PeerStreamPool struct {
@@ -17,14 +18,17 @@ type PeerStreamPool struct {
 }
 
 func NewPeerStreamPool() *PeerStreamPool {
-	p := PeerStreamPool{}
+	p := PeerStreamPool{streams: new(sync.Map), handlers: make([]PeerStreamHandler, 0)}
 	return &p
 }
 
 func (p *PeerStreamPool) AddStream(peerStream *PeerStream) {
+	//TODO:check problem when to add same stream
+	//TODO:how to do when exceed pool limit
 	p.streams.Store(peerStream.stream.Conn().RemotePeer(), peerStream)
 	for _, h := range p.handlers {
 		h.Register(peerStream)
+		h.StartHandler()
 	}
 }
 

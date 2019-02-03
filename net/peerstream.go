@@ -60,6 +60,7 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 	for {
 		message := Message{}
 		err := rlp.Decode(rw, &message)
+		fmt.Println(">", message.Code)
 		if err != nil {
 			//time.Sleep(30 * time.Second)
 			ps.stream.Close()
@@ -86,6 +87,7 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 		message.PeerID = ps.stream.Conn().RemotePeer()
 		v, ok := ps.handlers.Load(message.Code)
 		if ok {
+			fmt.Println("find handler")
 			handler := v.(chan interface{})
 			handler <- &message
 		}
@@ -131,6 +133,13 @@ func (ps *PeerStream) onHello(message *Message) error {
 	}
 	fmt.Println("server receive:", addr)
 	//node.nodeRoute.Update(ps.peerID, addr) //P2PStream.addr
+	message.PeerID = ps.stream.Conn().RemotePeer()
+	v, ok := ps.handlers.Load(message.Code)
+	if ok {
+		fmt.Println("find handler2")
+		handler := v.(chan interface{})
+		handler <- message
+	}
 	return ps.SendHelloAck()
 }
 
@@ -181,6 +190,7 @@ func (ps *PeerStream) SendMessage(message *Message) error {
 		log.CLog().Warning("sendMessage: client closed")
 		return err
 	}
+	fmt.Println(message.Code)
 	return nil
 }
 

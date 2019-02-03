@@ -63,3 +63,7 @@ func FromPeerInfo2(info *PeerInfo2) *peerstore.PeerInfo {
 	addr, _ := ma.NewMultiaddrBytes(info.Addr)
 	return &peerstore.PeerInfo{ID: info.ID, Addrs: []ma.Multiaddr{addr}}
 }
+
+type IConnect interface {
+	Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error)
+}
