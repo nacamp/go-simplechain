@@ -97,6 +97,7 @@ func (node *Node) Start(seed string) {
 		//loopup
 		//node.nodeRoute.AddNodeFromSeedString(seed)
 		//go node.discovery.randomLookup()
+		// go node.discovery.Start()
 	}
 	go node.discovery.Start()
 
@@ -157,7 +158,7 @@ func (node *Node) Start(seed string) {
 func (node *Node) HandleStream(s libnet.Stream) {
 	log.CLog().WithFields(logrus.Fields{
 		"RemotePeer": s.Conn().RemotePeer().Pretty(),
-	}).Debug("Got a new stream!")
+	}).Debug("new stream")
 
 	// p2pStream, err := NewP2PStreamWithStream(node, s)
 	// // node.p2pStreamMap.Store(p2pStream.peerID, p2pStream)
@@ -201,15 +202,20 @@ func (node *Node) BroadcastMessage(message *Message) {
 }
 
 func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
-	if peerStream, err := node.streamPool.GetStream(id); err == nil {
+	// if peerStream, err := node.streamPool.GetStream(id); err == nil {
+	// 	return peerStream, nil
+	// }
+	peerStream, err := node.streamPool.GetStream(id)
+	if err == nil && peerStream.status != statusClosed {
 		return peerStream, nil
 	}
+
 	node.host.Peerstore().AddAddr(id, addr, pstore.PermanentAddrTTL)
 	s, err := node.host.NewStream(context.Background(), id, "/simplechain/0.0.1")
 	if err != nil {
 		return nil, err
 	}
-	peerStream, err := NewPeerStream(s)
+	peerStream, err = NewPeerStream(s)
 	node.streamPool.AddStream(peerStream)
 	peerStream.Start()
 	// info := peerstore.PeerInfo{ID: id, Addrs: []multiaddr.Multiaddr{addr}}

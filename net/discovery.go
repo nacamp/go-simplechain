@@ -53,6 +53,13 @@ func (d *Discovery) Update(peerInfo *peerstore.PeerInfo) {
 	d.peerstore.AddAddrs(peerInfo.ID, peerInfo.Addrs, peerstore.PermanentAddrTTL)
 }
 
+func (d *Discovery) Remove(peerInfo *peerstore.PeerInfo) {
+	d.routingTable.Remove(peerInfo.ID)
+	d.peerstore.ClearAddrs(peerInfo.ID)
+	//d.peerstore.AddAddrs(peerInfo.ID, peerInfo.Addrs, peerstore.PermanentAddrTTL)
+	log.CLog().WithFields(logrus.Fields{}).Warn("ID : ", peerInfo.ID)
+}
+
 func (d *Discovery) UpdateAddr(id peer.ID, addr ma.Multiaddr) {
 	d.routingTable.Update(id)
 	d.peerstore.AddAddr(id, addr, peerstore.PermanentAddrTTL)
@@ -104,9 +111,13 @@ func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, rep
 		reply <- d._findnode(peerInfo, targetID)
 		return
 	}
-	//TODO: error
-	peerStream, _ := d.bond(peerInfo)
-
+	peerStream, err := d.bond(peerInfo)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{"Msg": err}).Warn("bond")
+		reply <- nil
+		d.Remove(peerInfo)
+		return
+	}
 	msg, _ := NewRLPMessage(MsgNearestPeers, targetID)
 	replyAck := make(chan interface{}, 1)
 	peerStream.SendMessageReply(&msg, replyAck)
@@ -149,6 +160,11 @@ func (d *Discovery) bondReply(peerInfo *peerstore.PeerInfo, reply chan<- *peerst
 		return
 	}
 	_, err := d.bond(peerInfo)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{"Msg": err}).Warn("bond")
+		reply <- nil
+		return
+	}
 	reply <- peerInfo
 	if err != nil {
 		log.CLog().WithFields(logrus.Fields{
@@ -269,6 +285,7 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 				askPending++
 				asked[v.ID] = true
 				//fmt.Println("asked ", len(asked))
+				log.CLog().WithFields(logrus.Fields{"ID": v.ID}).Debug("a> ", askPending)
 				go d.findnode(v, peerID, reply)
 			}
 		}
@@ -290,7 +307,9 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 				ask = ask[:0]
 			} else {
 				for n := range bondReply {
-					seenInfos = append(seenInfos, n)
+					if n != nil {
+						seenInfos = append(seenInfos, n)
+					}
 					bondPending--
 					log.CLog().WithFields(logrus.Fields{}).Debug("b> ", bondPending)
 					if bondPending == 0 {
@@ -305,7 +324,7 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 	}
 	close(reply)
 	close(bondReply)
-	log.CLog().WithFields(logrus.Fields{}).Debug("peerstore size: ", len(d.peerstore.Peers()))
+	log.CLog().WithFields(logrus.Fields{}).Debug("peerstore size: ", len(d.peerstore.PeersWithAddrs()))
 	// for _, id := range d.peerstore.Peers() {
 	// 	fmt.Println(id.Pretty())
 	// }
