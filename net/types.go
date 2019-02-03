@@ -56,7 +56,14 @@ type PeerInfo2 struct {
 }
 
 func ToPeerInfo2(info *peerstore.PeerInfo) *PeerInfo2 {
-	return &PeerInfo2{ID: info.ID, Addr: info.Addrs[0].Bytes()}
+	for _, addr := range info.Addrs {
+		//why p2p-circuit ?
+		if addr.String() != "/p2p-circuit" {
+			return &PeerInfo2{ID: info.ID, Addr: addr.Bytes()}
+		}
+	}
+	return nil
+
 }
 
 func FromPeerInfo2(info *PeerInfo2) *peerstore.PeerInfo {
