@@ -3,7 +3,6 @@ package net
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"sync"
 
 	libnet "github.com/libp2p/go-libp2p-net"
@@ -56,22 +55,15 @@ func (ps *PeerStream) Start() { //isHost bool
 }
 
 func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
-	fmt.Println("readData")
 	for {
 		message := Message{}
 		err := rlp.Decode(rw, &message)
-		fmt.Println(">", message.Code)
 		if err != nil {
-			//time.Sleep(30 * time.Second)
 			ps.stream.Close()
-			log.CLog().Debug("readData  lock before")
-			ps.mu.Lock()
 			ps.status = statusClosed
-			ps.mu.Unlock()
-			log.CLog().Debug("readData  Unlock after")
-			//ps.node.host.Peerstore().ClearAddrs(ps.peerID)
-			//P2PStream.node.host.Peerstore().AddAddr(P2PStream.peerID, P2PStream.addr, 0)
-			log.CLog().Debug("client closed")
+			log.CLog().WithFields(logrus.Fields{
+				"Msg": err,
+			}).Info("closed")
 			return
 		}
 		switch message.Code {
@@ -87,7 +79,6 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 		message.PeerID = ps.stream.Conn().RemotePeer()
 		v, ok := ps.handlers.Load(message.Code)
 		if ok {
-			fmt.Println("find handler")
 			handler := v.(chan interface{})
 			handler <- &message
 		}
@@ -102,7 +93,7 @@ func (ps *PeerStream) SendHello(hostAddr ma.Multiaddr) error {
 	if msg, err := NewRLPMessage(MsgHello, hostAddr.String()); err != nil {
 		return err
 	} else {
-		log.CLog().Debug("SendHello")
+		log.CLog().WithFields(logrus.Fields{}).Debug("hostAddr: ", hostAddr.String())
 		return ps.SendMessage(&msg)
 	}
 }
@@ -111,7 +102,7 @@ func (ps *PeerStream) SendHelloAck() error {
 	if msg, err := NewRLPMessage(MsgHelloAck, ""); err != nil {
 		return err
 	} else {
-		log.CLog().Debug("SendHelloAck")
+		log.CLog().WithFields(logrus.Fields{}).Debug("ID: ", ps.stream.Conn().RemotePeer())
 		err := ps.SendMessage(&msg)
 		return err
 	}
@@ -119,24 +110,13 @@ func (ps *PeerStream) SendHelloAck() error {
 
 func (ps *PeerStream) onHello(message *Message) error {
 	defer ps.finshHandshake()
-	data := string("")
-	rlp.DecodeBytes(message.Payload, &data)
-	log.CLog().WithFields(logrus.Fields{
-		"Command": message.Code,
-		"Data":    data,
-	}).Debug("onHello")
-
-	// node := ps.node
-	addr, err := ma.NewMultiaddr(data)
-	if err != nil {
-		return err
-	}
-	fmt.Println("server receive:", addr)
-	//node.nodeRoute.Update(ps.peerID, addr) //P2PStream.addr
+	log.CLog().WithFields(logrus.Fields{}).Debug("ID: ", ps.stream.Conn().RemotePeer())
 	message.PeerID = ps.stream.Conn().RemotePeer()
 	v, ok := ps.handlers.Load(message.Code)
 	if ok {
-		fmt.Println("find handler2")
+		log.CLog().WithFields(logrus.Fields{
+			"ID": message.PeerID,
+		}).Debug("handler")
 		handler := v.(chan interface{})
 		handler <- message
 	}
@@ -147,29 +127,13 @@ func (ps *PeerStream) onHelloAck(message *Message) error {
 	defer ps.finshHandshake()
 	data := string("")
 	rlp.DecodeBytes(message.Payload, &data)
-	log.CLog().WithFields(logrus.Fields{
-		"Command": message.Code,
-		"Data":    data,
-	}).Debug("onHelloAck")
-	fmt.Println("client receive:", ps.stream.Conn().RemoteMultiaddr())
+	log.CLog().WithFields(logrus.Fields{}).Debug("ID: ", ps.stream.Conn().RemotePeer())
 	ps.HandshakeSucceedCh <- true
-
-	// node := ps.node
-	// addr, err := ma.NewMultiaddr(data)
-	// if err != nil {
-	// 	return err
-	// }
-	// node.nodeRoute.Update(ps.peerID, addr) //P2PStream.addr
 	return nil
 }
 
 func (ps *PeerStream) finshHandshake() {
-	log.CLog().Debug("finshHandshake lock before")
-	ps.mu.Lock()
 	ps.status = statusHandshakeSucceed
-	ps.mu.Unlock()
-	log.CLog().Debug("finshHandshake Unlock after")
-	log.CLog().Debug("finshHandshake")
 }
 
 func (ps *PeerStream) SendMessage(message *Message) error {
@@ -180,17 +144,12 @@ func (ps *PeerStream) SendMessage(message *Message) error {
 	_, err := ps.stream.Write(encodedBytes)
 	if err != nil {
 		ps.stream.Close()
-		log.CLog().Debug("sendMessage lock before")
-		ps.mu.Lock()
 		ps.status = statusClosed
-		ps.mu.Unlock()
-		log.CLog().Debug("sendMessage Unlock after")
-		//ps.node.host.Peerstore().ClearAddrs(ps.peerID)
-		//ps.node.host.Peerstore().AddAddr(ps.peerID, ps.addr, 0)
-		log.CLog().Warning("sendMessage: client closed")
+		log.CLog().WithFields(logrus.Fields{
+			"Msg": err,
+		}).Info("closed")
 		return err
 	}
-	fmt.Println(message.Code)
 	return nil
 }
 
@@ -200,7 +159,6 @@ c:SendMessageReply => s:onXXXX , XXXXAck  (handler)=> c:onXXXXAck
 */
 func (ps *PeerStream) SendMessageReply(message *Message, reply chan interface{}) error {
 	ps.replys.Store(message.Code+uint64(1), reply)
-	// reply <- "callback"
 	return ps.SendMessage(message)
 }
 

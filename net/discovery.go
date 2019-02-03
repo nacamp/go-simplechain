@@ -2,7 +2,6 @@ package net
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"runtime"
 	"time"
@@ -51,12 +50,12 @@ func NewDiscovery(hostID peer.ID, hostAddr ma.Multiaddr, metrics peerstore.Metri
 
 func (d *Discovery) Update(peerInfo *peerstore.PeerInfo) {
 	d.routingTable.Update(peerInfo.ID)
-	d.peerstore.AddAddrs(peerInfo.ID, peerInfo.Addrs, time.Duration(3600)*time.Second)
+	d.peerstore.AddAddrs(peerInfo.ID, peerInfo.Addrs, peerstore.PermanentAddrTTL)
 }
 
 func (d *Discovery) UpdateAddr(id peer.ID, addr ma.Multiaddr) {
 	d.routingTable.Update(id)
-	d.peerstore.AddAddr(id, addr, time.Duration(3600)*time.Second)
+	d.peerstore.AddAddr(id, addr, peerstore.PermanentAddrTTL)
 }
 
 func (d *Discovery) RandomPeerInfo() (peerstore.PeerInfo, error) {
@@ -137,38 +136,45 @@ func (d *Discovery) bond(peerInfo *peerstore.PeerInfo) (*PeerStream, error) {
 	}
 	d.Update(peerInfo)
 	d.streamPool.AddStream(peerStream)
+	log.CLog().WithFields(logrus.Fields{
+		"ID": peerInfo.ID,
+	}).Debug("addr: ", peerInfo.Addrs[0])
 	return peerStream, nil
 }
 
-func (d *Discovery) bondReply(peerInfo *peerstore.PeerInfo, reply chan<- *peerstore.PeerInfo) error {
+func (d *Discovery) bondReply(peerInfo *peerstore.PeerInfo, reply chan<- *peerstore.PeerInfo) {
 	if d._bond != nil {
 		reply <- d._bond(peerInfo)
 		d.Update(peerInfo)
-		return nil
+		return
 	}
 	_, err := d.bond(peerInfo)
-	if err != nil {
-		return err
-	}
 	reply <- peerInfo
-	return nil
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{
+			"ID": peerInfo.ID,
+		}).Warn("addr: ", peerInfo.Addrs[0])
+	} else {
+		log.CLog().WithFields(logrus.Fields{
+			"ID": peerInfo.ID,
+		}).Debug("addr: ", peerInfo.Addrs[0])
+	}
+	return
 }
 
 func (d *Discovery) Register(peerStream *PeerStream) {
-	fmt.Println("register")
 	peerStream.Register(MsgNearestPeers, d.MsgNearestPeersCh)
 	peerStream.Register(MsgNearestPeersAck, d.MsgNearestPeersAckCh)
 	peerStream.Register(MsgHello, d.HandshakeSucceedCh)
 }
 
 func (d *Discovery) StartHandler() {
-	fmt.Println("StartHandler")
-	go d.handleMsgNearestPeers()
-	go d.handleMsgNearestPeersAck()
-	go d.handleMsgHello()
+	go d.onMsgNearestPeers()
+	go d.onMsgNearestPeersAck()
+	go d.onMsgHello()
 }
 
-func (d *Discovery) handleMsgHello() {
+func (d *Discovery) onMsgHello() {
 	for {
 		select {
 		case ch := <-d.HandshakeSucceedCh:
@@ -191,7 +197,6 @@ func (d *Discovery) SendNearestPeers(targetID peer.ID, ps *PeerStream) error {
 	closestPeerInfo := d.NearestPeers(targetID)
 	payload := make([]*PeerInfo2, 0)
 	for _, info := range closestPeerInfo {
-		// p := d.peerstore.PeerInfo(id)
 		payload = append(payload, ToPeerInfo2(info))
 	}
 	if msg, err := NewRLPMessage(MsgNearestPeersAck, &payload); err != nil {
@@ -202,23 +207,21 @@ func (d *Discovery) SendNearestPeers(targetID peer.ID, ps *PeerStream) error {
 	return nil
 }
 
-func (d *Discovery) handleMsgNearestPeers() {
+func (d *Discovery) onMsgNearestPeers() {
 	for {
 		select {
 		case ch := <-d.MsgNearestPeersCh:
-			// fmt.Println(msg)
 			msg := ch.(*Message)
-			fmt.Println(msg.Code)
 			var targetID peer.ID
 			_ = rlp.DecodeBytes(msg.Payload, &targetID)
 			ps, _ := d.streamPool.GetStream(msg.PeerID)
 			d.SendNearestPeers(targetID, ps)
-			log.CLog().WithFields(logrus.Fields{}).Debug("targetID: ", targetID)
+			log.CLog().WithFields(logrus.Fields{"TargetID": targetID}).Debug("PeerID: ", msg.PeerID)
 		}
 	}
 }
 
-func (d *Discovery) handleMsgNearestPeersAck() {
+func (d *Discovery) onMsgNearestPeersAck() {
 	for {
 		select {
 		case ch := <-d.MsgNearestPeersAckCh:
@@ -265,27 +268,23 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 			for _, v := range ask {
 				askPending++
 				asked[v.ID] = true
-				fmt.Println(v.ID)
 				//fmt.Println("asked ", len(asked))
 				go d.findnode(v, peerID, reply)
 			}
 		}
 		for _, n := range <-reply {
-			fmt.Println("here1")
-			fmt.Println(n)
 			//if n != nil && !seen[n.ID] && !asked[n.ID] {
 			if n != nil && !asked[n.ID] {
 				if !seen[n.ID] {
 					seen[peerID] = true
 					bondPending++
-					fmt.Println(bondPending)
+					log.CLog().WithFields(logrus.Fields{}).Debug("b> ", bondPending)
 					go d.bondReply(n, bondReply)
 				}
-			} else {
-				fmt.Println("here2")
 			}
 		}
 		askPending--
+		log.CLog().WithFields(logrus.Fields{}).Debug("a> ", askPending)
 		if askPending == 0 {
 			if bondPending == 0 {
 				ask = ask[:0]
@@ -293,24 +292,23 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 				for n := range bondReply {
 					seenInfos = append(seenInfos, n)
 					bondPending--
-					//fmt.Println(bondPending)
+					log.CLog().WithFields(logrus.Fields{}).Debug("b> ", bondPending)
 					if bondPending == 0 {
 						break
 					}
 				}
 				ask = sortByDistance(seenInfos, peerID)
 				seenInfos = seenInfos[:0]
-				//fmt.Println("ask ", len(ask))
 			}
 		}
 
 	}
 	close(reply)
 	close(bondReply)
-	fmt.Println("peerstore size : ", len(d.peerstore.Peers()))
-	for _, id := range d.peerstore.Peers() {
-		fmt.Println(id.Pretty())
-	}
+	log.CLog().WithFields(logrus.Fields{}).Debug("peerstore size: ", len(d.peerstore.Peers()))
+	// for _, id := range d.peerstore.Peers() {
+	// 	fmt.Println(id.Pretty())
+	// }
 	return nil
 }
 
@@ -323,11 +321,19 @@ func (d *Discovery) randomLookup() error {
 	}
 	rand.Seed(time.Now().Unix())
 	id := peers[rand.Intn(size)]
-
+	if id == d.hostID {
+		return errors.New("TargetID cannot is hostID")
+	}
 	return d.lookup(id)
 }
 
 func (d *Discovery) Start() {
+	err := d.randomLookup()
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{
+			"Msg": err,
+		}).Warning("randomLookup")
+	}
 	ticker := time.NewTicker(5 * time.Second)
 	for {
 		select {
@@ -342,18 +348,3 @@ func (d *Discovery) Start() {
 		}
 	}
 }
-
-/*
-func (nodeRoute *NodeRoute) Start() {
-	ticker := time.NewTicker(5 * time.Second)
-	for {
-		select {
-		case <-ticker.C:
-			log.CLog().WithFields(logrus.Fields{
-				"count": runtime.NumGoroutine(),
-			}).Debug("NumGoroutine")
-			nodeRoute.FindNewNodes()
-		}
-	}
-}
-*/
