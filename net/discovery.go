@@ -35,10 +35,11 @@ type Discovery struct {
 	conn                 IConnect
 	streamPool           *PeerStreamPool
 	hostAddr             ma.Multiaddr
+	hostID               peer.ID
 }
 
 func NewDiscovery(hostID peer.ID, hostAddr ma.Multiaddr, metrics peerstore.Metrics, peerstore peerstore.Peerstore, streamPool *PeerStreamPool, conn IConnect) *Discovery {
-	d := &Discovery{hostAddr: hostAddr, streamPool: streamPool, conn: conn}
+	d := &Discovery{hostID: hostID, hostAddr: hostAddr, streamPool: streamPool, conn: conn}
 	d.routingTable =
 		kb.NewRoutingTable(BucketSize, kb.ConvertPeerID(hostID), time.Minute, metrics)
 	d.peerstore = peerstore
@@ -171,24 +172,16 @@ func (d *Discovery) handleMsgHello() {
 	for {
 		select {
 		case ch := <-d.HandshakeSucceedCh:
-
 			message := ch.(*Message)
-			fmt.Println("xxx :", message.PeerID)
-			// _ = msg.PeerID
-
 			data := string("")
 			rlp.DecodeBytes(message.Payload, &data)
-			// log.CLog().WithFields(logrus.Fields{
-			// 	"Command": message.Code,
-			// 	"Data":    data,
-			// }).Debug("onHello")
-
-			// node := ps.node
+			log.CLog().WithFields(logrus.Fields{
+				"ID": message.PeerID,
+			}).Debug("addr: ", data)
 			addr, err := ma.NewMultiaddr(data)
 			if err != nil {
 				continue
 			}
-			fmt.Println("server receive:", addr)
 			d.UpdateAddr(message.PeerID, addr)
 		}
 	}
@@ -220,6 +213,7 @@ func (d *Discovery) handleMsgNearestPeers() {
 			_ = rlp.DecodeBytes(msg.Payload, &targetID)
 			ps, _ := d.streamPool.GetStream(msg.PeerID)
 			d.SendNearestPeers(targetID, ps)
+			log.CLog().WithFields(logrus.Fields{}).Debug("targetID: ", targetID)
 		}
 	}
 }
@@ -234,16 +228,13 @@ func (d *Discovery) handleMsgNearestPeersAck() {
 			if ok {
 				payload := make([]*PeerInfo2, 0)
 				_ = rlp.DecodeBytes(msg.Payload, &payload)
-
 				reply := make([]*peerstore.PeerInfo, 0)
 				for _, info := range payload {
-					// p := d.peerstore.PeerInfo(id)
 					reply = append(reply, FromPeerInfo2(info))
 				}
-
 				replyCh := v.(chan interface{})
-				fmt.Println("handle ackreply")
 				replyCh <- reply
+				log.CLog().WithFields(logrus.Fields{"Size": len(reply)}).Debug("PeerID: ", msg.PeerID)
 			}
 		}
 	}
@@ -260,7 +251,7 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 		askPending  = 0
 		bondPending = 0
 	)
-
+	asked[d.hostID] = true
 	closest := d.routingTable.NearestPeers(kb.ConvertPeerID(peerID), BucketSize)
 	closestPeerInfo := make([]*peerstore.PeerInfo, 0, BucketSize)
 	for _, id := range closest {
@@ -274,19 +265,24 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 			for _, v := range ask {
 				askPending++
 				asked[v.ID] = true
+				fmt.Println(v.ID)
 				//fmt.Println("asked ", len(asked))
 				go d.findnode(v, peerID, reply)
 			}
 		}
 		for _, n := range <-reply {
+			fmt.Println("here1")
+			fmt.Println(n)
 			//if n != nil && !seen[n.ID] && !asked[n.ID] {
 			if n != nil && !asked[n.ID] {
 				if !seen[n.ID] {
 					seen[peerID] = true
 					bondPending++
-					//fmt.Println(bondPending)
+					fmt.Println(bondPending)
 					go d.bondReply(n, bondReply)
 				}
+			} else {
+				fmt.Println("here2")
 			}
 		}
 		askPending--
