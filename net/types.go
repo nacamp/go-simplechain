@@ -16,10 +16,10 @@ const (
 	MsgNearestPeers    = uint64(0x04)
 	MsgNearestPeersAck = uint64(0x05)
 
-	MSG_NEW_BLOCK         = 0x10
-	MSG_MISSING_BLOCK     = 0x12
-	MSG_MISSING_BLOCK_ACK = 0x13
-	MSG_NEW_TX            = 0x14
+	MsgNewBlock        = 0x10
+	MsgMissingBlock    = 0x12
+	MsgMissingBlockAck = 0x13
+	MsgNewTx           = 0x14
 )
 
 type Message struct {

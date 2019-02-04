@@ -17,10 +17,10 @@ import (
 )
 
 type Poa struct {
-	mu       sync.RWMutex
-	bc       *core.BlockChain
-	node     *net.Node
-	coinbase common.Address
+	mu           sync.RWMutex
+	bc           *core.BlockChain
+	node         *net.Node
+	coinbase     common.Address
 	enableMining bool
 	Storage      storage.Storage
 	Period       uint64
@@ -183,7 +183,7 @@ func (cs *Poa) loop() {
 				cs.bc.PutBlockByCoinbase(block)
 				cs.bc.Consensus.UpdateLIB()
 				cs.bc.RemoveOrphanBlock()
-				message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block.BaseBlock)
+				message, _ := net.NewRLPMessage(net.MsgNewBlock, block.BaseBlock)
 				cs.node.BroadcastMessage(&message)
 			}
 		}

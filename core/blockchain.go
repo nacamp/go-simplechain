@@ -404,7 +404,7 @@ func (bc *BlockChain) AddFutureBlock(block *Block) error {
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
 	//FIXME: temporarily, must send hash
 	if block.Header.Height > uint64(1) {
-		msg, err := net.NewRLPMessage(net.MSG_MISSING_BLOCK, block.Header.Height-uint64(1))
+		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.Height-uint64(1))
 		if err != nil {
 			return err
 		}
@@ -466,7 +466,7 @@ func (bc *BlockChain) RequestMissingBlock() error {
 	bc.mu.RLock()
 	defer bc.mu.RUnlock()
 	for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
-		msg, err := net.NewRLPMessage(net.MSG_MISSING_BLOCK, uint64(i))
+		msg, err := net.NewRLPMessage(net.MsgMissingBlock, uint64(i))
 		if err != nil {
 			return err
 		}
