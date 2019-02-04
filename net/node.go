@@ -80,7 +80,7 @@ func (node *Node) Start(seed string) {
 				"Msg":     err,
 			}).Panic("seed")
 		}
-		_, err = node.Connect(info.ID, info.Addrs[0])
+		_, err = node.Connect(info.ID, AddrFromPeerInfo(info))
 		node.discovery.Update(info)
 		if err != nil {
 			log.CLog().WithFields(logrus.Fields{
@@ -169,6 +169,9 @@ func (node *Node) HandleStream(s libnet.Stream) {
 	// p2pStream.Start(true)
 
 	peerStream, err := NewPeerStream(s)
+	log.CLog().WithFields(logrus.Fields{
+		"ID": peerStream.stream.Conn().RemotePeer(),
+	}).Warning("inbound")
 	if err != nil {
 		log.CLog().Warning(err)
 	}
@@ -209,7 +212,9 @@ func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
 	if err == nil && peerStream.status != statusClosed {
 		return peerStream, nil
 	}
-
+	log.CLog().WithFields(logrus.Fields{
+		"ID": id,
+	}).Warning("outbound")
 	node.host.Peerstore().AddAddr(id, addr, pstore.PermanentAddrTTL)
 	s, err := node.host.NewStream(context.Background(), id, "/simplechain/0.0.1")
 	if err != nil {

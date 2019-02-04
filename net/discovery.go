@@ -146,10 +146,10 @@ func (d *Discovery) bond(peerInfo *peerstore.PeerInfo) (*PeerStream, error) {
 		//TODO: stream status check
 	}
 	d.Update(peerInfo)
-	d.streamPool.AddStream(peerStream)
+	//d.streamPool.AddStream(peerStream)
 	log.CLog().WithFields(logrus.Fields{
 		"ID": peerInfo.ID,
-	}).Debug("addr: ", peerInfo.Addrs[0])
+	}).Debug("addr: ", AddrFromPeerInfo(peerInfo))
 	return peerStream, nil
 }
 
@@ -173,7 +173,7 @@ func (d *Discovery) bondReply(peerInfo *peerstore.PeerInfo, reply chan<- *peerst
 	} else {
 		log.CLog().WithFields(logrus.Fields{
 			"ID": peerInfo.ID,
-		}).Debug("addr: ", peerInfo.Addrs[0])
+		}).Debug("addr: ", AddrFromPeerInfo(peerInfo))
 	}
 	return
 }
@@ -357,13 +357,17 @@ func (d *Discovery) Start() {
 	for {
 		select {
 		case <-ticker.C:
+			ticker.Stop()
 			log.CLog().WithFields(logrus.Fields{
 				"count": runtime.NumGoroutine(),
 			}).Debug("NumGoroutine")
 			err := d.randomLookup()
-			log.CLog().WithFields(logrus.Fields{
-				"Msg": err,
-			}).Warning("randomLookup")
+			if err != nil {
+				log.CLog().WithFields(logrus.Fields{
+					"Msg": err,
+				}).Warning("randomLookup")
+			}
+			ticker = time.NewTicker(5 * time.Second)
 		}
 	}
 }

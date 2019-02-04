@@ -33,6 +33,7 @@ type PeerStream struct {
 	// SendHelloCh        chan bool
 	replys   *sync.Map
 	handlers *sync.Map
+	inboud   bool
 }
 
 func NewPeerStream(s libnet.Stream) (*PeerStream, error) {

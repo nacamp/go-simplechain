@@ -3,6 +3,10 @@ package net
 import (
 	"encoding/hex"
 
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+
+	multiaddr "github.com/multiformats/go-multiaddr"
+
 	crypto "github.com/libp2p/go-libp2p-crypto"
 )
 
@@ -31,4 +35,15 @@ func HexToPrivateKey(privKey string) (crypto.PrivKey, error) {
 	}
 	privKey2, err := crypto.UnmarshalPrivateKey(b)
 	return privKey2, err
+}
+
+func AddrFromPeerInfo(info *peerstore.PeerInfo) multiaddr.Multiaddr {
+	for _, addr := range info.Addrs {
+		//why p2p-circuit ?
+		if addr.String() != "/p2p-circuit" {
+			return addr
+		}
+	}
+	return nil
+
 }
