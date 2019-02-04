@@ -19,21 +19,14 @@ const (
 )
 
 type PeerStream struct {
-	mu sync.RWMutex //sync.Mutex
-	// peerID              peer.ID
-	// hostAddr            ma.Multiaddr
-	stream libnet.Stream
-	// node                *Node
-	// discovery           *Discovery
-	// isFinishedHandshake bool
-	status int
-	// finshedHandshakeCh  chan bool
+	mu                 sync.RWMutex //sync.Mutex
+	stream             libnet.Stream
+	status             int
 	HandshakeSucceedCh chan bool
 	messageCh          chan *Message
-	// SendHelloCh        chan bool
-	replys   *sync.Map
-	handlers *sync.Map
-	inboud   bool
+	replys             *sync.Map
+	handlers           *sync.Map
+	inboud             bool
 }
 
 func NewPeerStream(s libnet.Stream) (*PeerStream, error) {
@@ -55,6 +48,15 @@ func (ps *PeerStream) Start() { //isHost bool
 	// go ps.writeData(rw)
 }
 
+func (ps *PeerStream) callHandler(message *Message) {
+	message.PeerID = ps.stream.Conn().RemotePeer()
+	v, ok := ps.handlers.Load(message.Code)
+	if ok {
+		handler := v.(chan interface{})
+		handler <- message
+	}
+}
+
 func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 	for {
 		message := Message{}
@@ -65,6 +67,7 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 			log.CLog().WithFields(logrus.Fields{
 				"Msg": err,
 			}).Info("closed")
+			ps.callHandler(&Message{Code: StatusStreamClosed})
 			return
 		}
 		switch message.Code {
@@ -77,12 +80,7 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 				continue
 			}
 		}
-		message.PeerID = ps.stream.Conn().RemotePeer()
-		v, ok := ps.handlers.Load(message.Code)
-		if ok {
-			handler := v.(chan interface{})
-			handler <- &message
-		}
+		ps.callHandler(&message)
 	}
 }
 
@@ -149,6 +147,7 @@ func (ps *PeerStream) SendMessage(message *Message) error {
 		log.CLog().WithFields(logrus.Fields{
 			"Msg": err,
 		}).Info("closed")
+		ps.callHandler(&Message{})
 		return err
 	}
 	return nil
@@ -167,16 +166,10 @@ func (ps *PeerStream) Register(code uint64, handler chan interface{}) {
 	ps.handlers.Store(code, handler)
 }
 
-// func (ps *PeerStream) writeData(rw *bufio.ReadWriter) {
-// 	for {
-// 		for m := range ps.messageCh {
-// 			ps.SendMessage(m)
-// 		}
-// 		// select {
-// 		// case message := <-ps.messageCh:
-// 		// 	ps.sendMessage(message)
-// 		// 	// continue
-// 		// 	// default: why deault
-// 		// }
-// 	}
-// }
+func (ps *PeerStream) IsClosed() bool {
+	return ps.status == statusClosed
+}
+
+func (ps *PeerStream) IsHandshakeSucceed() bool {
+	return ps.status == statusHandshakeSucceed
+}

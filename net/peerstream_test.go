@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,14 +46,13 @@ func TestPeerStream(t *testing.T) {
 	}
 	fmt.Println("true")
 
-
 	handler2 := make(chan interface{}, 1)
 	cn.peerStream.Register(MsgNearestPeersAck, handler2)
 	go func() {
 		msg := <-handler2
-		fmt.Println(msg)
+		// fmt.Println(msg)
 		msg2 := msg.(*Message)
-		fmt.Println(msg2.Code)
+		//fmt.Println(msg2.Code)
 		v, ok := cn.peerStream.replys.Load(msg2.Code)
 		if ok {
 			reply := v.(chan interface{})
@@ -67,8 +65,8 @@ func TestPeerStream(t *testing.T) {
 	go func() {
 		msg := <-handler
 		fmt.Println(msg)
-		msg2 := msg.(*Message)
-		fmt.Println(msg2.Code)
+		// msg2 := msg.(*Message)
+		// fmt.Println(msg2.Code)
 		msg3, _ := NewRLPMessage(MsgNearestPeersAck, id)
 		sn.peerStream.SendMessage(&msg3)
 	}()
@@ -78,20 +76,19 @@ func TestPeerStream(t *testing.T) {
 	msg, _ = NewRLPMessage(MsgNearestPeers, id)
 	reply := make(chan interface{}, 1)
 	assert.NoError(t, cn.peerStream.SendMessageReply(&msg, reply))
-	fmt.Println(<-reply)
+	assert.Equal(t, "hi", <-reply)
+
+	assert.True(t, sn.peerStream.IsHandshakeSucceed())
+	assert.False(t, sn.peerStream.IsClosed())
 	// select {}
 }
 
 type TestNode struct {
-	seedID        peer.ID
-	done          chan bool
-	privKey       crypto.PrivKey
-	maddr         ma.Multiaddr
-	host          host.Host
-	nodeRoute     *NodeRoute
-	peerStream    *PeerStream
-	p2pStreams    *sync.Map
-	subsriberPool *SubscriberPool
+	done       chan bool
+	privKey    crypto.PrivKey
+	maddr      ma.Multiaddr
+	host       host.Host
+	peerStream *PeerStream
 }
 
 func NewTestNode(privStr string, addr string) *TestNode {

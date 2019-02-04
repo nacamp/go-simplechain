@@ -20,6 +20,8 @@ const (
 	MsgMissingBlock    = 0x12
 	MsgMissingBlockAck = 0x13
 	MsgNewTx           = 0x14
+
+	StatusStreamClosed = 0x101
 )
 
 type Message struct {
