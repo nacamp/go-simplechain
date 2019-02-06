@@ -136,10 +136,6 @@ func TestStorage(t *testing.T) {
 
 type MockNode struct {
 }
-
-func (node *MockNode) RegisterSubscriber(code uint64, subscriber net.Subscriber) {
-
-}
 func (node *MockNode) HandleStream(s libnet.Stream) {
 
 }
@@ -237,7 +233,7 @@ func TestMakeBlockChain(t *testing.T) {
 }
 
 func rlpEncode(block *core.Block) *core.Block {
-	message, _ := net.NewRLPMessage(net.MSG_NEW_BLOCK, block)
+	message, _ := net.NewRLPMessage(net.MsgNewBlock, block)
 	block2 := core.Block{}
 	rlp.DecodeBytes(message.Payload, &block2)
 	return &block2

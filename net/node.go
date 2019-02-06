@@ -3,7 +3,6 @@ package net
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-crypto"
@@ -18,16 +17,13 @@ import (
 )
 
 type Node struct {
-	seedID        peer.ID
-	done          chan bool
-	privKey       crypto.PrivKey
-	maddr         ma.Multiaddr
-	host          host.Host
-	nodeRoute     *NodeRoute
-	p2pStreamMap  *sync.Map
-	subsriberPool *SubscriberPool
-	streamPool    *PeerStreamPool
-	discovery     *Discovery
+	seedID     peer.ID
+	done       chan bool
+	privKey    crypto.PrivKey
+	maddr      ma.Multiaddr
+	host       host.Host
+	streamPool *PeerStreamPool
+	discovery  *Discovery
 }
 
 //TODO: 127.0.0.1 from parameter
@@ -39,11 +35,6 @@ func NewNode(port int, privKey crypto.PrivKey) *Node {
 }
 
 func (node *Node) Setup() {
-	node.subsriberPool = NewSubsriberPool()
-}
-
-func (node *Node) RegisterSubscriber(code uint64, subscriber Subscriber) {
-	node.subsriberPool.Register(code, subscriber)
 }
 
 //FIXME: temp

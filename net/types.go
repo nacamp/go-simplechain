@@ -11,8 +11,6 @@ import (
 const (
 	MsgHello           = uint64(0x00)
 	MsgHelloAck        = uint64(0x01)
-	MSG_PEERS          = 0x02
-	MSG_PEERS_ACK      = 0x03
 	MsgNearestPeers    = uint64(0x04)
 	MsgNearestPeersAck = uint64(0x05)
 
@@ -40,12 +38,7 @@ func NewRLPMessage(code uint64, payload interface{}) (msg Message, err error) {
 	return msg, nil
 }
 
-type Subscriber interface {
-	HandleMessage(message *Message) error
-}
-
 type INode interface {
-	RegisterSubscriber(code uint64, subscriber Subscriber)
 	HandleStream(s libnet.Stream)
 	SendMessage(message *Message, peerID peer.ID)
 	SendMessageToRandomNode(message *Message)
