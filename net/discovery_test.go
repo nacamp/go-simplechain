@@ -171,7 +171,7 @@ func TestLookup(t *testing.T) {
 	}
 
 	// d := NewDiscovery(peerInfos[0].ID, peerstore.NewMetrics(), pstoremem.NewPeerstore())
-	d := &Discovery{}
+	d := &Discovery{streamPool: NewPeerStreamPool()}
 	//100, prevent peer evicted
 	d.routingTable = kb.NewRoutingTable(100, kb.ConvertPeerID(peerInfos[0].ID), time.Minute, peerstore.NewMetrics())
 	d.peerstore = pstoremem.NewPeerstore()

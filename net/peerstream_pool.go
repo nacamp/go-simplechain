@@ -38,6 +38,7 @@ func (p *PeerStreamPool) SetLimit(maxPeers int) {
 }
 
 //only use at Node.HandleStream, Connect
+//TODO: how to distinguish lookupStreams with general connection
 func (p *PeerStreamPool) AddStream(peerStream *PeerStream) {
 	defer p.mu.Unlock()
 	p.mu.Lock()

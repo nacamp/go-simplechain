@@ -324,10 +324,11 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 	}
 	close(reply)
 	close(bondReply)
-	log.CLog().WithFields(logrus.Fields{}).Debug("peerstore size: ", len(d.peerstore.PeersWithAddrs()))
+	log.CLog().WithFields(logrus.Fields{}).Info("peerstore size: ", len(d.peerstore.PeersWithAddrs()))
 	// for _, id := range d.peerstore.Peers() {
 	// 	fmt.Println(id.Pretty())
 	// }
+	d.streamPool.RemoveAllLookupStream()
 	return nil
 }
 
@@ -353,7 +354,7 @@ func (d *Discovery) Start() {
 			"Msg": err,
 		}).Warning("randomLookup")
 	}
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(30 * time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -367,7 +368,7 @@ func (d *Discovery) Start() {
 					"Msg": err,
 				}).Warning("randomLookup")
 			}
-			ticker = time.NewTicker(5 * time.Second)
+			ticker = time.NewTicker(30 * time.Second)
 		}
 	}
 }
