@@ -5,12 +5,29 @@ import (
 	"fmt"
 	"testing"
 
+	peer "github.com/libp2p/go-libp2p-peer"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/net"
 	"github.com/nacamp/go-simplechain/rlp"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestPeerInfo(t *testing.T) {
+	addr, _ := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/100"))
+	id, _ := peer.IDB58Decode("16Uiu2HAkyN6nmD6F5Mzf354YeXKxpvRc7D7m1RF2v8vjk3VurpBY")
+	info := peerstore.PeerInfo{ID: id, Addrs: []ma.Multiaddr{addr}}
+	encodedBytes, err := rlp.EncodeToBytes(net.ToPeerInfo2(&info))
+	if err != nil {
+		fmt.Printf("%#v\n", err)
+	}
+    //Multiaddr is interface, rlp not support interface
+	info2 := net.PeerInfo2{}
+	rlp.Decode(bytes.NewReader(encodedBytes), &info2)
+	assert.Equal(t, &info, net.FromPeerInfo2(&info2), "")
+}
 
 type T1 struct {
 	T1_Text string
