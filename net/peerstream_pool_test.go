@@ -29,8 +29,8 @@ func TestPeerStreamPool(t *testing.T) {
 	addr, _ := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/9991")
 	id, _ := peer.IDB58Decode("16Uiu2HAkwR1pV8ZR8ApcZWrMSw5iNMwaJHFpKr91H9a1a65WGehk")
 	cn.Connect(id, addr)
-	sn.peerStream.Start()
-	cn.peerStream.Start()
+	// sn.peerStream.Start()
+	// cn.peerStream.Start()
 
 	cn.peerStream.SendHello(cn.maddr)
 	<-cn.peerStream.HandshakeSucceedCh
@@ -57,6 +57,44 @@ func TestPeerStreamPool(t *testing.T) {
 		if int32(0) == pool.count {
 			break
 		}
+	}
+	<-hander.MsgNewTxCh
+
+	//remove lookupStreams
+	pool.SetLimit(0)
+	cn.Connect(id, addr)
+	cn.peerStream.SendHello(cn.maddr)
+	<-cn.peerStream.HandshakeSucceedCh
+
+	assert.Equal(t, int32(0), pool.count)
+	pool.AddStream(sn.peerStream)
+	pool.AddStream(cn.peerStream)
+	assert.Equal(t, int32(0), pool.count)
+
+	lookupStreamsCount := int32(0)
+	pool.lookupStreams.Range(func(key, value interface{}) bool {
+		lookupStreamsCount++
+		return true
+	})
+	assert.Equal(t, int32(2), lookupStreamsCount)
+
+	msg2, _ = NewRLPMessage(MsgNewTx, "waiting")
+	sn.peerStream.SendMessage(&msg2)
+
+	pool.RemoveAllLookupStream()
+
+	ticker = time.NewTicker(100 * time.Millisecond)
+	for t := range ticker.C {
+		fmt.Println("Tick at", t)
+		lookupStreamsCount = int32(0)
+		pool.lookupStreams.Range(func(key, value interface{}) bool {
+			lookupStreamsCount--
+			return true
+		})
+		if int32(0) == lookupStreamsCount {
+			break
+		}
+		fmt.Println(lookupStreamsCount)
 	}
 	<-hander.MsgNewTxCh
 }

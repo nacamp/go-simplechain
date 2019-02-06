@@ -28,8 +28,6 @@ func TestPeerStream(t *testing.T) {
 	id, _ := peer.IDB58Decode("16Uiu2HAkwR1pV8ZR8ApcZWrMSw5iNMwaJHFpKr91H9a1a65WGehk")
 	cn.Connect(id, addr)
 	//sn.done <- true
-	sn.peerStream.Start()
-	cn.peerStream.Start()
 
 	//Handshake is not completed
 	msg, _ := NewRLPMessage(MsgNearestPeers, id)
@@ -108,10 +106,13 @@ func (node *TestNode) Start(isServer bool) {
 	node.host = host
 	if isServer {
 		node.host.SetStreamHandler("/simplechain/0.0.1", node.HandleStream)
-		go func() {
-			<-node.done
-		}()
+		// go func() {
+		// 	<-node.done
+		// }()
 	}
+	go func() {
+		<-node.done
+	}()
 
 }
 
@@ -120,6 +121,7 @@ func (node *TestNode) HandleStream(s libnet.Stream) {
 	fmt.Println("inbound")
 	peerStream, _ := NewPeerStream(s)
 	node.peerStream = peerStream
+	peerStream.Start()
 }
 
 func (node *TestNode) Connect(peerid peer.ID, addr ma.Multiaddr) {
@@ -131,4 +133,5 @@ func (node *TestNode) Connect(peerid peer.ID, addr ma.Multiaddr) {
 	fmt.Println("outbound")
 	peerStream, _ := NewPeerStream(s)
 	node.peerStream = peerStream
+	peerStream.Start()
 }

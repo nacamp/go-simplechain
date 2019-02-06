@@ -2,7 +2,6 @@ package net
 
 import (
 	"errors"
-	"fmt"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -18,6 +17,7 @@ type PeerStreamHandler interface {
 
 type PeerStreamPool struct {
 	mu                   sync.RWMutex //sync.Mutex
+	lookupStreams        *sync.Map
 	streams              *sync.Map
 	handlers             []PeerStreamHandler
 	limit                int32
@@ -29,6 +29,7 @@ func NewPeerStreamPool() *PeerStreamPool {
 	p := PeerStreamPool{streams: new(sync.Map), handlers: make([]PeerStreamHandler, 0)}
 	p.limit = 10
 	p.StatusStreamClosedCh = make(chan interface{}, 1)
+	p.lookupStreams = new(sync.Map)
 	return &p
 }
 
@@ -37,26 +38,38 @@ func (p *PeerStreamPool) SetLimit(maxPeers int) {
 }
 
 //only use at Node.HandleStream, Connect
-func (p *PeerStreamPool) AddStream(peerStream *PeerStream) error {
+func (p *PeerStreamPool) AddStream(peerStream *PeerStream) {
+	defer p.mu.Unlock()
 	p.mu.Lock()
 	if p.count >= p.limit {
-		errors.New("Pool was exceeded max limit")
+		p.addStream(p.lookupStreams, peerStream)
+		return
 	}
 	p.count++
-	p.mu.Unlock()
+	p.addStream(p.streams, peerStream)
+	return
+}
 
-	p.streams.Store(peerStream.stream.Conn().RemotePeer(), peerStream)
+func (p *PeerStreamPool) addStream(streams *sync.Map, peerStream *PeerStream) {
+	streams.Store(peerStream.stream.Conn().RemotePeer(), peerStream)
 	p.register(peerStream)
 	p.startHandler()
 	for _, h := range p.handlers {
 		h.Register(peerStream)
 		h.StartHandler()
 	}
-	return nil
 }
 
 func (p *PeerStreamPool) GetStream(id peer.ID) (*PeerStream, error) {
-	v, ok := p.streams.Load(id)
+	if peerStream, err := p.getStream(p.streams, id); err != nil {
+		return p.getStream(p.lookupStreams, id)
+	} else {
+		return peerStream, err
+	}
+}
+
+func (p *PeerStreamPool) getStream(streams *sync.Map, id peer.ID) (*PeerStream, error) {
+	v, ok := streams.Load(id)
 	if ok {
 		return v.(*PeerStream), nil
 	}
@@ -65,11 +78,21 @@ func (p *PeerStreamPool) GetStream(id peer.ID) (*PeerStream, error) {
 
 func (p *PeerStreamPool) RemoveStream(id peer.ID) {
 	_, ok := p.streams.Load(id)
-	fmt.Println(id.Pretty())
 	if ok {
 		p.streams.Delete(id)
 		atomic.AddInt32(&p.count, -1)
+	} else {
+		p.lookupStreams.Delete(id)
 	}
+
+}
+
+func (p *PeerStreamPool) RemoveAllLookupStream() {
+	p.lookupStreams.Range(func(key, value interface{}) bool {
+		ps := value.(*PeerStream)
+		_ = ps.stream.Close()
+		return true
+	})
 
 }
 
