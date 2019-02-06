@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/console"
+	"github.com/nacamp/go-simplechain/core/service"
 	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/rpc"
 	"github.com/sirupsen/logrus"
@@ -30,6 +31,7 @@ func run(c *cli.Context) {
 	config := cmd.NewConfigFromFile(c.String("config"))
 
 	log.Init("", log.InfoLevel, 0)
+	// log.Init("", log.DebugLevel, 0)
 	//TODO change node private key
 	privKey, err := config.NodePrivateKey()
 	if err != nil {
@@ -50,7 +52,11 @@ func run(c *cli.Context) {
 	if config.Consensus == "dpos" {
 		cs := consensus.NewDpos(node)
 		bc := core.NewBlockChain(db)
-		bcs := core.NewBlockChainService(bc, node)
+		//FIXME: temp
+		bcs := service.NewBlockChainService(bc, node.GetStreamPool())
+		node.GetStreamPool().AddHandler(bcs)
+		bcs.Start()
+		// bcs := core.NewBlockChainService(bc, node)
 		if config.EnableMining {
 			log.CLog().WithFields(logrus.Fields{
 				"Address":   config.MinerAddress,
@@ -64,7 +70,7 @@ func run(c *cli.Context) {
 		}
 		bc.Setup(cs, cmd.MakeVoterAccountsFromConfig(config))
 		// bc.Start()
-		bcs.Start()
+		// bcs.Start()
 		node.Start(config.Seeds[0])
 		cs.Start()
 
@@ -74,11 +80,16 @@ func run(c *cli.Context) {
 		rpcService := &rpc.RpcService{}
 		rpcService.Setup(rpcServer, config, bc, wallet)
 		rpcServer.Start()
+
 	} else {
 		cs := consensus.NewPoa(node, db)
 		bc := core.NewBlockChain(db)
-		bcs := core.NewBlockChainService(bc, node)
+		// bcs := core.NewBlockChainService(bc, node)
 		// bc.SetNode(node)
+		//FIXME: temp
+		bcs := service.NewBlockChainService(bc, node.GetStreamPool())
+		node.GetStreamPool().AddHandler(bcs)
+		bcs.Start()
 		if config.EnableMining {
 			log.CLog().WithFields(logrus.Fields{
 				"Address":   config.MinerAddress,
@@ -92,7 +103,7 @@ func run(c *cli.Context) {
 		}
 		bc.Setup(cs, cmd.MakeVoterAccountsFromConfig(config))
 		// bc.Start()
-		bcs.Start()
+		// bcs.Start()
 		node.Start(config.Seeds[0])
 		cs.Start()
 
@@ -102,6 +113,7 @@ func run(c *cli.Context) {
 		rpcService := &rpc.RpcService{}
 		rpcService.Setup(rpcServer, config, bc, wallet)
 		rpcServer.Start()
+
 	}
 
 	select {}
