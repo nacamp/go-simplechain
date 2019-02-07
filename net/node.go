@@ -26,11 +26,21 @@ type Node struct {
 	discovery  *Discovery
 }
 
-//TODO: 127.0.0.1 from parameter
-func NewNode(port int, privKey crypto.PrivKey) *Node {
+func NewNodeTmp(port int, privKey crypto.PrivKey) *Node {
 	maddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
 	_node := &Node{maddr: maddr, privKey: privKey, done: make(chan bool, 1)}
 	_node.streamPool = NewPeerStreamPool()
+	return _node
+}
+
+func NewNode(port int, privKey crypto.PrivKey, streamPool *PeerStreamPool) *Node {
+	maddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
+	_node := &Node{
+		maddr:      maddr,
+		privKey:    privKey,
+		done:       make(chan bool, 1),
+		streamPool: streamPool,
+	}
 	return _node
 }
 
@@ -52,11 +62,11 @@ func (node *Node) Start(seed string) {
 	node.discovery = NewDiscovery(host.ID(), node.maddr, peerstore.NewMetrics(), host.Peerstore(), node.streamPool, node)
 	node.streamPool.AddHandler(node.discovery)
 
-	hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
-	addr := host.Addrs()[0]
-	fullAddr := addr.Encapsulate(hostAddr).String()
+	// hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
+	// addr := host.Addrs()[0]
+	// fullAddr := addr.Encapsulate(hostAddr).String()
 	log.CLog().WithFields(logrus.Fields{
-		"fullAddr": fullAddr,
+		"fullAddr": fmt.Sprintf("/ipfs/%s", host.ID().Pretty()),
 	}).Info("My address")
 	node.host = host
 
@@ -123,24 +133,5 @@ func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
 	peerStream, err = NewPeerStream(s)
 	node.streamPool.AddStream(peerStream)
 	peerStream.Start()
-	// info := peerstore.PeerInfo{ID: id, Addrs: []multiaddr.Multiaddr{addr}}
-	// node.discovery.Update(&info)
 	return peerStream, nil
 }
-
-// func (node *Node) SendMessage(message *Message, peerID peer.ID) {
-// 	// value, ok := node.p2pStreamMap.Load(peerID)
-// 	// if ok {
-// 	// 	p2pStream := value.(*P2PStream)
-// 	// 	p2pStream.sendMessage(message)
-// 	// }
-// }
-
-// //TODO: Random, current send message at first node
-// func (node *Node) SendMessageToRandomNode(message *Message) {
-// 	// node.p2pStreamMap.Range(func(key, value interface{}) bool {
-// 	// 	p2pStream := value.(*P2PStream)
-// 	// 	p2pStream.sendMessage(message)
-// 	// 	return false
-// 	// })
-// }
