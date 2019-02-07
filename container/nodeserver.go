@@ -24,10 +24,14 @@ type NodeServer struct {
 	bcService  *service.BlockChainService
 	db         storage.Storage
 	streamPool *net.PeerStreamPool
+	node       *net.Node
+	config     *cmd.Config
 }
 
 func NewNodeServer(config *cmd.Config) *NodeServer {
-	ns := NodeServer{}
+	ns := NodeServer{config: config}
+
+	ns.streamPool = net.NewPeerStreamPool()
 
 	if config.DBPath == "" {
 		ns.db, _ = storage.NewMemoryStorage()
@@ -37,27 +41,39 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	ns.bc = core.NewBlockChain(ns.db)
 
 	ns.wallet = account.NewWallet(config.KeystoreFile)
-	// ns.wallet.Load()
+	ns.wallet.Load()
 
-	//FIXME
+	privKey, err := config.NodePrivateKey()
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{
+			"Msg": err,
+		}).Panic("NodePrivateKey")
+	}
+	ns.node = net.NewNode(config.Port, privKey, ns.streamPool)
+
 	if config.Consensus == "dpos" {
-		ns.consensus = consensus.NewDpos(nil) //node
+		ns.consensus = consensus.NewDpos(ns.node)
 	} else {
-		ns.consensus = consensus.NewPoa(nil, ns.db)
-		if config.EnableMining {
-			log.CLog().WithFields(logrus.Fields{
-				"Address":   config.MinerAddress,
-				"Consensus": config.Consensus,
-			}).Info("Miner Info")
-			err := ns.wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
-			if err != nil {
-				log.CLog().Fatal(err)
-			}
-			//FIXME:
-			//ns.consensus.Setup(common.HexToAddress(config.MinerAddress), wallet)
-			ns.bc.Setup(ns.consensus, cmd.MakeVoterAccountsFromConfig(config))
+		ns.consensus = consensus.NewPoa(ns.node, ns.db)
+	}
+
+	if config.EnableMining {
+		log.CLog().WithFields(logrus.Fields{
+			"Address":   config.MinerAddress,
+			"Consensus": config.Consensus,
+		}).Info("Miner Info")
+		err := ns.wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
+		if err != nil {
+			log.CLog().Fatal(err)
+		}
+		if config.Consensus == "dpos" {
+			//? Setup is not suitable to exist in consensus because setup have wallet(not core package)
+			ns.consensus.(*consensus.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+		} else {
+			ns.consensus.(*consensus.Poa).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
 		}
 	}
+	ns.bc.Setup(ns.consensus, cmd.MakeVoterAccountsFromConfig(config))
 
 	ns.bcService = service.NewBlockChainService(ns.bc, ns.streamPool)
 	ns.streamPool.AddHandler(ns.bcService)
@@ -66,9 +82,12 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	rpcService := &rpc.RpcService{}
 	rpcService.Setup(ns.rpcServer, config, ns.bc, ns.wallet)
 
-	return nil
+	return &ns
 }
 
-func (n *NodeServer) Start() error {
-	return nil
+func (ns *NodeServer) Start() {
+	ns.node.Start(ns.config.Seeds[0])
+	ns.consensus.Start()
+	ns.bcService.Start()
+	ns.rpcServer.Start()
 }

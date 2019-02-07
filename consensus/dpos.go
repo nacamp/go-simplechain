@@ -39,7 +39,7 @@ func NewDpos(node *net.Node) *Dpos {
 	return &Dpos{node: node}
 }
 
-func (cs *Dpos) Setup(address common.Address, wallet *account.Wallet) {
+func (cs *Dpos) Setup(address common.Address, wallet *account.Wallet, period int) {
 	cs.enableMining = true
 	cs.coinbase = address
 	cs.wallet = wallet

@@ -1,13 +1,12 @@
 # go-simplechain
 It is pilot project for blockchain
 
-## TODO
 
 ## run
 ```
-./demo -config ../../conf/sample1.json
-./demo -config ../../conf/sample2.json
-./demo -config ../../conf/sample3.json
+./simple -config ../../conf/sample1.json
+./simple -config ../../conf/sample2.json
+./simple -config ../../conf/sample3.json
 ```
 
 ## config
@@ -21,10 +20,10 @@ in sample2.json, sample3.json
 ## account command
 ```
 import privatekey 
-./demo account import -config ../../conf/sample1.json
+./simple account import -config ../../conf/sample1.json
 
 new address
-./demo account new -config ../../conf/sample1.json
+./simple account new -config ../../conf/sample1.json
 ```
 
 

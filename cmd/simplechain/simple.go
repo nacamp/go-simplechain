@@ -3,119 +3,29 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
+
+	"github.com/nacamp/go-simplechain/container"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/console"
-	"github.com/nacamp/go-simplechain/core/service"
 	"github.com/nacamp/go-simplechain/crypto"
-	"github.com/nacamp/go-simplechain/rpc"
-	"github.com/sirupsen/logrus"
 
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/common"
-	"github.com/nacamp/go-simplechain/consensus"
-	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/log"
-	"github.com/nacamp/go-simplechain/net"
-	"github.com/nacamp/go-simplechain/storage"
 	"github.com/urfave/cli"
 )
 
 func run(c *cli.Context) {
+	log.Init("", log.InfoLevel, 0)
 	if c.String("config") == "" {
 		log.CLog().Fatal("not found config")
 		return
 	}
 	config := cmd.NewConfigFromFile(c.String("config"))
-
-	log.Init("", log.InfoLevel, 0)
-	// log.Init("", log.DebugLevel, 0)
-	//TODO change node private key
-	privKey, err := config.NodePrivateKey()
-	if err != nil {
-	}
-
-	node := net.NewNodeTmp(config.Port, privKey)
-	node.Setup()
-
-	var db storage.Storage
-	if config.DBPath == "" {
-		db, _ = storage.NewMemoryStorage()
-	} else {
-		db, _ = storage.NewLevelDBStorage(config.DBPath)
-	}
-	wallet := account.NewWallet(config.KeystoreFile)
-	wallet.Load()
-	//TODO: remove duplicated code
-	if config.Consensus == "dpos" {
-		cs := consensus.NewDpos(node)
-		bc := core.NewBlockChain(db)
-		//FIXME: temp
-		bcs := service.NewBlockChainService(bc, node.GetStreamPool())
-		node.GetStreamPool().AddHandler(bcs)
-		bcs.Start()
-		// bcs := core.NewBlockChainService(bc, node)
-		if config.EnableMining {
-			log.CLog().WithFields(logrus.Fields{
-				"Address":   config.MinerAddress,
-				"Consensus": config.Consensus,
-			}).Info("Miner Info")
-			err := wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
-			if err != nil {
-				log.CLog().Fatal(err)
-			}
-			cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
-		}
-		bc.Setup(cs, cmd.MakeVoterAccountsFromConfig(config))
-		// bc.Start()
-		// bcs.Start()
-		node.Start(config.Seeds[0])
-		cs.Start()
-
-		wallet := account.NewWallet(config.KeystoreFile)
-
-		rpcServer := rpc.NewRpcServer(config.RpcAddress)
-		rpcService := &rpc.RpcService{}
-		rpcService.Setup(rpcServer, config, bc, wallet)
-		rpcServer.Start()
-
-	} else {
-		cs := consensus.NewPoa(node, db)
-		bc := core.NewBlockChain(db)
-		// bcs := core.NewBlockChainService(bc, node)
-		// bc.SetNode(node)
-		//FIXME: temp
-		bcs := service.NewBlockChainService(bc, node.GetStreamPool())
-		node.GetStreamPool().AddHandler(bcs)
-		bcs.Start()
-		if config.EnableMining {
-			log.CLog().WithFields(logrus.Fields{
-				"Address":   config.MinerAddress,
-				"Consensus": config.Consensus,
-			}).Info("Miner Info")
-			err := wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
-			if err != nil {
-				log.CLog().Fatal(err)
-			}
-			cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
-		}
-		bc.Setup(cs, cmd.MakeVoterAccountsFromConfig(config))
-		// bc.Start()
-		// bcs.Start()
-		node.Start(config.Seeds[0])
-		cs.Start()
-
-		wallet := account.NewWallet(config.KeystoreFile)
-
-		rpcServer := rpc.NewRpcServer(config.RpcAddress)
-		rpcService := &rpc.RpcService{}
-		rpcService.Setup(rpcServer, config, bc, wallet)
-		rpcServer.Start()
-
-	}
-
+	ns := container.NewNodeServer(config)
+	ns.Start()
 	select {}
 
 }
