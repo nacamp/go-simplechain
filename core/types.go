@@ -21,4 +21,5 @@ type Consensus interface {
 	MakeGenesisBlock(block *Block, voters []*Account) error
 	AddBlockChain(*BlockChain)
 	CloneFromParentBlock(block *Block, parentBlock *Block) (err error)
+	Start()
 }
