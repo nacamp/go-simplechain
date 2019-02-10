@@ -195,16 +195,20 @@ func (d *Discovery) onMsgHello() {
 		select {
 		case ch := <-d.HandshakeSucceedCh:
 			message := ch.(*Message)
-			data := string("")
-			rlp.DecodeBytes(message.Payload, &data)
-			log.CLog().WithFields(logrus.Fields{
-				"ID": message.PeerID,
-			}).Debug("addr: ", data)
-			addr, err := ma.NewMultiaddr(data)
-			if err != nil {
-				continue
-			}
-			d.UpdateAddr(message.PeerID, addr)
+			//TODO: check whhether port is dynamic port or
+			// data := string("")
+			// rlp.DecodeBytes(message.Payload, &data)
+			// log.CLog().WithFields(logrus.Fields{
+			// 	"ID": message.PeerID,
+			// }).Debug("addr: ", data)
+			ps, _ := d.streamPool.GetStream(message.PeerID)
+			// a := ps.stream.Conn().RemoteMultiaddr()
+			// log.CLog().WithFields(logrus.Fields{}).Warn(a)
+			// addr, err := ma.NewMultiaddr(data)
+			// if err != nil {
+			// 	continue
+			// }
+			d.UpdateAddr(message.PeerID, ps.stream.Conn().RemoteMultiaddr())
 		}
 	}
 }
