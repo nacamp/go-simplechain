@@ -62,12 +62,13 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 		message := Message{}
 		err := rlp.Decode(rw, &message)
 		if err != nil {
-			ps.stream.Close()
-			ps.status = statusClosed
-			log.CLog().WithFields(logrus.Fields{
-				"Msg": err,
-			}).Info("closed")
-			ps.callHandler(&Message{Code: StatusStreamClosed})
+			ps.close(err)
+			// ps.stream.Close()
+			// ps.status = statusClosed
+			// log.CLog().WithFields(logrus.Fields{
+			// 	"Msg": err,
+			// }).Info("closed")
+			// ps.callHandler(&Message{Code: StatusStreamClosed})
 			return
 		}
 		switch message.Code {
@@ -142,12 +143,13 @@ func (ps *PeerStream) SendMessage(message *Message) error {
 	encodedBytes, _ := rlp.EncodeToBytes(message)
 	_, err := ps.stream.Write(encodedBytes)
 	if err != nil {
-		ps.stream.Close()
-		ps.status = statusClosed
-		log.CLog().WithFields(logrus.Fields{
-			"Msg": err,
-		}).Info("closed")
-		ps.callHandler(&Message{})
+		ps.close(err)
+		// ps.stream.Close()
+		// ps.status = statusClosed
+		// log.CLog().WithFields(logrus.Fields{
+		// 	"Msg": err,
+		// }).Info("closed")
+		// ps.callHandler(&Message{})
 		return err
 	}
 	return nil
@@ -172,4 +174,13 @@ func (ps *PeerStream) IsClosed() bool {
 
 func (ps *PeerStream) IsHandshakeSucceed() bool {
 	return ps.status == statusHandshakeSucceed
+}
+
+func (ps *PeerStream) close(err error) {
+	ps.stream.Close()
+	ps.status = statusClosed
+	log.CLog().WithFields(logrus.Fields{
+		"Msg": err,
+	}).Info("closed")
+	ps.callHandler(&Message{})
 }
