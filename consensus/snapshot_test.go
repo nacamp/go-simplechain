@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -107,4 +108,18 @@ func TestApply(t *testing.T) {
 	assert.Equal(t, 0, snap.Candidates[addr2].Votes)
 	_, ok = snap.Votes[appendAddress(addr4, addr0)]
 	assert.False(t, ok)
+}
+
+func TestJson(t *testing.T) {
+	daddr := appendAddress(addr0, addr1)
+
+	blob, err := json.Marshal(daddr)
+	if err != nil {
+		fmt.Println(err)
+	}
+	daddr2 := new(DoubleAddress)
+	if err := json.Unmarshal(blob, daddr2); err != nil {
+		fmt.Println(err)
+	}
+	assert.Equal(t, &daddr, daddr2)
 }

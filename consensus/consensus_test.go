@@ -29,7 +29,7 @@ func TestFixtureAddressOrder(t *testing.T) {
 		bc.Setup(cs, voters)
 
 		if cs.ConsensusType() == "DPOS" {
-			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet())
+			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet(), 3)
 			minerGroup, _, err := bc.GenesisBlock.MinerState.GetMinerGroup(bc, bc.GenesisBlock)
 			fmt.Println("Dpos minerGroup order in tests.fixture")
 			for _, addr := range minerGroup {
@@ -63,7 +63,7 @@ func TestMakeBlock(t *testing.T) {
 
 		var block *core.Block
 		if cs.ConsensusType() == "DPOS" {
-			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet())
+			cs.(*consensus.Dpos).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet(), 3)
 			block = cs.(*consensus.Dpos).MakeBlock(uint64(1)) // minerGroup[0]
 		} else {
 			cs.(*consensus.Poa).Setup(common.HexToAddress(tests.Addr0), tests.MakeWallet(), 3)
