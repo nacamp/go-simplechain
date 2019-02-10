@@ -121,8 +121,17 @@ func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, rep
 	msg, _ := NewRLPMessage(MsgNearestPeers, targetID)
 	replyAck := make(chan interface{}, 1)
 	peerStream.SendMessageReply(&msg, replyAck)
-	ack := <-replyAck
-	reply <- ack.([]*peerstore.PeerInfo)
+	//timeout
+	timer := time.NewTicker(1 * time.Second)
+	select {
+	case <-timer.C:
+		peerStream.Close()
+		reply <- nil
+	case ack := <-replyAck:
+		reply <- ack.([]*peerstore.PeerInfo)
+	}
+	// ack := <-replyAck
+	// reply <- ack.([]*peerstore.PeerInfo)
 }
 
 func (d *Discovery) bond(peerInfo *peerstore.PeerInfo) (*PeerStream, error) {
@@ -137,16 +146,20 @@ func (d *Discovery) bond(peerInfo *peerstore.PeerInfo) (*PeerStream, error) {
 	if err != nil {
 		return nil, err
 	}
-	//TODO: make func
-	if peerStream.status != statusHandshakeSucceed {
-		peerStream.SendHello(d.hostAddr)
-		//TODO: timeout
-		<-peerStream.HandshakeSucceedCh
-	} else {
-		//TODO: stream status check
+	if !peerStream.IsHandshakeSucceed() {
+		if err := peerStream.SendHello(d.hostAddr); err != nil {
+			return nil, err
+		}
+		//timeout
+		timer := time.NewTicker(1 * time.Second)
+		select {
+		case <-timer.C:
+			peerStream.Close()
+			return nil, errors.New("timeout")
+		case <-peerStream.HandshakeSucceedCh:
+		}
 	}
 	d.Update(peerInfo)
-	//d.streamPool.AddStream(peerStream)
 	log.CLog().WithFields(logrus.Fields{
 		"ID": peerInfo.ID,
 	}).Debug("addr: ", AddrFromPeerInfo(peerInfo))
