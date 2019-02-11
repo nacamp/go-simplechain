@@ -52,9 +52,9 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	ns.node = net.NewNode(config.Port, privKey, ns.streamPool)
 
 	if config.Consensus == "dpos" {
-		ns.consensus = consensus.NewDpos(ns.node)
+		ns.consensus = consensus.NewDpos(ns.streamPool)
 	} else {
-		ns.consensus = consensus.NewPoa(ns.node, ns.db)
+		ns.consensus = consensus.NewPoa(ns.streamPool, ns.db)
 	}
 
 	if config.EnableMining {

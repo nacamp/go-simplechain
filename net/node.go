@@ -112,9 +112,9 @@ func (node *Node) HandleStream(s libnet.Stream) {
 	peerStream.Start()
 }
 
-func (node *Node) BroadcastMessage(message *Message) {
-	node.streamPool.BroadcastMessage(message)
-}
+// func (node *Node) BroadcastMessage(message *Message) {
+// 	node.streamPool.BroadcastMessage(message)
+// }
 
 func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
 	peerStream, err := node.streamPool.GetStream(id)
