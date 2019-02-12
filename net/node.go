@@ -26,13 +26,6 @@ type Node struct {
 	discovery  *Discovery
 }
 
-func NewNodeTmp(port int, privKey crypto.PrivKey) *Node {
-	maddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/%d", port))
-	_node := &Node{maddr: maddr, privKey: privKey, done: make(chan bool, 1)}
-	_node.streamPool = NewPeerStreamPool()
-	return _node
-}
-
 func NewNode(port int, privKey crypto.PrivKey, streamPool *PeerStreamPool) *Node {
 	maddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
 	_node := &Node{
@@ -47,11 +40,6 @@ func NewNode(port int, privKey crypto.PrivKey, streamPool *PeerStreamPool) *Node
 func (node *Node) Setup() {
 }
 
-//FIXME: temp
-//We need container at another package
-func (node *Node) GetStreamPool() *PeerStreamPool {
-	return node.streamPool
-}
 
 func (node *Node) Start(seed string) {
 	host, _ := libp2p.New(
@@ -62,9 +50,6 @@ func (node *Node) Start(seed string) {
 	node.discovery = NewDiscovery(host.ID(), node.maddr, peerstore.NewMetrics(), host.Peerstore(), node.streamPool, node)
 	node.streamPool.AddHandler(node.discovery)
 
-	// hostAddr, _ := ma.NewMultiaddr(fmt.Sprintf("/ipfs/%s", host.ID().Pretty()))
-	// addr := host.Addrs()[0]
-	// fullAddr := addr.Encapsulate(hostAddr).String()
 	log.CLog().WithFields(logrus.Fields{
 		"fullAddr": fmt.Sprintf("/ipfs/%s", host.ID().Pretty()),
 	}).Info("My address")
@@ -111,10 +96,6 @@ func (node *Node) HandleStream(s libnet.Stream) {
 	node.streamPool.AddStream(peerStream)
 	peerStream.Start()
 }
-
-// func (node *Node) BroadcastMessage(message *Message) {
-// 	node.streamPool.BroadcastMessage(message)
-// }
 
 func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
 	peerStream, err := node.streamPool.GetStream(id)

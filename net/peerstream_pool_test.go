@@ -10,9 +10,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/nacamp/go-simplechain/rlp"
 	"github.com/stretchr/testify/assert"
-	// peer "github.com/libp2p/go-libp2p-peer"
-	// ma "github.com/multiformats/go-multiaddr"
-	// "github.com/stretchr/testify/assert"
 )
 
 func TestPeerStreamPool(t *testing.T) {

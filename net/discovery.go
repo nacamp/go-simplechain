@@ -122,7 +122,6 @@ func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, rep
 	replyAck := make(chan interface{}, 1)
 	peerStream.SendMessageReply(&msg, replyAck)
 	//timeout
-	//timer := time.NewTicker(1 * time.Second)
 	select {
 	case <-time.After(1 * time.Second):
 		peerStream.Close()
@@ -130,17 +129,12 @@ func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, rep
 	case ack := <-replyAck:
 		reply <- ack.([]*peerstore.PeerInfo)
 	}
-	// ack := <-replyAck
-	// reply <- ack.([]*peerstore.PeerInfo)
 }
 
 func (d *Discovery) bond(peerInfo *peerstore.PeerInfo) (*PeerStream, error) {
 	if d._bond != nil {
 		d._bond(peerInfo)
 		return nil, nil
-		// reply <- d._bond(peerInfo)
-		// d.Update(peerInfo)
-		// return nil, nil
 	}
 	peerStream, err := d.conn.Connect(peerInfo.ID, peerInfo.Addrs[0])
 	if err != nil {
@@ -151,7 +145,6 @@ func (d *Discovery) bond(peerInfo *peerstore.PeerInfo) (*PeerStream, error) {
 			return nil, err
 		}
 		//timeout
-		//timer := time.NewTicker(1 * time.Second)
 		select {
 		case <-time.After(1 * time.Second):
 			peerStream.Close()
