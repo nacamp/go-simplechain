@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -75,10 +76,17 @@ func TestPeerStream(t *testing.T) {
 	reply := make(chan interface{}, 1)
 	assert.NoError(t, cn.peerStream.SendMessageReply(&msg, reply))
 	assert.Equal(t, "hi", <-reply)
-
 	assert.True(t, sn.peerStream.IsHandshakeSucceed())
 	assert.False(t, sn.peerStream.IsClosed())
-	// select {}
+	cn.peerStream.Close()
+
+	ticker := time.NewTicker(100 * time.Millisecond)
+	for t := range ticker.C {
+		fmt.Println("Tick at", t)
+		if cn.peerStream.IsClosed() == true && sn.peerStream.IsClosed() == true {
+			break
+		}
+	}
 }
 
 type TestNode struct {

@@ -17,18 +17,23 @@ import (
 )
 
 type Poa struct {
-	mu           sync.RWMutex
-	bc           *core.BlockChain
-	node         *net.Node
+	mu sync.RWMutex
+	bc *core.BlockChain
+	// node         *net.Node
 	coinbase     common.Address
 	enableMining bool
 	Storage      storage.Storage
 	Period       uint64
 	wallet       *account.Wallet
+	streamPool   *net.PeerStreamPool
 }
 
-func NewPoa(node *net.Node, storage storage.Storage) *Poa {
-	return &Poa{node: node, Storage: storage}
+// func NewPoa(node *net.Node, storage storage.Storage) *Poa {
+// 	return &Poa{node: node, Storage: storage}
+// }
+
+func NewPoa(streamPool *net.PeerStreamPool, storage storage.Storage) *Poa {
+	return &Poa{streamPool: streamPool, Storage: storage}
 }
 
 //Same as dpos
@@ -184,7 +189,7 @@ func (cs *Poa) loop() {
 				cs.bc.Consensus.UpdateLIB()
 				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MsgNewBlock, block.BaseBlock)
-				cs.node.BroadcastMessage(&message)
+				cs.streamPool.BroadcastMessage(&message)
 			}
 		}
 	}

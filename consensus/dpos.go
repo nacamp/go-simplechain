@@ -23,11 +23,12 @@ var keystore = map[string]string{
 }
 
 type Dpos struct {
-	bc           *core.BlockChain
-	node         *net.Node
+	bc *core.BlockChain
+	//node         *net.Node
 	coinbase     common.Address
 	wallet       *account.Wallet
 	enableMining bool
+	streamPool   *net.PeerStreamPool
 }
 
 // const
@@ -35,8 +36,12 @@ type Dpos struct {
 // 	ErrAddressNotEqual = errors.New("address not equal")
 // )
 
-func NewDpos(node *net.Node) *Dpos {
-	return &Dpos{node: node}
+// func NewDpos(node *net.Node) *Dpos {
+// 	return &Dpos{node: node}
+// }
+
+func NewDpos(streamPool *net.PeerStreamPool) *Dpos {
+	return &Dpos{streamPool: streamPool}
 }
 
 func (cs *Dpos) Setup(address common.Address, wallet *account.Wallet, period int) {
@@ -144,7 +149,7 @@ func (cs *Dpos) loop() {
 				cs.bc.Consensus.UpdateLIB()
 				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MsgNewBlock, block.BaseBlock)
-				cs.node.BroadcastMessage(&message)
+				cs.streamPool.BroadcastMessage(&message)
 			}
 		}
 	}

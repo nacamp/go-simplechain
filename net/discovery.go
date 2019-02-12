@@ -121,32 +121,38 @@ func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, rep
 	msg, _ := NewRLPMessage(MsgNearestPeers, targetID)
 	replyAck := make(chan interface{}, 1)
 	peerStream.SendMessageReply(&msg, replyAck)
-	ack := <-replyAck
-	reply <- ack.([]*peerstore.PeerInfo)
+	//timeout
+	select {
+	case <-time.After(1 * time.Second):
+		peerStream.Close()
+		reply <- nil
+	case ack := <-replyAck:
+		reply <- ack.([]*peerstore.PeerInfo)
+	}
 }
 
 func (d *Discovery) bond(peerInfo *peerstore.PeerInfo) (*PeerStream, error) {
 	if d._bond != nil {
 		d._bond(peerInfo)
 		return nil, nil
-		// reply <- d._bond(peerInfo)
-		// d.Update(peerInfo)
-		// return nil, nil
 	}
 	peerStream, err := d.conn.Connect(peerInfo.ID, peerInfo.Addrs[0])
 	if err != nil {
 		return nil, err
 	}
-	//TODO: make func
-	if peerStream.status != statusHandshakeSucceed {
-		peerStream.SendHello(d.hostAddr)
-		//TODO: timeout
-		<-peerStream.HandshakeSucceedCh
-	} else {
-		//TODO: stream status check
+	if !peerStream.IsHandshakeSucceed() {
+		if err := peerStream.SendHello(d.hostAddr); err != nil {
+			return nil, err
+		}
+		//timeout
+		select {
+		case <-time.After(1 * time.Second):
+			peerStream.Close()
+			return nil, errors.New("timeout")
+		case <-peerStream.HandshakeSucceedCh:
+		}
 	}
 	d.Update(peerInfo)
-	//d.streamPool.AddStream(peerStream)
 	log.CLog().WithFields(logrus.Fields{
 		"ID": peerInfo.ID,
 	}).Debug("addr: ", AddrFromPeerInfo(peerInfo))
@@ -195,16 +201,20 @@ func (d *Discovery) onMsgHello() {
 		select {
 		case ch := <-d.HandshakeSucceedCh:
 			message := ch.(*Message)
-			data := string("")
-			rlp.DecodeBytes(message.Payload, &data)
-			log.CLog().WithFields(logrus.Fields{
-				"ID": message.PeerID,
-			}).Debug("addr: ", data)
-			addr, err := ma.NewMultiaddr(data)
-			if err != nil {
-				continue
-			}
-			d.UpdateAddr(message.PeerID, addr)
+			//TODO: check whhether port is dynamic port or
+			// data := string("")
+			// rlp.DecodeBytes(message.Payload, &data)
+			// log.CLog().WithFields(logrus.Fields{
+			// 	"ID": message.PeerID,
+			// }).Debug("addr: ", data)
+			ps, _ := d.streamPool.GetStream(message.PeerID)
+			// a := ps.stream.Conn().RemoteMultiaddr()
+			// log.CLog().WithFields(logrus.Fields{}).Warn(a)
+			// addr, err := ma.NewMultiaddr(data)
+			// if err != nil {
+			// 	continue
+			// }
+			d.UpdateAddr(message.PeerID, ps.stream.Conn().RemoteMultiaddr())
 		}
 	}
 }

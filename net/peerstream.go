@@ -60,6 +60,7 @@ func (ps *PeerStream) callHandler(message *Message) {
 func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 	for {
 		message := Message{}
+		//<-done not need
 		err := rlp.Decode(rw, &message)
 		if err != nil {
 			ps.stream.Close()
@@ -172,4 +173,8 @@ func (ps *PeerStream) IsClosed() bool {
 
 func (ps *PeerStream) IsHandshakeSucceed() bool {
 	return ps.status == statusHandshakeSucceed
+}
+
+func (ps *PeerStream) Close() {
+	ps.stream.Close()
 }

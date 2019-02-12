@@ -1,7 +1,6 @@
 package net
 
 import (
-	libnet "github.com/libp2p/go-libp2p-net"
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	ma "github.com/multiformats/go-multiaddr"
@@ -36,13 +35,6 @@ func NewRLPMessage(code uint64, payload interface{}) (msg Message, err error) {
 		msg.Payload = encodedBytes
 	}
 	return msg, nil
-}
-
-type INode interface {
-	HandleStream(s libnet.Stream)
-	SendMessage(message *Message, peerID peer.ID)
-	SendMessageToRandomNode(message *Message)
-	BroadcastMessage(message *Message)
 }
 
 type PeerInfo2 struct {
