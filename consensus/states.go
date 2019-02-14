@@ -2,7 +2,10 @@ package consensus
 
 import (
 	"bytes"
+	"errors"
+	"math/rand"
 	"sort"
+	"time"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
@@ -92,17 +95,30 @@ func (ms *MinerState) MakeMiner(voterState *core.AccountState, maxMaker int) ([]
 		exist, err = iter.Next()
 	}
 
+	if len(accounts) < maxMaker {
+		return nil, errors.New("The number of candidated miner is smaller than the minimum miner number.")
+	}
+
 	sort.Slice(accounts, func(i, j int) bool {
 		return accounts[i].Balance.Cmp(accounts[j].Balance) > 0
 	})
 
-	//TODO: if len(accouts) < maxMaker
 	for i, v := range accounts {
 		if maxMaker == i {
 			break
 		}
 		miners = append(miners, v.Address)
 	}
-	//TODO: random sort for miners
+	shuffle(miners)
 	return miners, nil
+}
+
+func shuffle(slice []common.Address) {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	for len(slice) > 0 {
+		n := len(slice)
+		randIndex := r.Intn(n)
+		slice[n-1], slice[randIndex] = slice[randIndex], slice[n-1]
+		slice = slice[:n-1]
+	}
 }
