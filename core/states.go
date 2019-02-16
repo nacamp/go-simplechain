@@ -23,6 +23,22 @@ type Account struct {
 	Balance *big.Int
 	Nonce   uint64
 	// Root    common.Hash // Before trie put
+	Staking   map[common.Address]*big.Int
+	Unstaking map[common.Address]*big.Int
+}
+
+type basicAccount struct {
+	Address common.Address
+	Balance *big.Int
+}
+
+type rlpAccount struct {
+	Address common.Address
+	Balance *big.Int
+	Nonce   uint64
+
+	Staking   []basicAccount
+	Unstaking []basicAccount
 }
 
 type AccountState struct {
@@ -82,7 +98,20 @@ func (accs *AccountState) Clone() (*AccountState, error) {
 
 //TODO: error
 func (accs *AccountState) PutAccount(account *Account) (hash common.Hash) {
-	encodedBytes, _ := rlp.EncodeToBytes(account)
+	rlpAcc := rlpAccount{
+		Address:   account.Address,
+		Balance:   account.Balance,
+		Nonce:     account.Nonce,
+		Staking:   make([]basicAccount, 0),
+		Unstaking: make([]basicAccount, 0),
+	}
+	for k, v := range account.Staking {
+		rlpAcc.Staking = append(rlpAcc.Staking, basicAccount{Address: k, Balance: v})
+	}
+	for k, v := range account.Unstaking {
+		rlpAcc.Unstaking = append(rlpAcc.Unstaking, basicAccount{Address: k, Balance: v})
+	}
+	encodedBytes, _ := rlp.EncodeToBytes(rlpAcc)
 	accs.Trie.Put(account.Address[:], encodedBytes)
 	copy(hash[:], accs.Trie.RootHash())
 	return hash
@@ -95,12 +124,36 @@ func (accs *AccountState) GetAccount(address common.Address) (account *Account) 
 	// if err != nil && err != storage.ErrKeyNotFound {
 	// 	return nil, err
 	// }
+	rlpAcc := new(rlpAccount)
 	if err == nil {
-		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&account)
-		return account
+		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(rlpAcc)
+		account := Account{
+			Address: account.Address,
+			Balance: account.Balance,
+			Nonce:   account.Nonce,
+		}
+		for _, v := range rlpAcc.Staking {
+			account.Staking[v.Address] = v.Balance
+		}
+		for _, v := range rlpAcc.Unstaking {
+			account.Unstaking[v.Address] = v.Balance
+		}
+		return &account
 	} else {
 		return &Account{Address: address, Balance: new(big.Int).SetUint64(0)}
 	}
+
+	// decodedBytes, err := accs.Trie.Get(address[:])
+	// //FIXME: TOBE
+	// // if err != nil && err != storage.ErrKeyNotFound {
+	// // 	return nil, err
+	// // }
+	// if err == nil {
+	// 	rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&account)
+	// 	return account
+	// } else {
+	// 	return &Account{Address: address, Balance: new(big.Int).SetUint64(0)}
+	// }
 
 }
 
