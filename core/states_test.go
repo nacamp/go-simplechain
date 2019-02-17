@@ -7,6 +7,7 @@ import (
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/storage"
+	"github.com/nacamp/go-simplechain/tests"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,4 +36,26 @@ func TestAccountState(t *testing.T) {
 	account2 := accountState.GetAccount(account.Address)
 	assert.Equal(t, account.Address, account2.Address, "")
 	assert.Equal(t, new(big.Int).SetUint64(10), account2.Balance, "")
+}
+
+func TestAccountState2(t *testing.T) {
+	storage, err := storage.NewMemoryStorage()
+	if err != nil {
+		return
+	}
+	accountState, _ := core.NewAccountState(storage)
+	var hexAddress = tests.Addr0
+	account := core.NewAccount()
+	copy(account.Address[:], common.FromHex(hexAddress))
+	account.AddBalance(new(big.Int).SetUint64(10))
+
+	account.Staking[common.HexToAddress(tests.Addr1)] = new(big.Int).SetUint64(10)
+	account.Unstaking[common.HexToAddress(tests.Addr2)] = new(big.Int).SetUint64(20)
+	accountState.PutAccount(account)
+
+	account2 := accountState.GetAccount(account.Address)
+	assert.Equal(t, account.Address, account2.Address, "")
+	assert.Equal(t, new(big.Int).SetUint64(10), account2.Balance, "")
+	assert.Equal(t, new(big.Int).SetUint64(10), account2.Staking[common.HexToAddress(tests.Addr1)], "")
+	assert.Equal(t, new(big.Int).SetUint64(20), account2.Unstaking[common.HexToAddress(tests.Addr2)], "")
 }

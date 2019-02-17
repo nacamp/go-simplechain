@@ -52,6 +52,13 @@ type TransactionState struct {
 	// Storage storage.Storage //FIMXE: current not use
 }
 
+func NewAccount() *Account {
+	return &Account{
+		Staking:   make(map[common.Address]*big.Int),
+		Unstaking: make(map[common.Address]*big.Int),
+	}
+}
+
 func (acc *Account) AddBalance(amount *big.Int) {
 	if acc.Balance == nil {
 		acc.Balance = new(big.Int).SetUint64(0)
@@ -128,9 +135,11 @@ func (accs *AccountState) GetAccount(address common.Address) (account *Account) 
 	if err == nil {
 		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(rlpAcc)
 		account := Account{
-			Address: account.Address,
-			Balance: account.Balance,
-			Nonce:   account.Nonce,
+			Address:   rlpAcc.Address,
+			Balance:   rlpAcc.Balance,
+			Nonce:     rlpAcc.Nonce,
+			Staking:   make(map[common.Address]*big.Int),
+			Unstaking: make(map[common.Address]*big.Int),
 		}
 		for _, v := range rlpAcc.Staking {
 			account.Staking[v.Address] = v.Balance
