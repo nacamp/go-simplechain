@@ -362,3 +362,12 @@ func (cs *Poa) SaveMiners(block *core.Block) error {
 	newSnap.Store(cs.Storage)
 	return nil
 }
+
+//TODO: now temp code
+func (cs *Poa) Verify(block *core.Block) (err error) {
+	return nil
+}
+
+func (cs *Poa) SaveState(block *core.Block) error {
+	return nil
+}

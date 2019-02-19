@@ -12,6 +12,11 @@ type MinerState interface {
 	MakeMiner(*AccountState, int) ([]common.Address, error)
 }
 
+type ConsensusState interface {
+	RootHash() (hash common.Hash)
+	ExecuteTransaction()
+}
+
 type Consensus interface {
 	UpdateLIB()
 	ConsensusType() string
@@ -22,4 +27,6 @@ type Consensus interface {
 	AddBlockChain(*BlockChain)
 	CloneFromParentBlock(block *Block, parentBlock *Block) (err error)
 	Start()
+	Verify(block *Block) (err error)
+	SaveState(block *Block) error
 }
