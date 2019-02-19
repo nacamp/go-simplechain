@@ -220,6 +220,10 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return err
 	}
 
+	if err := bc.Consensus.SaveState(block); err != nil {
+		return err
+	}
+
 	//check rootHash
 	if block.AccountState.RootHash() != block.Header.AccountHash {
 		return errors.New("block.AccountState.RootHash() != block.Header.AccountHash")
@@ -228,9 +232,13 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return errors.New("block.TransactionState.RootHash() != block.Header.TransactionHash")
 	}
 
-	if err := bc.Consensus.VerifyConsensusStatusHash(block); err != nil {
-		return err
+	if block.ConsensusState.RootHash() != block.Header.ConsensusHash {
+		return errors.New("block.ConsensusState.RootHash() != block.Header.ConsensusHash")
 	}
+
+	// if err := bc.Consensus.VerifyConsensusStatusHash(block); err != nil {
+	// 	return err
+	// }
 	return nil
 }
 
@@ -322,6 +330,12 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 
 	//4. save status and verify hash
 	err = bc.PutState(block)
+	if err != nil {
+		return err
+	}
+
+	//5. verify consen
+	err = bc.Consensus.Verify(block)
 	if err != nil {
 		return err
 	}

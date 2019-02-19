@@ -19,6 +19,7 @@ type Header struct {
 	Hash              common.Hash
 	AccountHash       common.Hash
 	TransactionHash   common.Hash
+	ConsensusHash     common.Hash
 	MinerHash         common.Hash
 	VoterHash         common.Hash
 	SnapshotHash      common.Hash
@@ -42,6 +43,7 @@ type Block struct {
 	TransactionState *TransactionState
 	MinerState       MinerState
 	VoterState       *AccountState
+	ConsensusState   ConsensusState
 	Snapshot         interface{}
 }
 

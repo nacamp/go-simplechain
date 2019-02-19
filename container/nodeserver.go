@@ -7,6 +7,7 @@ import (
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/consensus"
+	"github.com/nacamp/go-simplechain/consensus/dpos"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/core/service"
 	"github.com/nacamp/go-simplechain/log"
@@ -52,10 +53,16 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	ns.node = net.NewNode(config.Port, privKey, ns.streamPool)
 
 	if config.Consensus == "dpos" {
-		ns.consensus = consensus.NewDpos(ns.streamPool)
+		ns.consensus = dpos.NewDpos(ns.streamPool)
 	} else {
 		ns.consensus = consensus.NewPoa(ns.streamPool, ns.db)
 	}
+
+	// if config.Consensus == "dpos" {
+	// 	ns.consensus = consensus.NewDpos(ns.streamPool)
+	// } else {
+	// 	ns.consensus = consensus.NewPoa(ns.streamPool, ns.db)
+	// }
 
 	if config.EnableMining {
 		log.CLog().WithFields(logrus.Fields{
@@ -68,10 +75,16 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 		}
 		if config.Consensus == "dpos" {
 			//? Setup is not suitable to exist in consensus because setup have wallet(not core package)
-			ns.consensus.(*consensus.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+			ns.consensus.(*dpos.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
 		} else {
 			ns.consensus.(*consensus.Poa).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
 		}
+		// if config.Consensus == "dpos" {
+		// 	//? Setup is not suitable to exist in consensus because setup have wallet(not core package)
+		// 	ns.consensus.(*consensus.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+		// } else {
+		// 	ns.consensus.(*consensus.Poa).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+		// }
 	}
 	ns.bc.Setup(ns.consensus, cmd.MakeVoterAccountsFromConfig(config))
 
