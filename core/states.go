@@ -27,7 +27,7 @@ type Account struct {
 	Unstaking map[common.Address]*big.Int
 }
 
-type basicAccount struct {
+type BasicAccount struct {
 	Address common.Address
 	Balance *big.Int
 }
@@ -37,8 +37,8 @@ type rlpAccount struct {
 	Balance *big.Int
 	Nonce   uint64
 
-	Staking   []basicAccount
-	Unstaking []basicAccount
+	Staking   []BasicAccount
+	Unstaking []BasicAccount
 }
 
 type AccountState struct {
@@ -109,14 +109,14 @@ func (accs *AccountState) PutAccount(account *Account) (hash common.Hash) {
 		Address:   account.Address,
 		Balance:   account.Balance,
 		Nonce:     account.Nonce,
-		Staking:   make([]basicAccount, 0),
-		Unstaking: make([]basicAccount, 0),
+		Staking:   make([]BasicAccount, 0),
+		Unstaking: make([]BasicAccount, 0),
 	}
 	for k, v := range account.Staking {
-		rlpAcc.Staking = append(rlpAcc.Staking, basicAccount{Address: k, Balance: v})
+		rlpAcc.Staking = append(rlpAcc.Staking, BasicAccount{Address: k, Balance: v})
 	}
 	for k, v := range account.Unstaking {
-		rlpAcc.Unstaking = append(rlpAcc.Unstaking, basicAccount{Address: k, Balance: v})
+		rlpAcc.Unstaking = append(rlpAcc.Unstaking, BasicAccount{Address: k, Balance: v})
 	}
 	encodedBytes, _ := rlp.EncodeToBytes(rlpAcc)
 	accs.Trie.Put(account.Address[:], encodedBytes)
