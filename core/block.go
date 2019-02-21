@@ -70,7 +70,7 @@ func (b *Block) CalcHash() (hash common.Hash) {
 		b.Header.Time,
 		b.Header.AccountHash,
 		b.Header.TransactionHash,
-		b.Header.MinerHash,
+		// b.Header.MinerHash,
 		b.Header.SnapshotHash,
 	})
 	hasher.Sum(hash[:0])

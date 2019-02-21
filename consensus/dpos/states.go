@@ -3,6 +3,7 @@ package dpos
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -105,10 +106,10 @@ func (ds *DposState) GetNewRoundMiners(electedTime uint64, totalMiners int) ([]c
 	for exist {
 		account := core.BasicAccount{Address: common.Address{}}
 
-		encodedBytes1 := iter.Key()
-		key := []byte{}
-		rlp.NewStream(bytes.NewReader(encodedBytes1), 0).Decode(&key)
-		account.Address = common.BytesToAddress(key)
+		// encodedBytes1 := iter.Key()
+		// key := new([]byte)
+		// rlp.NewStream(bytes.NewReader(encodedBytes1), 0).Decode(key)
+		account.Address = common.BytesToAddress(iter.Key())
 
 		encodedBytes2 := iter.Value()
 		value := new(big.Int)
@@ -158,16 +159,14 @@ func (ds *DposState) Put(blockNumber, electedTime uint64, minersHash common.Hash
 		return err
 	}
 
-	/*
-		candidateHash
-		minersHash
-		electedTime
-	*/
-
 	vals = append(vals, ds.Candidate.RootHash()...)
 	vals = append(vals, minersHash[:]...)
 	vals = append(vals, encodedTimeBytes...)
-	ds.Miner.Put(keyEncodedBytes, vals)
+	_, err = ds.Miner.Put(crypto.Sha3b256(keyEncodedBytes), vals)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -177,8 +176,8 @@ func (ds *DposState) Get(blockNumber uint64) (common.Hash, common.Hash, uint64, 
 	if err != nil {
 		return common.Hash{}, common.Hash{}, 0, err
 	}
-
-	encbytes, err := ds.Miner.Get(keyEncodedBytes)
+	//TODO: check minimum key size
+	encbytes, err := ds.Miner.Get(crypto.Sha3b256(keyEncodedBytes))
 	if err != nil {
 		return common.Hash{}, common.Hash{}, 0, err
 	}
@@ -197,16 +196,12 @@ func (ds *DposState) Get(blockNumber uint64) (common.Hash, common.Hash, uint64, 
 		electedTime, nil
 }
 
-/*
-편법으로 miner안에 candidate hash를 갖고 있자.
-*/
 func (ds *DposState) RootHash() (hash common.Hash) {
 	copy(hash[:], ds.Miner.RootHash())
-	// copy(hash[:], crypto.Sha3b256(ds.Candidate.RootHash(), ds.Miner.RootHash()))
 	return hash
 }
 
-func (ds *DposState) Clone() (*DposState, error) {
+func (ds *DposState) Clone() (core.ConsensusState, error) {
 	tr1, err1 := ds.Candidate.Clone()
 	if err1 != nil {
 		return nil, err1
@@ -216,8 +211,10 @@ func (ds *DposState) Clone() (*DposState, error) {
 		return nil, err2
 	}
 	return &DposState{
-		Candidate: tr1,
-		Miner:     tr2,
+		Candidate:   tr1,
+		Miner:       tr2,
+		MinersHash:  ds.MinersHash,
+		ElectedTime: ds.ElectedTime,
 	}, nil
 }
 
@@ -226,7 +223,18 @@ func (ds *DposState) ExecuteTransaction() {
 }
 
 func NewState(rootHash common.Hash, blockNumber uint64, storage storage.Storage) (*DposState, error) {
-	tr, err := trie.NewTrie(rootHash[:], storage, false)
+	var rootHashByte []byte
+	if rootHash == (common.Hash{}) {
+		rootHashByte = nil
+	} else {
+		rootHashByte = rootHash[:]
+	}
+	fmt.Printf("New, %v\n", rootHashByte)
+	tr, err := trie.NewTrie(rootHashByte, storage, false)
+	if err != nil {
+		return nil, err
+	}
+
 	state := new(DposState)
 	state.Miner = tr
 	candidateHash, minersHash, electedTime, err := state.Get(blockNumber)

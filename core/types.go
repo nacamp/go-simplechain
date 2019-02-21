@@ -15,6 +15,7 @@ type MinerState interface {
 type ConsensusState interface {
 	RootHash() (hash common.Hash)
 	ExecuteTransaction()
+	Clone() (ConsensusState, error)
 }
 
 type Consensus interface {
@@ -29,4 +30,8 @@ type Consensus interface {
 	Start()
 	Verify(block *Block) (err error)
 	SaveState(block *Block) error
+	// LoadState(block *Block) (ConsensusState, err error)
+	LoadState(block *Block) ConsensusState
 }
+
+//func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState, err error) {

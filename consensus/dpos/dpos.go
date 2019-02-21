@@ -118,7 +118,6 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		bc.ExecuteTransaction(block)
 		block.Header.AccountHash = block.AccountState.RootHash()
 		block.Header.TransactionHash = block.TransactionState.RootHash()
-		// need voterHash at PutMinerState(GetMinerGroup)
 		cs.SaveState(block)
 		if err := cs.Verify(block); err != nil {
 			log.CLog().WithFields(logrus.Fields{
@@ -126,10 +125,6 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 			}).Debug("not my turn")
 		}
 		block.Header.ConsensusHash = state.RootHash()
-		//이곳에 hash
-		//block.Header.VoterHash = block.VoterState.RootHash()
-		//bc.PutMinerState(block)
-		// block.Header.MinerHash = block.MinerState.RootHash()
 		block.MakeHash()
 		return block
 	} else {
@@ -170,15 +165,6 @@ func (cs *Dpos) loop() {
 	}
 }
 
-// func (d *Dpos) NewMinerState(rootHash common.Hash, storage storage.Storage) (core.MinerState, error) {
-// 	tr, err := trie.NewTrie(common.HashToBytes(rootHash), storage, false)
-// 	return &MinerState{
-// 		Trie: tr,
-// 	}, err
-// }
-
-// start to add new code
-
 func (cs *Dpos) Verify(block *core.Block) (err error) {
 	//block.Header.Coinbase
 	state := block.ConsensusState.(*DposState)
@@ -206,11 +192,12 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 		state.MinersHash, err = state.PutMiners(miners)
 		state.ElectedTime = block.Header.Time
 	}
-	state.Put(block.Header.Height, state.ElectedTime, state.MinersHash)
+	err = state.Put(block.Header.Height, state.ElectedTime, state.MinersHash)
+	if err != nil {
+		return err
+	}
 	return nil
 }
-
-// end...
 
 //----------    Consensus  ----------------//
 
@@ -256,6 +243,14 @@ func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {
 	return nil
 }
 
+func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState) {
+	bc := cs.bc
+
+	state, _ = NewState(block.Header.ConsensusHash, block.Header.Height, bc.Storage)
+
+	return state
+}
+
 func (cs *Dpos) VerifyConsensusStatusHash(block *core.Block) (err error) {
 	if block.VoterState.RootHash() != block.Header.VoterHash {
 		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
@@ -284,54 +279,20 @@ func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) erro
 	state.ElectedTime = block.Header.Time
 	state.Put(block.Header.Height, state.ElectedTime, state.MinersHash)
 
+	block.ConsensusState = state
 	block.Header.ConsensusHash = state.RootHash()
 	bc.GenesisBlock = block
 	bc.GenesisBlock.MakeHash()
 	return nil
 }
 
-// func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
-// 	bc := cs.bc
-// 	//VoterState
-// 	vs, err := core.NewAccountState(bc.Storage)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	for _, account := range voters {
-// 		vs.PutAccount(account)
-// 	}
-// 	block.VoterState = vs
-// 	block.Header.VoterHash = vs.RootHash()
-// 	bc.GenesisBlock = block
-
-// 	// MinerState
-// 	ms, err := cs.NewMinerState(common.Hash{}, bc.Storage)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	bc.GenesisBlock.MinerState = ms
-// 	minerGroup, _, err := ms.GetMinerGroup(bc, block)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	ms.Put(minerGroup, bc.GenesisBlock.VoterState.RootHash())
-// 	bc.GenesisBlock = block
-// 	bc.GenesisBlock.Header.MinerHash = ms.RootHash()
-// 	bc.GenesisBlock.Header.SnapshotVoterTime = bc.GenesisBlock.Header.Time
-// 	bc.GenesisBlock.MakeHash()
-// 	return nil
-// }
-
 func (cs *Dpos) AddBlockChain(bc *core.BlockChain) {
 	cs.bc = bc
 }
 
+//TODO: rename clone
 func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
-	block.VoterState, err = parentBlock.VoterState.Clone()
-	if err != nil {
-		return err
-	}
-	block.MinerState, err = parentBlock.MinerState.Clone()
+	block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 	if err != nil {
 		return err
 	}

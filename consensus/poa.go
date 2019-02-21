@@ -371,3 +371,7 @@ func (cs *Poa) Verify(block *core.Block) (err error) {
 func (cs *Poa) SaveState(block *core.Block) error {
 	return nil
 }
+
+func (cs *Poa) LoadState(block *core.Block) (state core.ConsensusState) {
+	return nil
+}

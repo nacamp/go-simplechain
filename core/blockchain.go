@@ -204,16 +204,15 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return err
 	}
 
-	err = bc.Consensus.LoadConsensusStatus(block)
-	if err != nil {
-		return err
-	}
+	block.ConsensusState = bc.Consensus.LoadState(parentBlock)
+	// TODO: parent maybe not have ConsensusState
+	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 
 	bc.RewardForCoinbase(block)
 
-	if err := bc.Consensus.SaveMiners(block); err != nil {
-		return err
-	}
+	// if err := bc.Consensus.SaveMiners(block); err != nil {
+	// 	return err
+	// }
 
 	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
@@ -236,9 +235,6 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return errors.New("block.ConsensusState.RootHash() != block.Header.ConsensusHash")
 	}
 
-	// if err := bc.Consensus.VerifyConsensusStatusHash(block); err != nil {
-	// 	return err
-	// }
 	return nil
 }
 
@@ -449,6 +445,11 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 	if err != nil {
 		return nil, err
 	}
+
+	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	block.AccountState, err = parentBlock.AccountState.Clone()
 	if err != nil {
