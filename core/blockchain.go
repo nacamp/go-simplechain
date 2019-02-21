@@ -441,15 +441,16 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 		BaseBlock: BaseBlock{Header: h},
 	}
 	//state
-	err = bc.Consensus.CloneFromParentBlock(block, parentBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
+	//TODO: test in poa
+	// err = bc.Consensus.CloneFromParentBlock(block, parentBlock)
 	// if err != nil {
 	// 	return nil, err
 	// }
+
+	block.ConsensusState, err = parentBlock.ConsensusState.Clone()
+	if err != nil {
+		return nil, err
+	}
 
 	block.AccountState, err = parentBlock.AccountState.Clone()
 	if err != nil {

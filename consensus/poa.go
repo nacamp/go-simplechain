@@ -326,6 +326,9 @@ func (cs *Poa) AddBlockChain(bc *core.BlockChain) {
 	cs.bc = bc
 }
 
+
+//TODO: replace below code after dpos completed 
+//block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 func (cs *Poa) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
 	block.Snapshot, err = cs.LoadSnapshot(block.Header.ParentHash)
 	return nil
