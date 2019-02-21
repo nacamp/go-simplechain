@@ -214,6 +214,7 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	bc.RewardForCoinbase(block)
 
+	//TODO: must replace SaveMiners with SaveState in poa
 	// if err := bc.Consensus.SaveMiners(block); err != nil {
 	// 	return err
 	// }

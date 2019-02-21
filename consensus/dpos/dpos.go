@@ -243,16 +243,6 @@ func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState, err err
 	return state, nil
 }
 
-func (cs *Dpos) VerifyConsensusStatusHash(block *core.Block) (err error) {
-	if block.VoterState.RootHash() != block.Header.VoterHash {
-		return errors.New("block.VoterState.RootHash() != block.Header.VoterHash")
-	}
-	if block.MinerState.RootHash() != block.Header.MinerHash {
-		return errors.New("block.MinerState.RootHash() != block.Header.MinerHash")
-	}
-	return nil
-}
-
 func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
 	bc := cs.bc
 

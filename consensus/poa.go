@@ -297,10 +297,6 @@ func (cs *Poa) ConsensusType() string {
 }
 
 
-func (cs *Poa) VerifyConsensusStatusHash(block *core.Block) (err error) {
-	return nil
-}
-
 func (cs *Poa) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
 	bc := cs.bc
 	bc.Signers = make([]common.Address, len(voters))
