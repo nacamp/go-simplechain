@@ -296,9 +296,6 @@ func (cs *Poa) ConsensusType() string {
 	return "POA"
 }
 
-func (cs *Poa) LoadConsensusStatus(block *core.Block) (err error) {
-	return nil
-}
 
 func (cs *Poa) VerifyConsensusStatusHash(block *core.Block) (err error) {
 	return nil

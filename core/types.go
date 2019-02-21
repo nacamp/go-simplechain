@@ -22,7 +22,6 @@ type Consensus interface {
 	UpdateLIB()
 	ConsensusType() string
 	SaveMiners(block *Block) error
-	LoadConsensusStatus(block *Block) (err error)
 	VerifyConsensusStatusHash(block *Block) (err error)
 	MakeGenesisBlock(block *Block, voters []*Account) error
 	AddBlockChain(*BlockChain)

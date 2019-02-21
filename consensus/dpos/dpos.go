@@ -233,16 +233,6 @@ func (c *Dpos) ConsensusType() string {
 	return "DPOS"
 }
 
-func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {
-	bc := cs.bc
-
-	block.ConsensusState, err = NewState(block.Header.ConsensusHash, block.Header.Height, bc.Storage)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState, err error) {
 	bc := cs.bc
 

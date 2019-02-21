@@ -107,10 +107,11 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 		return err
 	}
 
-	err = bc.Consensus.LoadConsensusStatus(block)
+	block.ConsensusState, err = bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
+
 	bc.GenesisBlock = block
 	return nil
 
@@ -584,7 +585,7 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 	if err != nil {
 		return err
 	}
-	err = bc.Consensus.LoadConsensusStatus(block)
+	block.ConsensusState, err = bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
@@ -627,7 +628,8 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 	if err != nil {
 		return err
 	}
-	err = bc.Consensus.LoadConsensusStatus(block)
+
+	block.ConsensusState, err = bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
