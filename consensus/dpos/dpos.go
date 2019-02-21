@@ -243,12 +243,14 @@ func (cs *Dpos) LoadConsensusStatus(block *core.Block) (err error) {
 	return nil
 }
 
-func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState) {
+func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState, err error) {
 	bc := cs.bc
 
-	state, _ = NewState(block.Header.ConsensusHash, block.Header.Height, bc.Storage)
-
-	return state
+	state, err = NewState(block.Header.ConsensusHash, block.Header.Height, bc.Storage)
+	if err != nil {
+		return nil, err
+	}
+	return state, nil
 }
 
 func (cs *Dpos) VerifyConsensusStatusHash(block *core.Block) (err error) {

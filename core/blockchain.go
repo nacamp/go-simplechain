@@ -204,7 +204,10 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return err
 	}
 
-	block.ConsensusState = bc.Consensus.LoadState(parentBlock)
+	block.ConsensusState, err = bc.Consensus.LoadState(parentBlock)
+	if err != nil {
+		return err
+	}
 	// TODO: parent maybe not have ConsensusState
 	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 

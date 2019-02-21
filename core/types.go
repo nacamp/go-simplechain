@@ -30,8 +30,7 @@ type Consensus interface {
 	Start()
 	Verify(block *Block) (err error)
 	SaveState(block *Block) error
-	// LoadState(block *Block) (ConsensusState, err error)
-	LoadState(block *Block) ConsensusState
+	LoadState(block *Block) (state ConsensusState, err error)
 }
 
 //func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState, err error) {
