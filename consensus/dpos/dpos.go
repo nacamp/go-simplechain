@@ -282,9 +282,5 @@ func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block)
 }
 
 func (cs *Dpos) SaveMiners(block *core.Block) (err error) {
-	bc := cs.bc
-	if err := bc.PutMinerState(block); err != nil {
-		return err
-	}
 	return nil
 }

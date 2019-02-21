@@ -243,31 +243,6 @@ func (bc *BlockChain) PutState(block *Block) error {
 	return nil
 }
 
-func (bc *BlockChain) PutMinerState(block *Block) error {
-
-	// save status
-	ms := block.MinerState
-	minerGroup, voterBlock, err := ms.GetMinerGroup(bc, block)
-	if err != nil {
-		return err
-	}
-	//TODO: we need to test  when voter transaction make
-	//make new miner group
-	if voterBlock.Header.Height == block.Header.Height {
-
-		ms.Put(minerGroup, block.Header.VoterHash) //TODO voterhash
-	}
-	//else use parent miner group
-	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
-	index := (block.Header.Time % 9) / 3
-	if minerGroup[index] != block.Header.Coinbase {
-		return errors.New("minerGroup[index] != block.Header.Coinbase")
-	}
-
-	return nil
-
-}
-
 func (bc *BlockChain) RewardForCoinbase(block *Block) {
 	//FIXME: return nil when using Clone
 	accs := block.AccountState //NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
