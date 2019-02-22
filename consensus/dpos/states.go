@@ -3,7 +3,6 @@ package dpos
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"math/big"
 	"math/rand"
 	"sort"
@@ -229,7 +228,7 @@ func NewState(rootHash common.Hash, blockNumber uint64, storage storage.Storage)
 	} else {
 		rootHashByte = rootHash[:]
 	}
-	fmt.Printf("New, %v\n", rootHashByte)
+	
 	tr, err := trie.NewTrie(rootHashByte, storage, false)
 	if err != nil {
 		return nil, err

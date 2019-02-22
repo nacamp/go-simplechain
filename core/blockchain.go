@@ -412,7 +412,8 @@ func encodeBlockHeight(number uint64) []byte {
 	return enc
 }
 
-func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err error) {
+func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
+	parentBlock := bc.Tail
 	h := &Header{
 		ParentHash: parentBlock.Hash(),
 		Height:     parentBlock.Header.Height + 1,
@@ -427,6 +428,7 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 	// 	return nil, err
 	// }
 
+	//Tail block always have state, but We can not guarantee that another block will have a state.
 	block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 	if err != nil {
 		return nil, err

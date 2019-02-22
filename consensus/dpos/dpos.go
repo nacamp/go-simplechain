@@ -54,7 +54,7 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
 	//Fix: when ticker is 1 second, server mining...
 	turn := (now % 9) / 3
-	block, err := bc.NewBlockFromParent(bc.Tail)
+	block, err := bc.NewBlockFromTail()
 	if err != nil {
 		log.CLog().Warning(err)
 	}

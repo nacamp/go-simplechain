@@ -47,7 +47,7 @@ func (cs *Poa) Setup(address common.Address, wallet *account.Wallet, period int)
 //To be changed
 func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	bc := cs.bc
-	block, err := bc.NewBlockFromParent(bc.Tail)
+	block, err := bc.NewBlockFromTail()
 	if err != nil {
 		log.CLog().Warning(err)
 	}
@@ -296,7 +296,6 @@ func (cs *Poa) ConsensusType() string {
 	return "POA"
 }
 
-
 func (cs *Poa) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
 	bc := cs.bc
 	bc.Signers = make([]common.Address, len(voters))
@@ -319,8 +318,7 @@ func (cs *Poa) AddBlockChain(bc *core.BlockChain) {
 	cs.bc = bc
 }
 
-
-//TODO: replace below code after dpos completed 
+//TODO: replace below code after dpos completed
 //block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 func (cs *Poa) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
 	block.Snapshot, err = cs.LoadSnapshot(block.Header.ParentHash)
