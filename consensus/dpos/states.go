@@ -221,14 +221,15 @@ func (ds *DposState) ExecuteTransaction() {
 
 }
 
-func NewState(rootHash common.Hash, blockNumber uint64, storage storage.Storage) (*DposState, error) {
+/* Make new state by rootHash and initialized by blockNumber*/
+func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Storage) (*DposState, error) {
 	var rootHashByte []byte
 	if rootHash == (common.Hash{}) {
 		rootHashByte = nil
 	} else {
 		rootHashByte = rootHash[:]
 	}
-	
+
 	tr, err := trie.NewTrie(rootHashByte, storage, false)
 	if err != nil {
 		return nil, err

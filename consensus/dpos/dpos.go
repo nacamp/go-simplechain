@@ -236,7 +236,7 @@ func (c *Dpos) ConsensusType() string {
 func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState, err error) {
 	bc := cs.bc
 
-	state, err = NewState(block.Header.ConsensusHash, block.Header.Height, bc.Storage)
+	state, err = NewInitState(block.Header.ConsensusHash, block.Header.Height, bc.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +246,7 @@ func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState, err err
 func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
 	bc := cs.bc
 
-	state, err := NewState(common.Hash{}, 0, bc.Storage)
+	state, err := NewInitState(common.Hash{}, 0, bc.Storage)
 	if err != nil {
 		return err
 	}

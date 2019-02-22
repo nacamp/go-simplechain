@@ -292,7 +292,7 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 		return errors.New("block.Hash() != block.CalcHash()")
 	}
 
-	//2.signer check
+	//2. check signer
 	err = block.VerifySign()
 	if err != nil {
 		return err
@@ -310,7 +310,7 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 		return err
 	}
 
-	//5. verify consen
+	//5. verify consensus
 	err = bc.Consensus.Verify(block)
 	if err != nil {
 		return err
