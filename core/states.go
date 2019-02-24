@@ -189,6 +189,7 @@ func (accs *AccountState) GetAccount(address common.Address) (account *Account) 
 		if err == storage.ErrKeyNotFound {
 			account := NewAccount()
 			account.Address = rlpAcc.Address
+			return account
 		}
 		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 		return nil
