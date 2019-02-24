@@ -133,10 +133,10 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	if err != nil {
 		return err
 	}
-	account := Account{}
+	account := NewAccount()
 	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
 	account.AddBalance(new(big.Int).SetUint64(100)) //FIXME: amount 0
-	accs.PutAccount(&account)
+	accs.PutAccount(account)
 	block.AccountState = accs
 	header.AccountHash = accs.RootHash()
 
