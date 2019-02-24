@@ -24,7 +24,8 @@ type Transaction struct {
 }
 
 const (
-	TxVote = uint64(0x00)
+	TxCVoteStake   = uint64(0x00)
+	TxCVoteUnStake = uint64(0x01)
 )
 
 type Payload struct {

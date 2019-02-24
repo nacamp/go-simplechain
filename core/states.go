@@ -18,13 +18,16 @@ var (
 	ErrContractAccountNotFound = errors.New("cannot found contract account in storage please check contract address is valid or deploy is success")
 )
 
+/*
+The stake amount that you voted for in the minors is added up in the next round to elect a new minor and 
+can't be withdrawn to next round after the minors have been elected.
+*/
 type Account struct {
 	Address common.Address
 	Balance *big.Int
 	Nonce   uint64
-	// Root    common.Hash // Before trie put
-	Staking   map[common.Address]*big.Int
-	Unstaking map[common.Address]*big.Int
+	Staking map[common.Address]*big.Int
+	TotalPeggedStake *big.Int //Non-withdrawable stake
 }
 
 type BasicAccount struct {
@@ -54,8 +57,9 @@ type TransactionState struct {
 
 func NewAccount() *Account {
 	return &Account{
-		Staking:   make(map[common.Address]*big.Int),
-		Unstaking: make(map[common.Address]*big.Int),
+		Staking:          make(map[common.Address]*big.Int),
+		TotalPeggedStake: new(big.Int).SetUint64(0),
+		// Unstaking: make(map[common.Address]*big.Int),
 	}
 }
 
@@ -75,6 +79,53 @@ func (acc *Account) SubBalance(amount *big.Int) error {
 		return ErrBalanceInsufficient
 	}
 	acc.Balance.Sub(acc.Balance, amount)
+	return nil
+}
+
+func (acc *Account) AvailableBalance() *big.Int {
+	tot := new(big.Int)
+	for _, v := range acc.Staking {
+		tot.Add(tot, v)
+	}
+	if tot.Cmp(acc.TotalPeggedStake) > 0 {
+		return tot.Sub(acc.Balance, tot)
+	}
+	return tot.Sub(acc.Balance, acc.TotalPeggedStake)
+}
+
+func (acc *Account) TotalStaking() *big.Int {
+	tot := new(big.Int)
+	for _, v := range acc.Staking {
+		tot.Add(tot, v)
+	}
+	return tot
+}
+
+func (acc *Account) Stake(address common.Address, amount *big.Int) error {
+	tmp := new(big.Int)
+	//acc.Balance - acc.TotalStaking <  amount
+	if tmp.Sub(acc.Balance, acc.TotalStaking()).Cmp(amount) < 0 {
+		return errors.New("There is insufficient stake.")
+	}
+
+	v, ok := acc.Staking[address]
+	if ok {
+		v.Add(v, amount)
+	} else {
+		acc.Staking[address] = amount
+	}
+	return nil
+}
+
+func (acc *Account) UnStake(address common.Address, amount *big.Int) (err error) {
+	v, ok := acc.Staking[address]
+	if !ok {
+		return errors.New("There is insufficient stake.")
+	}
+	if v.Cmp(amount) < 0 {
+		return errors.New("There is insufficient stake.")
+	}
+	v.Sub(v, amount)
 	return nil
 }
 
@@ -115,9 +166,9 @@ func (accs *AccountState) PutAccount(account *Account) (hash common.Hash) {
 	for k, v := range account.Staking {
 		rlpAcc.Staking = append(rlpAcc.Staking, BasicAccount{Address: k, Balance: v})
 	}
-	for k, v := range account.Unstaking {
-		rlpAcc.Unstaking = append(rlpAcc.Unstaking, BasicAccount{Address: k, Balance: v})
-	}
+	// for k, v := range account.Unstaking {
+	// 	rlpAcc.Unstaking = append(rlpAcc.Unstaking, BasicAccount{Address: k, Balance: v})
+	// }
 	encodedBytes, _ := rlp.EncodeToBytes(rlpAcc)
 	accs.Trie.Put(account.Address[:], encodedBytes)
 	copy(hash[:], accs.Trie.RootHash())
@@ -135,18 +186,18 @@ func (accs *AccountState) GetAccount(address common.Address) (account *Account) 
 	if err == nil {
 		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(rlpAcc)
 		account := Account{
-			Address:   rlpAcc.Address,
-			Balance:   rlpAcc.Balance,
-			Nonce:     rlpAcc.Nonce,
-			Staking:   make(map[common.Address]*big.Int),
-			Unstaking: make(map[common.Address]*big.Int),
+			Address: rlpAcc.Address,
+			Balance: rlpAcc.Balance,
+			Nonce:   rlpAcc.Nonce,
+			Staking: make(map[common.Address]*big.Int),
+			// Unstaking: make(map[common.Address]*big.Int),
 		}
 		for _, v := range rlpAcc.Staking {
 			account.Staking[v.Address] = v.Balance
 		}
-		for _, v := range rlpAcc.Unstaking {
-			account.Unstaking[v.Address] = v.Balance
-		}
+		// for _, v := range rlpAcc.Unstaking {
+		// 	account.Unstaking[v.Address] = v.Balance
+		// }
 		return &account
 	} else {
 		return &Account{Address: address, Balance: new(big.Int).SetUint64(0)}

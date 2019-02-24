@@ -217,8 +217,18 @@ func (ds *DposState) Clone() (core.ConsensusState, error) {
 	}, nil
 }
 
-func (ds *DposState) ExecuteTransaction() {
-
+func (ds *DposState) ExecuteTransaction(tx *core.Transaction, account *core.Account) (err error) {
+	amount := new(big.Int)
+	err = rlp.Decode(bytes.NewReader(tx.Payload.Data), amount)
+	if err != nil {
+		return err
+	}
+	if tx.Payload.Code == core.TxCVoteStake {
+		return account.Stake(tx.To, amount)
+	} else if tx.Payload.Code == core.TxCVoteUnStake {
+		return account.UnStake(tx.To, amount)
+	}
+	return nil
 }
 
 /* Make new state by rootHash and initialized by blockNumber*/

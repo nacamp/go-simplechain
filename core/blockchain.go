@@ -265,7 +265,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			return ErrTransactionNonce
 		}
 		fromAccount.Nonce += uint64(1)
-		if len(tx.Payload) == 0 {
+		if tx.Payload == nil {
 			toAccount := accs.GetAccount(tx.To)
 			if err := fromAccount.SubBalance(tx.Amount); err != nil {
 				return err
@@ -273,6 +273,8 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			toAccount.AddBalance(tx.Amount)
 			accs.PutAccount(toAccount)
 		} else {
+			block.ConsensusState.ExecuteTransaction(tx, fromAccount)
+			//TODO: apply poa
 			if tx.From == block.Header.Coinbase && firstVote {
 				firstVote = false
 			} else {

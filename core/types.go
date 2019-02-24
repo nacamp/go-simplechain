@@ -14,7 +14,7 @@ type MinerState interface {
 
 type ConsensusState interface {
 	RootHash() (hash common.Hash)
-	ExecuteTransaction()
+	ExecuteTransaction(tx *Transaction, account *Account) (err error)
 	Clone() (ConsensusState, error)
 }
 
