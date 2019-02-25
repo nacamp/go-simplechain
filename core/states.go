@@ -127,6 +127,10 @@ func (acc *Account) UnStake(address common.Address, amount *big.Int) (err error)
 	return nil
 }
 
+func (acc *Account) CalcSetTotalPeggedStake() {
+	acc.TotalPeggedStake = acc.TotalStaking()
+}
+
 func NewAccountState(storage storage.Storage) (*AccountState, error) {
 	tr, err := trie.NewTrie(nil, storage, false)
 	return &AccountState{
