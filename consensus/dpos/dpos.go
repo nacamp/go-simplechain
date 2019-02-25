@@ -6,6 +6,7 @@ import (
 
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/trie"
 
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/log"
@@ -181,7 +182,7 @@ func (cs *Dpos) Verify(block *core.Block) (err error) {
 
 func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	state := block.ConsensusState.(*DposState)
-
+	accs := block.AccountState
 	electedTime := state.GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)
 
 	if electedTime == block.Header.Time {
@@ -191,6 +192,20 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 		}
 		state.MinersHash, err = state.PutMiners(miners)
 		state.ElectedTime = block.Header.Time
+
+		iter, err := state.Voter.Iterator(nil)
+		if err != nil {
+			return err
+		}
+		exist, _ := iter.Next()
+		for exist {
+			account := accs.GetAccount(common.BytesToAddress(iter.Key()))
+			account.CalcSetTotalPeggedStake()
+			accs.PutAccount(account)
+			exist, err = iter.Next()
+		}
+		//reset voter if this round is new
+		state.Voter, err = trie.NewTrie(nil, cs.bc.Storage, false)
 	}
 	err = state.Put(block.Header.Height, state.ElectedTime, state.MinersHash)
 	if err != nil {
@@ -198,6 +213,31 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	}
 	return nil
 }
+
+/*
+	iter, err := ds.Candidate.Iterator(nil)
+	if err != nil {
+		return nil, err
+	}
+	exist, _ := iter.Next()
+	candidates := []core.BasicAccount{}
+	for exist {
+		account := core.BasicAccount{Address: common.Address{}}
+
+		// encodedBytes1 := iter.Key()
+		// key := new([]byte)
+		// rlp.NewStream(bytes.NewReader(encodedBytes1), 0).Decode(key)
+		account.Address = common.BytesToAddress(iter.Key())
+
+		encodedBytes2 := iter.Value()
+		value := new(big.Int)
+		rlp.NewStream(bytes.NewReader(encodedBytes2), 0).Decode(value)
+		account.Balance = value
+
+		candidates = append(candidates, account)
+		exist, err = iter.Next()
+	}
+*/
 
 //----------    Consensus  ----------------//
 
@@ -250,8 +290,10 @@ func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) erro
 	if err != nil {
 		return err
 	}
+
+	//TODO: who voter?
 	for _, v := range voters {
-		state.Stake(v.Address, v.Balance)
+		state.Stake(v.Address, v.Address, v.Balance)
 	}
 	miners, err := state.GetNewRoundMiners(block.Header.Time, 3)
 	if err != nil {

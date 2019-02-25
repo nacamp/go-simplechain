@@ -23,12 +23,13 @@ type Candidate struct {
 type DposState struct {
 	Candidate   *trie.Trie
 	Miner       *trie.Trie
+	Voter       *trie.Trie
 	MinersHash  common.Hash
 	ElectedTime uint64
 }
 
 //TODO:prefix for candidate address
-func (ds *DposState) Stake(candidate common.Address, amount *big.Int) error {
+func (ds *DposState) Stake(voter, candidate common.Address, amount *big.Int) error {
 	encodedBytes, err := ds.Candidate.Get(candidate[:])
 	if err != nil {
 		if err == trie.ErrNotFound {
@@ -36,6 +37,7 @@ func (ds *DposState) Stake(candidate common.Address, amount *big.Int) error {
 			if err != nil {
 				return err
 			}
+			ds.Voter.Put(voter[:], []byte{})
 			ds.Candidate.Put(candidate[:], encodedBytes)
 			return nil
 		}
@@ -51,11 +53,12 @@ func (ds *DposState) Stake(candidate common.Address, amount *big.Int) error {
 	if err != nil {
 		return err
 	}
+	ds.Voter.Put(voter[:], []byte{})
 	ds.Candidate.Put(candidate[:], encodedBytes)
 	return nil
 }
 
-func (ds *DposState) Unstake(candidate common.Address, amount *big.Int) error {
+func (ds *DposState) Unstake(voter, candidate common.Address, amount *big.Int) error {
 	encodedBytes, err := ds.Candidate.Get(candidate[:])
 	if err != nil {
 		if err == trie.ErrNotFound {
@@ -76,6 +79,7 @@ func (ds *DposState) Unstake(candidate common.Address, amount *big.Int) error {
 	if err != nil {
 		return err
 	}
+	ds.Voter.Put(voter[:], []byte{})
 	ds.Candidate.Put(candidate[:], encodedBytes)
 	return nil
 }
@@ -159,6 +163,7 @@ func (ds *DposState) Put(blockNumber, electedTime uint64, minersHash common.Hash
 	}
 
 	vals = append(vals, ds.Candidate.RootHash()...)
+	vals = append(vals, ds.Voter.RootHash()...)
 	vals = append(vals, minersHash[:]...)
 	vals = append(vals, encodedTimeBytes...)
 	_, err = ds.Miner.Put(crypto.Sha3b256(keyEncodedBytes), vals)
@@ -170,28 +175,29 @@ func (ds *DposState) Put(blockNumber, electedTime uint64, minersHash common.Hash
 }
 
 /* return candidateHash, minersHash, electedTime*/
-func (ds *DposState) Get(blockNumber uint64) (common.Hash, common.Hash, uint64, error) {
+func (ds *DposState) Get(blockNumber uint64) (common.Hash, common.Hash, common.Hash, uint64, error) {
 	keyEncodedBytes, err := rlp.EncodeToBytes(blockNumber)
 	if err != nil {
-		return common.Hash{}, common.Hash{}, 0, err
+		return common.Hash{}, common.Hash{}, common.Hash{}, 0, err
 	}
 	//TODO: check minimum key size
 	encbytes, err := ds.Miner.Get(crypto.Sha3b256(keyEncodedBytes))
 	if err != nil {
-		return common.Hash{}, common.Hash{}, 0, err
+		return common.Hash{}, common.Hash{}, common.Hash{}, 0, err
 	}
-	if len(encbytes) < common.HashLength*2 {
-		return common.Hash{}, common.Hash{}, 0, errors.New("Bytes lenght must be more than 64 bits")
+	if len(encbytes) < common.HashLength*3 {
+		return common.Hash{}, common.Hash{}, common.Hash{}, 0, errors.New("Bytes lenght must be more than 64 bits")
 	}
 
 	electedTime := uint64(0)
 	err = rlp.Decode(bytes.NewReader(encbytes[common.HashLength*2:]), &electedTime)
 	if err != nil {
-		return common.Hash{}, common.Hash{}, 0, err
+		return common.Hash{}, common.Hash{}, common.Hash{}, 0, err
 	}
 
 	return common.BytesToHash(encbytes[:common.HashLength]),
 		common.BytesToHash(encbytes[common.HashLength : common.HashLength*2]),
+		common.BytesToHash(encbytes[common.HashLength*2 : common.HashLength*3]),
 		electedTime, nil
 }
 
@@ -209,9 +215,14 @@ func (ds *DposState) Clone() (core.ConsensusState, error) {
 	if err2 != nil {
 		return nil, err2
 	}
+	tr3, err3 := ds.Voter.Clone()
+	if err3 != nil {
+		return nil, err3
+	}
 	return &DposState{
 		Candidate:   tr1,
 		Miner:       tr2,
+		Voter:       tr3,
 		MinersHash:  ds.MinersHash,
 		ElectedTime: ds.ElectedTime,
 	}, nil
@@ -224,9 +235,17 @@ func (ds *DposState) ExecuteTransaction(tx *core.Transaction, account *core.Acco
 		return err
 	}
 	if tx.Payload.Code == core.TxCVoteStake {
-		return account.Stake(tx.To, amount)
+		err = account.Stake(tx.To, amount)
+		if err != nil {
+			return err
+		}
+		return ds.Stake(account.Address, tx.To, amount)
 	} else if tx.Payload.Code == core.TxCVoteUnStake {
-		return account.UnStake(tx.To, amount)
+		err = account.UnStake(tx.To, amount)
+		if err != nil {
+			return err
+		}
+		return ds.Unstake(account.Address, tx.To, amount)
 	}
 	return nil
 }
@@ -247,11 +266,13 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 
 	state := new(DposState)
 	state.Miner = tr
-	candidateHash, minersHash, electedTime, err := state.Get(blockNumber)
+	candidateHash, votersHash, minersHash, electedTime, err := state.Get(blockNumber)
 	if err != nil {
 		if err == trie.ErrNotFound {
 			tr2, err := trie.NewTrie(nil, storage, false)
 			state.Candidate = tr2
+			tr3, err := trie.NewTrie(nil, storage, false)
+			state.Voter = tr3
 			return state, err
 		}
 		return nil, err
@@ -259,6 +280,8 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 
 	tr2, err := trie.NewTrie(candidateHash[:], storage, false)
 	state.Candidate = tr2
+	tr3, err := trie.NewTrie(votersHash[:], storage, false)
+	state.Voter = tr3
 	state.MinersHash = minersHash
 	state.ElectedTime = electedTime
 	return state, err
