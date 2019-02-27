@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -198,16 +199,16 @@ func (bc *BlockChain) PutState(block *Block) error {
 	parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
 	block.AccountState, err = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	if err != nil {
-		return err
+		return fmt.Errorf("error NewAccountStateRootHash: %s", err)
 	}
 	block.TransactionState, err = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
 	if err != nil {
-		return err
+		return fmt.Errorf("error NewTransactionStateRootHash: %s", err)
 	}
 
 	block.ConsensusState, err = bc.Consensus.LoadState(parentBlock)
 	if err != nil {
-		return err
+		return fmt.Errorf("error LoadState: %s", err)
 	}
 	// TODO: parent maybe not have ConsensusState
 	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
@@ -221,11 +222,11 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
-		return err
+		return fmt.Errorf("error ExecuteTransaction: %s", err)
 	}
 
 	if err := bc.Consensus.SaveState(block); err != nil {
-		return err
+		return fmt.Errorf("error SaveState: %s", err)
 	}
 
 	//check rootHash
@@ -258,8 +259,8 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 	accs := block.AccountState
 	txs := block.TransactionState
-	firstVote := true
-	for _, tx := range block.Transactions {
+	// firstVote := true
+	for i, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
 		if fromAccount.Nonce+1 != tx.Nonce {
 			return ErrTransactionNonce
@@ -273,13 +274,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			toAccount.AddBalance(tx.Amount)
 			accs.PutAccount(toAccount)
 		} else {
-			block.ConsensusState.ExecuteTransaction(tx, fromAccount)
-			//TODO: apply poa
-			if tx.From == block.Header.Coinbase && firstVote {
-				firstVote = false
-			} else {
-				return errors.New("This tx is not validated")
-			}
+			block.ConsensusState.ExecuteTransaction(block, i, fromAccount)
 		}
 		accs.PutAccount(fromAccount)
 		txs.PutTransaction(tx)

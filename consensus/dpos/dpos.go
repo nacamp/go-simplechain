@@ -28,17 +28,7 @@ type Dpos struct {
 	wallet       *account.Wallet
 	enableMining bool
 	streamPool   *net.PeerStreamPool
-	// state        *DposState
 }
-
-// const
-// var (
-// 	ErrAddressNotEqual = errors.New("address not equal")
-// )
-
-// func NewDpos(node *net.Node) *Dpos {
-// 	return &Dpos{node: node}
-// }
 
 func NewDpos(streamPool *net.PeerStreamPool) *Dpos {
 	return &Dpos{streamPool: streamPool}
@@ -184,7 +174,6 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	state := block.ConsensusState.(*DposState)
 	accs := block.AccountState
 	electedTime := state.GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)
-
 	if electedTime == block.Header.Time {
 		miners, err := state.GetNewRoundMiners(block.Header.Time, 3)
 		if err != nil {
@@ -283,7 +272,7 @@ func (cs *Dpos) LoadState(block *core.Block) (state core.ConsensusState, err err
 	return state, nil
 }
 
-func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) error {
+func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) (err error) {
 	bc := cs.bc
 
 	state, err := NewInitState(common.Hash{}, 0, bc.Storage)
@@ -314,15 +303,15 @@ func (cs *Dpos) AddBlockChain(bc *core.BlockChain) {
 	cs.bc = bc
 }
 
-//TODO: rename clone
-func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
-	block.ConsensusState, err = parentBlock.ConsensusState.Clone()
-	if err != nil {
-		return err
-	}
-	return nil
-}
+// //TODO: rename clone
+// func (cs *Dpos) CloneFromParentBlock(block *core.Block, parentBlock *core.Block) (err error) {
+// 	block.ConsensusState, err = parentBlock.ConsensusState.Clone()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }
 
-func (cs *Dpos) SaveMiners(block *core.Block) (err error) {
-	return nil
-}
+// func (cs *Dpos) SaveMiners(block *core.Block) (err error) {
+// 	return nil
+// }

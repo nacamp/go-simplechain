@@ -10,9 +10,11 @@ import (
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/crypto"
+	"github.com/nacamp/go-simplechain/log"
 	"github.com/nacamp/go-simplechain/rlp"
 	"github.com/nacamp/go-simplechain/storage"
 	"github.com/nacamp/go-simplechain/trie"
+	"github.com/sirupsen/logrus"
 )
 
 type Candidate struct {
@@ -190,11 +192,10 @@ func (ds *DposState) Get(blockNumber uint64) (common.Hash, common.Hash, common.H
 	}
 
 	electedTime := uint64(0)
-	err = rlp.Decode(bytes.NewReader(encbytes[common.HashLength*2:]), &electedTime)
+	err = rlp.Decode(bytes.NewReader(encbytes[common.HashLength*3:]), &electedTime)
 	if err != nil {
 		return common.Hash{}, common.Hash{}, common.Hash{}, 0, err
 	}
-
 	return common.BytesToHash(encbytes[:common.HashLength]),
 		common.BytesToHash(encbytes[common.HashLength : common.HashLength*2]),
 		common.BytesToHash(encbytes[common.HashLength*2 : common.HashLength*3]),
@@ -228,7 +229,9 @@ func (ds *DposState) Clone() (core.ConsensusState, error) {
 	}, nil
 }
 
-func (ds *DposState) ExecuteTransaction(tx *core.Transaction, account *core.Account) (err error) {
+func (cs *DposState) ExecuteTransaction(block *core.Block, txIndex int, account *core.Account) (err error) {
+
+	tx := block.Transactions[txIndex]
 	amount := new(big.Int)
 	err = rlp.Decode(bytes.NewReader(tx.Payload.Data), amount)
 	if err != nil {
@@ -239,16 +242,38 @@ func (ds *DposState) ExecuteTransaction(tx *core.Transaction, account *core.Acco
 		if err != nil {
 			return err
 		}
-		return ds.Stake(account.Address, tx.To, amount)
+		return cs.Stake(account.Address, tx.To, amount)
 	} else if tx.Payload.Code == core.TxCVoteUnStake {
 		err = account.UnStake(tx.To, amount)
 		if err != nil {
 			return err
 		}
-		return ds.Unstake(account.Address, tx.To, amount)
+		return cs.Unstake(account.Address, tx.To, amount)
 	}
 	return nil
 }
+
+// func (ds *DposState) ExecuteTransaction(tx *core.Transaction, account *core.Account) (err error) {
+// 	amount := new(big.Int)
+// 	err = rlp.Decode(bytes.NewReader(tx.Payload.Data), amount)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	if tx.Payload.Code == core.TxCVoteStake {
+// 		err = account.Stake(tx.To, amount)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return ds.Stake(account.Address, tx.To, amount)
+// 	} else if tx.Payload.Code == core.TxCVoteUnStake {
+// 		err = account.UnStake(tx.To, amount)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return ds.Unstake(account.Address, tx.To, amount)
+// 	}
+// 	return nil
+// }
 
 /* Make new state by rootHash and initialized by blockNumber*/
 func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Storage) (*DposState, error) {
@@ -261,7 +286,8 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 
 	tr, err := trie.NewTrie(rootHashByte, storage, false)
 	if err != nil {
-		return nil, err
+		log.CLog().WithFields(logrus.Fields{"BlockNumber": blockNumber}).Panic(err)
+		//return nil, err
 	}
 
 	state := new(DposState)
@@ -270,21 +296,34 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 	if err != nil {
 		if err == trie.ErrNotFound {
 			tr2, err := trie.NewTrie(nil, storage, false)
+			if err != nil {
+				log.CLog().WithFields(logrus.Fields{}).Panic(err)
+			}
 			state.Candidate = tr2
 			tr3, err := trie.NewTrie(nil, storage, false)
+			if err != nil {
+				log.CLog().WithFields(logrus.Fields{}).Panic(err)
+			}
 			state.Voter = tr3
-			return state, err
+			return state, nil
 		}
-		return nil, err
+		//return nil, err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 
 	tr2, err := trie.NewTrie(candidateHash[:], storage, false)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	}
 	state.Candidate = tr2
 	tr3, err := trie.NewTrie(votersHash[:], storage, false)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	}
 	state.Voter = tr3
 	state.MinersHash = minersHash
 	state.ElectedTime = electedTime
-	return state, err
+	return state, nil
 }
 
 func shuffle(slice []common.Address, seed int64) {
