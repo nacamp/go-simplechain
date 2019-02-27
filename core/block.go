@@ -12,18 +12,14 @@ import (
 
 // Simple Header
 type Header struct {
-	ParentHash        common.Hash
-	Coinbase          common.Address
-	Height            uint64
-	Time              uint64
-	Hash              common.Hash
-	AccountHash       common.Hash
-	TransactionHash   common.Hash
-	ConsensusHash     common.Hash
-	MinerHash         common.Hash
-	VoterHash         common.Hash
-	SnapshotHash      common.Hash
-	SnapshotVoterTime uint64
+	ParentHash      common.Hash
+	Coinbase        common.Address
+	Height          uint64
+	Time            uint64
+	Hash            common.Hash
+	AccountHash     common.Hash
+	TransactionHash common.Hash
+	ConsensusHash   common.Hash
 	//not need signature at pow
 	//need signature, to prevent malicious behavior like to skip deliberately block in the previous turn
 	Signature common.Signature
@@ -41,10 +37,7 @@ type Block struct {
 
 	AccountState     *AccountState
 	TransactionState *TransactionState
-	MinerState       MinerState
-	VoterState       *AccountState
 	ConsensusState   ConsensusState
-	Snapshot         interface{}
 }
 
 func (b *BaseBlock) NewBlock() *Block {
@@ -70,8 +63,7 @@ func (b *Block) CalcHash() (hash common.Hash) {
 		b.Header.Time,
 		b.Header.AccountHash,
 		b.Header.TransactionHash,
-		// b.Header.MinerHash,
-		b.Header.SnapshotHash,
+		b.Header.ConsensusHash,
 	})
 	hasher.Sum(hash[:0])
 	return hash
