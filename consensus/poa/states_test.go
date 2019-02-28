@@ -70,7 +70,7 @@ func TestState(t *testing.T) {
 	assert.Equal(t, 4, len(signers(state)))
 	assert.Equal(t, 0, len(voters(state)))
 
-	//put & get
+	//test put & get
 	err = state.Put(1)
 	fmt.Println(err)
 	signersHash, votersHash, err := state.Get(1)
@@ -81,6 +81,12 @@ func TestState(t *testing.T) {
 	assert.Equal(t, state.Voter.RootHash(), tr.RootHash())
 	tr, _ = trie.NewTrie(signersHash[:], _storage, false)
 	assert.Equal(t, state.Signer.RootHash(), tr.RootHash())
+
+	//test NewInitState
+	state2, err := NewInitState(state.RootHash(), 1, _storage)
+	assert.NoError(t, err)
+	assert.Equal(t, state.Signer.RootHash(), state2.Signer.RootHash())
+
 }
 
 /*

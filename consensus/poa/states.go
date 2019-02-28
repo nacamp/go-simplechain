@@ -22,6 +22,18 @@ type PoaState struct {
 	firstVote bool
 }
 
+func newTrie(rootHash []byte, storage storage.Storage, needChangelog bool) *trie.Trie {
+	tr, err := trie.NewTrie(rootHash, storage, false)
+	if err != nil {
+		// if err == trie.ErrNotFound {
+		// 	return tr, nil
+		// }
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+		return nil
+	}
+	return tr
+}
+
 /* Make new state by rootHash and initialized by blockNumber*/
 func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Storage) (state *PoaState, err error) {
 	var rootHashByte []byte
@@ -31,31 +43,25 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 		rootHashByte = rootHash[:]
 	}
 
-	tr, err := trie.NewTrie(rootHashByte, storage, false)
-	if err != nil {
-		return nil, err
-	}
-
+	tr := newTrie(rootHashByte, storage, false)
 	state = new(PoaState)
 	state.Snapshot = tr
-	signersHash, votersHash, err := state.Get(blockNumber)
-	if err != nil {
-		if err == trie.ErrNotFound {
-			tr2, err := trie.NewTrie(nil, storage, false)
-			state.Signer = tr2
-			tr3, err := trie.NewTrie(nil, storage, false)
-			state.Voter = tr3
-			return state, err
+	if rootHashByte == nil {
+		state.Signer = newTrie(nil, storage, false)
+		state.Voter = newTrie(nil, storage, false)
+		state.firstVote = true
+		return state, err
+	} else {
+		signersHash, votersHash, err := state.Get(blockNumber)
+		state.Signer = newTrie(signersHash[:], storage, false)
+		if votersHash == (common.Hash{}) {
+			state.Voter = newTrie(nil, storage, false)
+		} else {
+			state.Voter = newTrie(votersHash[:], storage, false)
 		}
-		return nil, err
+		state.firstVote = true
+		return state, err
 	}
-
-	tr2, err := trie.NewTrie(signersHash[:], storage, false)
-	state.Signer = tr2
-	tr3, err := trie.NewTrie(votersHash[:], storage, false)
-	state.Voter = tr3
-	state.firstVote = true
-	return state, err
 }
 
 func (cs *PoaState) Put(blockNumber uint64) error {
