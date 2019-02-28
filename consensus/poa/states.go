@@ -1,14 +1,11 @@
 package poa
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"reflect"
-	"sort"
 
 	"github.com/nacamp/go-simplechain/common"
-	"github.com/nacamp/go-simplechain/common/hexutil"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/nacamp/go-simplechain/log"
@@ -26,49 +23,49 @@ var (
 )
 
 type PoaState struct {
-	BlockHash common.Hash                 `json:"-"`
-	Signers   map[common.Address]struct{} `json:"signers"`
-	//voter address+candidate address
-	Votes      map[DoubleAddress]VoteData       `json:"votes"`
-	Candidates map[common.Address]CandidateData `json:"candidates"`
+	// BlockHash common.Hash                 `json:"-"`
+	// Signers   map[common.Address]struct{} `json:"signers"`
+	// //voter address+candidate address
+	// Votes      map[DoubleAddress]VoteData       `json:"votes"`
+	// Candidates map[common.Address]CandidateData `json:"candidates"`
 
-	Snapshot *trie.Trie
-	// Candidate *trie.Trie
+	Snapshot  *trie.Trie
 	Voter     *trie.Trie
 	Signer    *trie.Trie
 	firstVote bool
 }
-type Vote struct {
-	Signer common.Address `json:"signer"`
-	VoteData
-}
-type VoteData struct {
-	Address   common.Address `json:"address"`
-	Authorize bool           `json:"authorize"`
-}
 
-type Candidate struct {
-	Address common.Address `json:"address"`
-	CandidateData
-}
+// type Vote struct {
+// 	Signer common.Address `json:"signer"`
+// 	VoteData
+// }
+// type VoteData struct {
+// 	Address   common.Address `json:"address"`
+// 	Authorize bool           `json:"authorize"`
+// }
 
-type CandidateData struct {
-	Authorize bool `json:"authorize"`
-	Votes     int  `json:"votes"`
-}
+// type Candidate struct {
+// 	Address common.Address `json:"address"`
+// 	CandidateData
+// }
 
-func NewSnapshot(hash common.Hash, signers []common.Address) *PoaState {
-	snap := &PoaState{
-		BlockHash:  hash,
-		Signers:    make(map[common.Address]struct{}),
-		Votes:      make(map[DoubleAddress]VoteData),
-		Candidates: make(map[common.Address]CandidateData),
-	}
-	for _, signer := range signers {
-		snap.Signers[signer] = struct{}{}
-	}
-	return snap
-}
+// type CandidateData struct {
+// 	Authorize bool `json:"authorize"`
+// 	Votes     int  `json:"votes"`
+// }
+
+// func NewSnapshot(hash common.Hash, signers []common.Address) *PoaState {
+// 	snap := &PoaState{
+// 		BlockHash:  hash,
+// 		Signers:    make(map[common.Address]struct{}),
+// 		Votes:      make(map[DoubleAddress]VoteData),
+// 		Candidates: make(map[common.Address]CandidateData),
+// 	}
+// 	for _, signer := range signers {
+// 		snap.Signers[signer] = struct{}{}
+// 	}
+// 	return snap
+// }
 
 func (cs *PoaState) Put(blockNumber uint64) error {
 	vals := make([]byte, 0)
@@ -150,25 +147,25 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 	return state, err
 }
 
-func LoadSnapshot(db storage.Storage, hash common.Hash) (*PoaState, error) {
-	blob, err := db.Get(append([]byte("snap-"), hash[:]...))
-	if err != nil {
-		return nil, err
-	}
-	snap := new(PoaState)
-	if err := json.Unmarshal(blob, snap); err != nil {
-		return nil, err
-	}
-	return snap, nil
-}
+// func LoadSnapshot(db storage.Storage, hash common.Hash) (*PoaState, error) {
+// 	blob, err := db.Get(append([]byte("snap-"), hash[:]...))
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	snap := new(PoaState)
+// 	if err := json.Unmarshal(blob, snap); err != nil {
+// 		return nil, err
+// 	}
+// 	return snap, nil
+// }
 
-func (s *PoaState) Store(db storage.Storage) error {
-	blob, err := json.Marshal(s)
-	if err != nil {
-		return err
-	}
-	return db.Put(append([]byte("snap-"), s.BlockHash[:]...), blob)
-}
+// func (s *PoaState) Store(db storage.Storage) error {
+// 	blob, err := json.Marshal(s)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	return db.Put(append([]byte("snap-"), s.BlockHash[:]...), blob)
+// }
 
 func (s *PoaState) CalcHash() (hash common.Hash) {
 	blob, _ := json.Marshal(s)
@@ -178,32 +175,32 @@ func (s *PoaState) CalcHash() (hash common.Hash) {
 	return hash
 }
 
-func (s *PoaState) Copy() *PoaState {
-	cpy := &PoaState{
-		BlockHash:  s.BlockHash,
-		Signers:    make(map[common.Address]struct{}),
-		Votes:      make(map[DoubleAddress]VoteData),
-		Candidates: make(map[common.Address]CandidateData),
-	}
-	for signer := range s.Signers {
-		cpy.Signers[signer] = struct{}{}
-	}
-	for byteAddress, vote := range s.Votes {
-		cpy.Votes[byteAddress] = VoteData{
-			Address:   vote.Address,
-			Authorize: vote.Authorize,
-		}
-	}
-	for address, candidate := range s.Candidates {
-		cpy.Candidates[address] = CandidateData{
-			Authorize: candidate.Authorize,
-			Votes:     candidate.Votes,
-		}
-	}
-	return cpy
-}
+// func (s *PoaState) Copy() *PoaState {
+// 	cpy := &PoaState{
+// 		BlockHash:  s.BlockHash,
+// 		Signers:    make(map[common.Address]struct{}),
+// 		Votes:      make(map[DoubleAddress]VoteData),
+// 		Candidates: make(map[common.Address]CandidateData),
+// 	}
+// 	for signer := range s.Signers {
+// 		cpy.Signers[signer] = struct{}{}
+// 	}
+// 	for byteAddress, vote := range s.Votes {
+// 		cpy.Votes[byteAddress] = VoteData{
+// 			Address:   vote.Address,
+// 			Authorize: vote.Authorize,
+// 		}
+// 	}
+// 	for address, candidate := range s.Candidates {
+// 		cpy.Candidates[address] = CandidateData{
+// 			Authorize: candidate.Authorize,
+// 			Votes:     candidate.Votes,
+// 		}
+// 	}
+// 	return cpy
+// }
 
-func (cs *PoaState) ValidVote2(address common.Address, join bool) bool {
+func (cs *PoaState) ValidVote(address common.Address, join bool) bool {
 	_, err := cs.Signer.Get(address[:])
 	if err != nil {
 		return join
@@ -211,60 +208,80 @@ func (cs *PoaState) ValidVote2(address common.Address, join bool) bool {
 	return !join
 }
 
-func (s *PoaState) ValidVote(address common.Address, authorize bool) bool {
-	_, signer := s.Signers[address]
-	return (signer && !authorize) || (!signer && authorize)
-}
+// func (s *PoaState) ValidVote(address common.Address, authorize bool) bool {
+// 	_, signer := s.Signers[address]
+// 	return (signer && !authorize) || (!signer && authorize)
+// }
 
-func appendAddress(a common.Address, b common.Address) DoubleAddress {
-	ba := append(a[:], b[:]...)
-	var da DoubleAddress
-	copy(da[0:], ba)
-	return da
-}
+// func appendAddress(a common.Address, b common.Address) DoubleAddress {
+// 	ba := append(a[:], b[:]...)
+// 	var da DoubleAddress
+// 	copy(da[0:], ba)
+// 	return da
+// }
 
-func (cs *PoaState) Cast2(signer, candidate common.Address, authorize bool) bool {
+func (cs *PoaState) Vote(signer, candidate common.Address, join bool) bool {
 	// Ensure the vote is meaningful
-	if !cs.ValidVote(candidate, authorize) {
+	if !cs.ValidVote(candidate, join) {
 		return false
 	}
 	cs.Voter.Put(append(signer[:], candidate[:]...), []byte{0x0})
 	return true
 }
 
-func (s *PoaState) Cast(signer common.Address, address common.Address, authorize bool) bool {
-	// Ensure the vote is meaningful
-	if !s.ValidVote(address, authorize) {
-		return false
+func (cs *PoaState) signers() (addresses []common.Address, err error) {
+	iter, err := cs.Signer.Iterator(nil)
+	if err != nil {
+		return nil, err
 	}
-	key := appendAddress(signer, address)
-	if _, ok := s.Votes[key]; !ok {
-		s.Votes[key] = VoteData{
-			Address:   address,
-			Authorize: authorize,
-		}
-		if old, ok := s.Candidates[address]; ok {
-			old.Votes++
-			s.Candidates[address] = old
-		} else {
-			s.Candidates[address] = CandidateData{Authorize: authorize, Votes: 1}
-		}
-		return true
+	addresses = make([]common.Address, 0)
+	exist, _ := iter.Next()
+	for exist {
+		addresses = append(addresses, common.BytesToAddress(iter.Key()))
+		exist, err = iter.Next()
 	}
-	return false
+	return addresses, nil
 }
 
-func (cs *PoaState) Apply2() {
+// func (s *PoaState) Cast(signer common.Address, address common.Address, authorize bool) bool {
+// 	// Ensure the vote is meaningful
+// 	if !s.ValidVote(address, authorize) {
+// 		return false
+// 	}
+// 	key := appendAddress(signer, address)
+// 	if _, ok := s.Votes[key]; !ok {
+// 		s.Votes[key] = VoteData{
+// 			Address:   address,
+// 			Authorize: authorize,
+// 		}
+// 		if old, ok := s.Candidates[address]; ok {
+// 			old.Votes++
+// 			s.Candidates[address] = old
+// 		} else {
+// 			s.Candidates[address] = CandidateData{Authorize: authorize, Votes: 1}
+// 		}
+// 		return true
+// 	}
+// 	return false
+// }
+
+func (cs *PoaState) RefreshSigner() (err error) {
 	targetAddress := common.Address{}
 
 	iter, err := cs.Voter.Iterator(nil)
 	if err != nil {
-		return //0, nil, err
+		return err
 	}
 	candidate := make(map[common.Address]int)
-	exist, _ := iter.Next()
-	// candidates := []core.BasicAccount{}
+	exist, err := iter.Next()
+	if err != nil {
+		return err
+	}
 
+	_signers, err := cs.signers()
+	if err != nil {
+		return err
+	}
 	for exist {
 		c := common.BytesToAddress(iter.Key()[common.HashLength:])
 		_, v := candidate[c]
@@ -273,7 +290,7 @@ func (cs *PoaState) Apply2() {
 		} else {
 			candidate[c] = 1
 		}
-		if candidate[c] > len(cs.Signers)/2 {
+		if candidate[c] > len(_signers)/2 {
 			_, err := cs.Signer.Get(c[:])
 			if err != nil {
 				if err == trie.ErrNotFound {
@@ -300,55 +317,56 @@ func (cs *PoaState) Apply2() {
 			exist, err = iter.Next()
 		}
 	}
+	return nil
 }
 
-func (s *PoaState) Apply() {
-	devictedAddress := common.Address{}
-	for address, candidate := range s.Candidates {
-		if candidate.Votes > len(s.Signers)/2 {
-			if candidate.Authorize {
-				//join
-				s.Signers[address] = struct{}{}
-			} else {
-				//evict
-				delete(s.Signers, address)
-				devictedAddress = address
-			}
-		}
-	}
+// func (s *PoaState) Apply() {
+// 	devictedAddress := common.Address{}
+// 	for address, candidate := range s.Candidates {
+// 		if candidate.Votes > len(s.Signers)/2 {
+// 			if candidate.Authorize {
+// 				//join
+// 				s.Signers[address] = struct{}{}
+// 			} else {
+// 				//evict
+// 				delete(s.Signers, address)
+// 				devictedAddress = address
+// 			}
+// 		}
+// 	}
 
-	if devictedAddress != (common.Address{}) {
-		for address, candidate := range s.Candidates {
-			if _, ok := s.Votes[appendAddress(devictedAddress, address)]; ok {
-				//TODO: test
-				candidate.Votes--
-				s.Candidates[address] = candidate
-				delete(s.Votes, appendAddress(devictedAddress, address))
-			}
-		}
-		for address := range s.Signers {
-			if _, ok := s.Votes[appendAddress(address, devictedAddress)]; ok {
-				delete(s.Votes, appendAddress(address, devictedAddress))
-			}
-		}
-		delete(s.Candidates, devictedAddress)
-	}
-}
+// 	if devictedAddress != (common.Address{}) {
+// 		for address, candidate := range s.Candidates {
+// 			if _, ok := s.Votes[appendAddress(devictedAddress, address)]; ok {
+// 				//TODO: test
+// 				candidate.Votes--
+// 				s.Candidates[address] = candidate
+// 				delete(s.Votes, appendAddress(devictedAddress, address))
+// 			}
+// 		}
+// 		for address := range s.Signers {
+// 			if _, ok := s.Votes[appendAddress(address, devictedAddress)]; ok {
+// 				delete(s.Votes, appendAddress(address, devictedAddress))
+// 			}
+// 		}
+// 		delete(s.Candidates, devictedAddress)
+// 	}
+// }
 
-type signersAscending []common.Address
+// type signersAscending []common.Address
 
-func (s signersAscending) Len() int           { return len(s) }
-func (s signersAscending) Less(i, j int) bool { return bytes.Compare(s[i][:], s[j][:]) < 0 }
-func (s signersAscending) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+// func (s signersAscending) Len() int           { return len(s) }
+// func (s signersAscending) Less(i, j int) bool { return bytes.Compare(s[i][:], s[j][:]) < 0 }
+// func (s signersAscending) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
-func (s *PoaState) SignerSlice() []common.Address {
-	sigs := make([]common.Address, 0, len(s.Signers))
-	for sig := range s.Signers {
-		sigs = append(sigs, sig)
-	}
-	sort.Sort(signersAscending(sigs))
-	return sigs
-}
+// func (s *PoaState) SignerSlice() []common.Address {
+// 	sigs := make([]common.Address, 0, len(s.Signers))
+// 	for sig := range s.Signers {
+// 		sigs = append(sigs, sig)
+// 	}
+// 	sort.Sort(signersAscending(sigs))
+// 	return sigs
+// }
 
 func (cs *PoaState) GetMiners() (signers []common.Address, err error) {
 	signers = []common.Address{}
@@ -365,20 +383,20 @@ func (cs *PoaState) GetMiners() (signers []common.Address, err error) {
 	return signers, nil
 }
 
-// MarshalText returns the hex representation of a.
-func (a DoubleAddress) MarshalText() ([]byte, error) {
-	return hexutil.Bytes(a[:]).MarshalText()
-}
+// // MarshalText returns the hex representation of a.
+// func (a DoubleAddress) MarshalText() ([]byte, error) {
+// 	return hexutil.Bytes(a[:]).MarshalText()
+// }
 
-// UnmarshalText parses a hash in hex syntax.
-func (a *DoubleAddress) UnmarshalText(input []byte) error {
-	return hexutil.UnmarshalFixedText("DoubleAddress", input, a[:])
-}
+// // UnmarshalText parses a hash in hex syntax.
+// func (a *DoubleAddress) UnmarshalText(input []byte) error {
+// 	return hexutil.UnmarshalFixedText("DoubleAddress", input, a[:])
+// }
 
-// UnmarshalJSON parses a hash in hex syntax.
-func (a *DoubleAddress) UnmarshalJSON(input []byte) error {
-	return hexutil.UnmarshalFixedJSON(doubleAddressT, input, a[:])
-}
+// // UnmarshalJSON parses a hash in hex syntax.
+// func (a *DoubleAddress) UnmarshalJSON(input []byte) error {
+// 	return hexutil.UnmarshalFixedJSON(doubleAddressT, input, a[:])
+// }
 
 func (cs *PoaState) Clone() (core.ConsensusState, error) {
 	tr1, err1 := cs.Voter.Clone()
@@ -409,9 +427,9 @@ func (cs *PoaState) ExecuteTransaction(block *core.Block, txIndex int, account *
 		return errors.New("This tx is not validated")
 	}
 	if tx.Payload.Code == core.TxCVoteStake {
-		cs.Cast2(tx.From, tx.To, true)
+		cs.Vote(tx.From, tx.To, true)
 	} else if tx.Payload.Code == core.TxCVoteUnStake {
-		cs.Cast2(tx.From, tx.To, false)
+		cs.Vote(tx.From, tx.To, false)
 	}
 	return nil
 }
