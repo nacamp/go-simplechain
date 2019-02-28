@@ -1,9 +1,11 @@
 package poa
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/nacamp/go-simplechain/tests"
+	"github.com/nacamp/go-simplechain/trie"
 
 	"github.com/stretchr/testify/assert"
 
@@ -68,6 +70,17 @@ func TestState(t *testing.T) {
 	assert.Equal(t, 4, len(signers(state)))
 	assert.Equal(t, 0, len(voters(state)))
 
+	//put & get
+	err = state.Put(1)
+	fmt.Println(err)
+	signersHash, votersHash, err := state.Get(1)
+	//if voters size is 0, return common.Hash{}
+	assert.Equal(t, common.Hash{}, votersHash)
+	//if votersHash is common.Hash{}, use nil
+	tr, _ := trie.NewTrie(nil, _storage, false)
+	assert.Equal(t, state.Voter.RootHash(), tr.RootHash())
+	tr, _ = trie.NewTrie(signersHash[:], _storage, false)
+	assert.Equal(t, state.Signer.RootHash(), tr.RootHash())
 }
 
 /*
@@ -112,41 +125,6 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 	return state, err
 }
 
-func (cs *PoaState) Put(blockNumber uint64) error {
-	vals := make([]byte, 0)
-	keyEncodedBytes, err := rlp.EncodeToBytes(blockNumber)
-	if err != nil {
-		return err
-	}
-
-	vals = append(vals, cs.Signer.RootHash()...)
-	vals = append(vals, cs.Voter.RootHash()...)
-	_, err = cs.Snapshot.Put(crypto.Sha3b256(keyEncodedBytes), vals)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (cs *PoaState) Get(blockNumber uint64) (common.Hash, common.Hash, error) {
-	keyEncodedBytes, err := rlp.EncodeToBytes(blockNumber)
-	if err != nil {
-		return common.Hash{}, common.Hash{}, err
-	}
-	//TODO: check minimum key size
-	encbytes, err := cs.Snapshot.Get(crypto.Sha3b256(keyEncodedBytes))
-	if err != nil {
-		return common.Hash{}, common.Hash{}, err
-	}
-	if len(encbytes) < common.HashLength*2 {
-		return common.Hash{}, common.Hash{}, errors.New("Bytes lenght must be more than 64 bits")
-	}
-
-	return common.BytesToHash(encbytes[:common.HashLength]),
-		common.BytesToHash(encbytes[common.HashLength:]),
-		nil
-}
 
 func (s *PoaState) CalcHash() (hash common.Hash) {
 	blob, _ := json.Marshal(s)

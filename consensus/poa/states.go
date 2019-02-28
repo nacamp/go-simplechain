@@ -64,14 +64,12 @@ func (cs *PoaState) Put(blockNumber uint64) error {
 	if err != nil {
 		return err
 	}
-
 	vals = append(vals, cs.Signer.RootHash()...)
 	vals = append(vals, cs.Voter.RootHash()...)
 	_, err = cs.Snapshot.Put(crypto.Sha3b256(keyEncodedBytes), vals)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -85,13 +83,20 @@ func (cs *PoaState) Get(blockNumber uint64) (common.Hash, common.Hash, error) {
 	if err != nil {
 		return common.Hash{}, common.Hash{}, err
 	}
-	if len(encbytes) < common.HashLength*2 {
-		return common.Hash{}, common.Hash{}, errors.New("Bytes lenght must be more than 64 bits")
+	if len(encbytes) < common.HashLength {
+		return common.Hash{}, common.Hash{}, errors.New("Bytes lenght must be more than 32 bits")
+	}
+	//if cs.Voter' size is 0, cs.Voter.RootHash() is 0
+	if len(encbytes) == common.HashLength {
+		return common.BytesToHash(encbytes[:common.HashLength]),
+			common.Hash{},
+			nil
+	} else {
+		return common.BytesToHash(encbytes[:common.HashLength]),
+			common.BytesToHash(encbytes[common.HashLength:]),
+			nil
 	}
 
-	return common.BytesToHash(encbytes[:common.HashLength]),
-		common.BytesToHash(encbytes[common.HashLength:]),
-		nil
 }
 
 func (s *PoaState) CalcHash() (hash common.Hash) {
