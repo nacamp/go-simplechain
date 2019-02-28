@@ -1,28 +1,82 @@
 package poa
 
 import (
-	"encoding/json"
-	"errors"
+	"testing"
+
+	"github.com/nacamp/go-simplechain/tests"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/nacamp/go-simplechain/common"
-	"github.com/nacamp/go-simplechain/core"
-	"github.com/nacamp/go-simplechain/crypto"
-	"github.com/nacamp/go-simplechain/log"
-	"github.com/nacamp/go-simplechain/rlp"
 	"github.com/nacamp/go-simplechain/storage"
-	"github.com/nacamp/go-simplechain/trie"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/sha3"
 )
 
-type PoaState struct {
-	Snapshot  *trie.Trie
-	Voter     *trie.Trie
-	Signer    *trie.Trie
-	firstVote bool
+func signers(state *PoaState) []common.Address {
+	addresses, _ := state.signers()
+	return addresses
 }
 
-/* Make new state by rootHash and initialized by blockNumber*/
+func voters(state *PoaState) [][]byte {
+	doubleAddress := make([][]byte, 0)
+	iter, err := state.Voter.Iterator(nil)
+	if err != nil {
+		return doubleAddress
+	}
+	exist, _ := iter.Next()
+	for exist {
+		doubleAddress = append(doubleAddress, iter.Key())
+		exist, _ = iter.Next()
+	}
+	return doubleAddress
+}
+
+func TestState(t *testing.T) {
+	_storage, _ := storage.NewMemoryStorage()
+	state, err := NewInitState(common.Hash{}, 0, _storage)
+	assert.NoError(t, err)
+	_ = state
+
+	state.Signer.Put(common.FromHex(tests.Addr0), []byte{})
+	state.Signer.Put(common.FromHex(tests.Addr1), []byte{})
+	state.Signer.Put(common.FromHex(tests.Addr2), []byte{})
+
+	//test signers
+	addresses, _ := state.signers()
+	assert.Equal(t, common.FromHex(tests.Addr0), addresses[0][:])
+	assert.Equal(t, common.FromHex(tests.Addr1), addresses[1][:])
+	assert.Equal(t, common.FromHex(tests.Addr2), addresses[2][:])
+
+	//test ValidVote
+	var newAddr = "0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2"
+	assert.False(t, state.ValidVote(common.HexToAddress(newAddr), false))
+	assert.False(t, state.ValidVote(common.HexToAddress(tests.Addr0), true))
+	assert.True(t, state.ValidVote(common.HexToAddress(newAddr), true))
+	assert.True(t, state.ValidVote(common.HexToAddress(tests.Addr0), false))
+
+	//test Vote & RefreshSigner
+	//FIXME: ban self vote, check if voter is signer
+	assert.False(t, state.Vote(common.HexToAddress(tests.Addr0), common.HexToAddress(newAddr), false))
+
+	assert.True(t, state.Vote(common.HexToAddress(tests.Addr0), common.HexToAddress(newAddr), true))
+	assert.Equal(t, 1, len(voters(state)))
+	_ = state.RefreshSigner()
+	assert.Equal(t, 3, len(signers(state)))
+
+	assert.True(t, state.Vote(common.HexToAddress(tests.Addr1), common.HexToAddress(newAddr), true))
+	assert.Equal(t, 2, len(voters(state)))
+	_ = state.RefreshSigner()
+	assert.Equal(t, 4, len(signers(state)))
+	assert.Equal(t, 0, len(voters(state)))
+
+}
+
+/*
+	// 	//TODO: who voter?
+	for _, v := range voters {
+		state.Vote(v.Address, v.Address, true)
+		state.RefreshSigner()
+	}
+	state.Put(block.Header.Height)
 func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Storage) (state *PoaState, err error) {
 	var rootHashByte []byte
 	if rootHash == (common.Hash{}) {
@@ -102,96 +156,6 @@ func (s *PoaState) CalcHash() (hash common.Hash) {
 	return hash
 }
 
-func (cs *PoaState) ValidVote(address common.Address, join bool) bool {
-	_, err := cs.Signer.Get(address[:])
-	if err != nil {
-		return join
-	}
-	return !join
-}
-
-func (cs *PoaState) Vote(signer, candidate common.Address, join bool) bool {
-	// Ensure the vote is meaningful
-	if !cs.ValidVote(candidate, join) {
-		return false
-	}
-	cs.Voter.Put(append(signer[:], candidate[:]...), []byte{})
-	return true
-}
-
-func (cs *PoaState) signers() (addresses []common.Address, err error) {
-	iter, err := cs.Signer.Iterator(nil)
-	if err != nil {
-		return nil, err
-	}
-	addresses = make([]common.Address, 0)
-	exist, _ := iter.Next()
-	for exist {
-		addresses = append(addresses, common.BytesToAddress(iter.Key()))
-		exist, err = iter.Next()
-	}
-	return addresses, nil
-}
-
-func (cs *PoaState) RefreshSigner() (err error) {
-	targetAddress := common.Address{}
-	candidate := make(map[common.Address]int)
-	_signers, err := cs.signers()
-	if err != nil {
-		return err
-	}
-
-	iter, err := cs.Voter.Iterator(nil)
-	if err != nil {
-		return err
-	}
-
-	exist, err := iter.Next()
-	if err != nil {
-		return err
-	}
-	for exist {
-		c := common.BytesToAddress(iter.Key()[common.AddressLength:])
-
-		_, v := candidate[c]
-		if v {
-			candidate[c] += 1
-		} else {
-			candidate[c] = 1
-		}
-
-		if candidate[c] > len(_signers)/2 {
-			_, err := cs.Signer.Get(c[:])
-			if err != nil {
-				if err == trie.ErrNotFound {
-					_, err = cs.Signer.Put(c[:], []byte{})
-					if err != nil {
-						return err
-					}
-				} else {
-					log.CLog().WithFields(logrus.Fields{}).Panic(err)
-				}
-			} else {
-				cs.Signer.Del(c[:])
-			}
-			targetAddress = c
-			break
-		}
-		exist, err = iter.Next()
-	}
-	if len(targetAddress) > 0 {
-		iter, _ := cs.Voter.Iterator(nil)
-		exist, _ := iter.Next()
-		for exist {
-			k := iter.Key()
-			if common.BytesToAddress(k[:common.AddressLength]) == targetAddress || common.BytesToAddress(k[common.AddressLength:]) == targetAddress {
-				cs.Voter.Del(iter.Key())
-			}
-			exist, err = iter.Next()
-		}
-	}
-	return nil
-}
 
 func (cs *PoaState) GetMiners() (signers []common.Address, err error) {
 	signers = []common.Address{}
@@ -248,3 +212,4 @@ func (cs *PoaState) RootHash() (hash common.Hash) {
 	copy(hash[:], cs.Snapshot.RootHash())
 	return hash
 }
+*/
