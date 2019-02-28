@@ -340,8 +340,8 @@ func (cs *Poa) MakeGenesisBlock(block *core.Block, voters []*core.Account) error
 	}
 	// 	//TODO: who voter?
 	for _, v := range voters {
-		state.Cast2(v.Address, v.Address, true)
-		state.Apply2()
+		state.Vote(v.Address, v.Address, true)
+		state.RefreshSigner()
 	}
 	state.Put(block.Header.Height)
 
@@ -442,7 +442,7 @@ func (cs *Dpos) Verify(block *core.Block) (err error) {
 
 func (cs *Poa) SaveState(block *core.Block) (err error) {
 	state := block.ConsensusState.(*PoaState)
-	state.Apply2()
+	state.RefreshSigner()
 	// accs := block.AccountState
 
 	// electedTime := state.GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)

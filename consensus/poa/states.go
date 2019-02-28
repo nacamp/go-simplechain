@@ -1,7 +1,6 @@
 package poa
 
 import (
-	"encoding/json"
 	"errors"
 
 	"github.com/nacamp/go-simplechain/common"
@@ -12,7 +11,6 @@ import (
 	"github.com/nacamp/go-simplechain/storage"
 	"github.com/nacamp/go-simplechain/trie"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/crypto/sha3"
 )
 
 type PoaState struct {
@@ -103,14 +101,6 @@ func (cs *PoaState) Get(blockNumber uint64) (common.Hash, common.Hash, error) {
 			nil
 	}
 
-}
-
-func (s *PoaState) CalcHash() (hash common.Hash) {
-	blob, _ := json.Marshal(s)
-	hasher := sha3.New256()
-	hasher.Write(blob)
-	hasher.Sum(hash[:0])
-	return hash
 }
 
 func (cs *PoaState) ValidVote(address common.Address, join bool) bool {
@@ -210,11 +200,17 @@ func (cs *PoaState) GetMiners() (signers []common.Address, err error) {
 	if err != nil {
 		return nil, err
 	}
-	exist, _ := iter.Next()
+	exist, err := iter.Next()
+	if err != nil {
+		return nil, err
+	}
 	for exist {
 		k := iter.Key()
 		signers = append(signers, common.BytesToAddress(k))
-		exist, err = iter.Next()
+		exist, _ = iter.Next()
+		if err != nil {
+			return nil, err
+		}
 	}
 	return signers, nil
 }
