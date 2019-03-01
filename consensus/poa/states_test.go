@@ -1,7 +1,6 @@
 package poa
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/nacamp/go-simplechain/tests"
@@ -72,7 +71,7 @@ func TestState(t *testing.T) {
 
 	//test put & get
 	err = state.Put(1)
-	fmt.Println(err)
+	assert.NoError(t, err)
 	signersHash, votersHash, err := state.Get(1)
 	//if voters size is 0, return common.Hash{}
 	assert.Equal(t, common.Hash{}, votersHash)
@@ -87,113 +86,18 @@ func TestState(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, state.Signer.RootHash(), state2.Signer.RootHash())
 
+	//test sort and size in GetMiners
+	signers, err := state.GetMiners()
+	assert.Equal(t, "0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", common.AddressToHex(signers[0]))
+	assert.Equal(t, tests.Addr0, common.AddressToHex(signers[1]))
+	assert.Equal(t, tests.Addr1, common.AddressToHex(signers[2]))
+	assert.Equal(t, tests.Addr2, common.AddressToHex(signers[3]))
+	assert.Equal(t, 4, len(signers))
+
+	//test Clone
+	state3, err := state.Clone()
+	state4 := state3.(*PoaState)
+	assert.Equal(t, state.Signer.RootHash(), state4.Signer.RootHash())
+	assert.Equal(t, state.Voter.RootHash(), state4.Voter.RootHash())
+	assert.Equal(t, state.Snapshot.RootHash(), state4.Snapshot.RootHash())
 }
-
-/*
-	// 	//TODO: who voter?
-	for _, v := range voters {
-		state.Vote(v.Address, v.Address, true)
-		state.RefreshSigner()
-	}
-	state.Put(block.Header.Height)
-func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Storage) (state *PoaState, err error) {
-	var rootHashByte []byte
-	if rootHash == (common.Hash{}) {
-		rootHashByte = nil
-	} else {
-		rootHashByte = rootHash[:]
-	}
-
-	tr, err := trie.NewTrie(rootHashByte, storage, false)
-	if err != nil {
-		return nil, err
-	}
-
-	state = new(PoaState)
-	state.Snapshot = tr
-	signersHash, votersHash, err := state.Get(blockNumber)
-	if err != nil {
-		if err == trie.ErrNotFound {
-			tr2, err := trie.NewTrie(nil, storage, false)
-			state.Signer = tr2
-			tr3, err := trie.NewTrie(nil, storage, false)
-			state.Voter = tr3
-			return state, err
-		}
-		return nil, err
-	}
-
-	tr2, err := trie.NewTrie(signersHash[:], storage, false)
-	state.Signer = tr2
-	tr3, err := trie.NewTrie(votersHash[:], storage, false)
-	state.Voter = tr3
-	state.firstVote = true
-	return state, err
-}
-
-
-func (s *PoaState) CalcHash() (hash common.Hash) {
-	blob, _ := json.Marshal(s)
-	hasher := sha3.New256()
-	hasher.Write(blob)
-	hasher.Sum(hash[:0])
-	return hash
-}
-
-
-func (cs *PoaState) GetMiners() (signers []common.Address, err error) {
-	signers = []common.Address{}
-	iter, err := cs.Signer.Iterator(nil)
-	if err != nil {
-		return nil, err
-	}
-	exist, _ := iter.Next()
-	for exist {
-		k := iter.Key()
-		signers = append(signers, common.BytesToAddress(k))
-		exist, err = iter.Next()
-	}
-	return signers, nil
-}
-
-func (cs *PoaState) Clone() (core.ConsensusState, error) {
-	tr1, err1 := cs.Voter.Clone()
-	if err1 != nil {
-		return nil, err1
-	}
-	tr2, err2 := cs.Signer.Clone()
-	if err2 != nil {
-		return nil, err2
-	}
-	tr3, err3 := cs.Snapshot.Clone()
-	if err3 != nil {
-		return nil, err3
-	}
-	return &PoaState{
-		Voter:     tr1,
-		Signer:    tr2,
-		Snapshot:  tr3,
-		firstVote: true,
-	}, nil
-}
-
-func (cs *PoaState) ExecuteTransaction(block *core.Block, txIndex int, account *core.Account) (err error) {
-	tx := block.Transactions[txIndex]
-	if tx.From == block.Header.Coinbase && cs.firstVote {
-		cs.firstVote = false
-	} else {
-		return errors.New("This tx is not validated")
-	}
-	if tx.Payload.Code == core.TxCVoteStake {
-		cs.Vote(tx.From, tx.To, true)
-	} else if tx.Payload.Code == core.TxCVoteUnStake {
-		cs.Vote(tx.From, tx.To, false)
-	}
-	return nil
-}
-
-func (cs *PoaState) RootHash() (hash common.Hash) {
-	copy(hash[:], cs.Snapshot.RootHash())
-	return hash
-}
-*/

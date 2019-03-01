@@ -1,7 +1,9 @@
 package poa
 
 import (
+	"bytes"
 	"errors"
+	"sort"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
@@ -194,6 +196,12 @@ func (cs *PoaState) RefreshSigner() (err error) {
 	return nil
 }
 
+type signersAscending []common.Address
+
+func (s signersAscending) Len() int           { return len(s) }
+func (s signersAscending) Less(i, j int) bool { return bytes.Compare(s[i][:], s[j][:]) < 0 }
+func (s signersAscending) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+
 func (cs *PoaState) GetMiners() (signers []common.Address, err error) {
 	signers = []common.Address{}
 	iter, err := cs.Signer.Iterator(nil)
@@ -212,6 +220,7 @@ func (cs *PoaState) GetMiners() (signers []common.Address, err error) {
 			return nil, err
 		}
 	}
+	sort.Sort(signersAscending(signers))
 	return signers, nil
 }
 
