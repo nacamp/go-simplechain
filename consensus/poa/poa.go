@@ -27,10 +27,6 @@ type Poa struct {
 	streamPool   *net.PeerStreamPool
 }
 
-// func NewPoa(node *net.Node, storage storage.Storage) *Poa {
-// 	return &Poa{node: node, Storage: storage}
-// }
-
 func NewPoa(streamPool *net.PeerStreamPool, storage storage.Storage) *Poa {
 	return &Poa{streamPool: streamPool, Storage: storage}
 }
@@ -271,15 +267,6 @@ func (cs *Poa) AddBlockChain(bc *core.BlockChain) {
 }
 
 func (cs *Poa) Verify(block *core.Block) error {
-	// parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
-	// if parentBlock == nil {
-	// 	return errors.New("parent block is nil")
-	// }
-	// miners, err := cs.GetMiners(parentBlock.Hash())
-	// if err != nil {
-	// 	return err
-	// }
-
 	state := block.ConsensusState().(*PoaState)
 	miners, err := state.GetMiners()
 	if err != nil {
@@ -292,87 +279,13 @@ func (cs *Poa) Verify(block *core.Block) error {
 	return nil
 }
 
-/*
-func (cs *Dpos) Verify(block *core.Block) (err error) {
-	//block.Header.Coinbase
-	state := block.ConsensusState.(*DposState)
-	miners, err := state.GetMiners(state.MinersHash)
-	if err != nil {
-		return err
-	}
-	turn := (block.Header.Time % 9) / 3
-	if miners[turn] != block.Header.Coinbase {
-		return errors.New("This time is not your turn")
-	}
-	return nil
-}
-*/
-
 func (cs *Poa) SaveState(block *core.Block) (err error) {
 	state := block.ConsensusState().(*PoaState)
-	//state.RefreshSigner()
-	// accs := block.AccountState
-
-	// electedTime := state.GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)
-
-	// if electedTime == block.Header.Time {
-	// 	miners, err := state.GetNewRoundMiners(block.Header.Time, 3)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	state.MinersHash, err = state.PutMiners(miners)
-	// 	state.ElectedTime = block.Header.Time
-
-	// 	iter, err := state.Voter.Iterator(nil)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	exist, _ := iter.Next()
-	// 	for exist {
-	// 		account := accs.GetAccount(common.BytesToAddress(iter.Key()))
-	// 		account.CalcSetTotalPeggedStake()
-	// 		accs.PutAccount(account)
-	// 		exist, err = iter.Next()
-	// 	}
-	// 	//reset voter if this round is new
-	// 	state.Voter, err = trie.NewTrie(nil, cs.bc.Storage, false)
-	// }
+	state.RefreshSigner()
 	err = state.Put(block.Header.Height)
 	if err != nil {
 		return err
 	}
-	return nil
-
-	// if err := cs.VerifyMinerTurn(block); err != nil {
-	// 	return err
-	// }
-	// snapshot, err := cs.LoadSnapshot(block.Header.ParentHash)
-	// if err != nil {
-	// 	log.CLog().Warning(err)
-	// 	return err
-	// }
-	// if snapshot == nil {
-	// 	return errors.New("Snapshot is nil")
-	// }
-	// newSnap := snapshot.Copy()
-	// newSnap.BlockHash = block.Hash()
-	// for _, tx := range block.Transactions {
-
-	// 	if tx.Payload != nil {
-	// 		//TODO: fix after dpos coding
-	// 		// authorize := bool(true)
-	// 		// rlp.DecodeBytes(tx.Payload, &authorize)
-	// 		// if newSnap.Cast(tx.From, tx.To, authorize) {
-	// 		// 	newSnap.Apply()
-	// 		// }
-	// 		break
-	// 	}
-	// }
-	// h := newSnap.CalcHash()
-	// if h != block.Header.SnapshotHash {
-	// 	return errors.New("Hash is different")
-	// }
-	// newSnap.Store(cs.Storage)
 	return nil
 }
 

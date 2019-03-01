@@ -54,6 +54,7 @@ func TestPoa(t *testing.T) {
 	assert.Nil(t, block)
 	block = cs.MakeBlock(3 * 5) // 3*4=>1, 3*5=>2, , 3*6=>0,
 	assert.Nil(t, block)
+
 	block = cs.MakeBlock(3 * 6) // 3*4=>1, 3*5=>2, , 3*6=>0,
 	sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
 	block.SignWithSignature(sig)
@@ -70,174 +71,14 @@ func TestPoa(t *testing.T) {
 	assert.NoError(t, err)
 	fmt.Println("2>>>>", common.HashToHex(block.ConsensusState().RootHash()))
 
+	//test Verify
+	assert.NoError(t, cs.Verify(block))
+	block.Header.Time = 3 * 4
+	assert.Error(t, cs.Verify(block))
+
 	//test getMinerSize
 	minerSize, _ := cs.getMinerSize(block)
 	assert.Equal(t, 3, minerSize)
+
+	//TODO:  test UpdateLIB() with dpos at blockchain_test
 }
-
-/*
-//----------    Consensus  ----------------//
-func (cs *Poa) UpdateLIB() {
-	bc := cs.bc
-	block := bc.Tail
-	//FIXME: consider timestamp
-	miners := make(map[common.Address]bool)
-	turn := 1
-	if block.Header.Height == 0 {
-		return
-	}
-	firstMinerSize, err := cs.getMinerSize(block)
-	if err != nil {
-		log.CLog().WithFields(logrus.Fields{
-			"Msg": err,
-		}).Warning("getMinerSize")
-		return
-	}
-	if firstMinerSize < 3 {
-		log.CLog().WithFields(logrus.Fields{
-			"Size": firstMinerSize,
-		}).Debug("At least 3 node are needed")
-		return
-	}
-	for bc.Lib.Hash() != block.Hash() {
-		miners[block.Header.Coinbase] = true
-		size, err := cs.getMinerSize(block)
-		if err != nil {
-			log.CLog().WithFields(logrus.Fields{
-				"Msg": err,
-			}).Warning("getMinerSize")
-			return
-		}
-		if firstMinerSize != size {
-			return
-		}
-		if turn == firstMinerSize {
-			if len(miners) == firstMinerSize*2/3+1 {
-				bc.SetLib(block)
-				log.CLog().WithFields(logrus.Fields{
-					"Height": block.Header.Height,
-				}).Info("Updated Lib")
-				return
-			}
-			miners = make(map[common.Address]bool)
-			miners[block.Header.Coinbase] = true
-			turn = 0
-		}
-		block = bc.GetBlockByHash(block.Header.ParentHash)
-		turn++
-	}
-	return
-}
-
-func (cs *Poa) ConsensusType() string {
-	return "POA"
-}
-
-
-
-
-func (cs *Poa) Verify(block *core.Block) error {
-	// parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
-	// if parentBlock == nil {
-	// 	return errors.New("parent block is nil")
-	// }
-	// miners, err := cs.GetMiners(parentBlock.Hash())
-	// if err != nil {
-	// 	return err
-	// }
-
-	state := block.ConsensusState.(*PoaState)
-	miners, err := state.GetMiners()
-	if err != nil {
-		return err
-	}
-	index := (block.Header.Time % (uint64(len(miners)) * cs.Period)) / cs.Period
-	if miners[index] != block.Header.Coinbase {
-		return errors.New("This turn is not this miner's turn ")
-	}
-	return nil
-}
-
-
-
-func (cs *Poa) SaveState(block *core.Block) (err error) {
-	state := block.ConsensusState.(*PoaState)
-	state.RefreshSigner()
-	// accs := block.AccountState
-
-	// electedTime := state.GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)
-
-	// if electedTime == block.Header.Time {
-	// 	miners, err := state.GetNewRoundMiners(block.Header.Time, 3)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	state.MinersHash, err = state.PutMiners(miners)
-	// 	state.ElectedTime = block.Header.Time
-
-	// 	iter, err := state.Voter.Iterator(nil)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	exist, _ := iter.Next()
-	// 	for exist {
-	// 		account := accs.GetAccount(common.BytesToAddress(iter.Key()))
-	// 		account.CalcSetTotalPeggedStake()
-	// 		accs.PutAccount(account)
-	// 		exist, err = iter.Next()
-	// 	}
-	// 	//reset voter if this round is new
-	// 	state.Voter, err = trie.NewTrie(nil, cs.bc.Storage, false)
-	// }
-	err = state.Put(block.Header.Height)
-	if err != nil {
-		return err
-	}
-	return nil
-
-	// if err := cs.VerifyMinerTurn(block); err != nil {
-	// 	return err
-	// }
-	// snapshot, err := cs.LoadSnapshot(block.Header.ParentHash)
-	// if err != nil {
-	// 	log.CLog().Warning(err)
-	// 	return err
-	// }
-	// if snapshot == nil {
-	// 	return errors.New("Snapshot is nil")
-	// }
-	// newSnap := snapshot.Copy()
-	// newSnap.BlockHash = block.Hash()
-	// for _, tx := range block.Transactions {
-
-	// 	if tx.Payload != nil {
-	// 		//TODO: fix after dpos coding
-	// 		// authorize := bool(true)
-	// 		// rlp.DecodeBytes(tx.Payload, &authorize)
-	// 		// if newSnap.Cast(tx.From, tx.To, authorize) {
-	// 		// 	newSnap.Apply()
-	// 		// }
-	// 		break
-	// 	}
-	// }
-	// h := newSnap.CalcHash()
-	// if h != block.Header.SnapshotHash {
-	// 	return errors.New("Hash is different")
-	// }
-	// newSnap.Store(cs.Storage)
-	return nil
-}
-
-
-
-func (cs *Poa) LoadState(block *core.Block) (state core.ConsensusState, err error) {
-	bc := cs.bc
-
-	state, err = NewInitState(block.Header.ConsensusHash, block.Header.Height, bc.Storage)
-	if err != nil {
-		return nil, err
-	}
-	return state, nil
-}
-
-*/
