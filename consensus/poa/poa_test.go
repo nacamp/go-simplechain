@@ -1,13 +1,17 @@
 package poa
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/log"
 	"github.com/nacamp/go-simplechain/net"
 	"github.com/nacamp/go-simplechain/storage"
 	"github.com/nacamp/go-simplechain/tests"
@@ -15,17 +19,27 @@ import (
 
 func TestPoa(t *testing.T) {
 	var err error
+	var block *core.Block
 	//config
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	mstrg, _ := storage.NewMemoryStorage()
 
 	cs := NewPoa(net.NewPeerStreamPool(), mstrg)
+	wallet := account.NewWallet(config.KeystoreFile)
+	wallet.Load()
+	err = wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
+	if err != nil {
+		log.CLog().Fatal(err)
+	}
+
+	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
 	bc := core.NewBlockChain(mstrg)
 
 	//test MakeGenesisBlock in Setup
 	bc.Setup(cs, voters)
-	state, _ := NewInitState(cs.bc.GenesisBlock.ConsensusState.RootHash(), 0, mstrg)
+	state, _ := NewInitState(cs.bc.GenesisBlock.ConsensusState().RootHash(), 0, mstrg)
+	fmt.Println("0>>>>", common.HashToHex(cs.bc.GenesisBlock.ConsensusState().RootHash()))
 	_, err = state.Signer.Get(common.FromHex(tests.Addr0))
 	assert.NoError(t, err)
 	_, err = state.Signer.Get(common.FromHex(tests.Addr1))
@@ -33,194 +47,35 @@ func TestPoa(t *testing.T) {
 	_, err = state.Signer.Get(common.FromHex(tests.Addr2))
 	assert.NoError(t, err)
 
+	//test MakeBlock
+	signers, err := state.GetMiners()
+	assert.Equal(t, signers[0], cs.coinbase)
+	block = cs.MakeBlock(3 * 4) // 3*4=>1, 3*5=>2, , 3*6=>0,
+	assert.Nil(t, block)
+	block = cs.MakeBlock(3 * 5) // 3*4=>1, 3*5=>2, , 3*6=>0,
+	assert.Nil(t, block)
+	block = cs.MakeBlock(3 * 6) // 3*4=>1, 3*5=>2, , 3*6=>0,
+	sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
+	block.SignWithSignature(sig)
+	err = bc.PutBlock(block)
+	assert.Equal(t, block.ConsensusState().RootHash(), block.Header.ConsensusHash)
+	fmt.Println("1>>>>", common.HashToHex(block.ConsensusState().RootHash()))
+	assert.NoError(t, err)
+
+	block = cs.MakeBlock(3 * 9) // 3*4=>1, 3*5=>2, , 3*6=>0,
+	sig, err = cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
+	block.SignWithSignature(sig)
+	err = bc.PutBlock(block)
+	assert.Equal(t, block.ConsensusState().RootHash(), block.Header.ConsensusHash)
+	assert.NoError(t, err)
+	fmt.Println("2>>>>", common.HashToHex(block.ConsensusState().RootHash()))
+
+	//test getMinerSize
+	minerSize, _ := cs.getMinerSize(block)
+	assert.Equal(t, 3, minerSize)
 }
 
 /*
-
-//To be changed
-func (cs *Poa) MakeBlock(now uint64) *core.Block {
-	bc := cs.bc
-	block, err := bc.NewBlockFromTail()
-	if err != nil {
-		log.CLog().Warning(err)
-	}
-
-	block.Header.Time = now
-	state := block.ConsensusState.(*PoaState)
-	// miners, err := cs.GetMiners(block.Header.ParentHash)
-	miners, err := state.GetMiners()
-	if len(miners) == 0 {
-		log.CLog().WithFields(logrus.Fields{
-			"Size": 0,
-		}).Panic("Miner must be one more")
-	}
-	if err != nil {
-		log.CLog().Warning(err)
-	}
-	turn := (now % (uint64(len(miners)) * cs.Period)) / cs.Period
-	// snapshot := block.Snapshot.(*PoaState)
-	// // snapshot, err := cs.Snapshot(block.Header.ParentHash)
-	// if err != nil {
-	// 	log.CLog().Warning(err)
-	// }
-	// if snapshot == nil {
-	// 	log.CLog().WithFields(logrus.Fields{
-	// 		"Height":     block.Header.Height,
-	// 		"ParentHash": common.HashToHex(block.Header.ParentHash),
-	// 	}).Warning("Snapshot is nil")
-	// 	return nil
-	// }
-	// if snapshot.SignerSlice()[turn] == cs.coinbase {
-	if miners[turn] == cs.coinbase {
-		parent := bc.GetBlockByHash(block.Header.ParentHash)
-
-		//if (parent != nil) && (now-parent.Header.Time < ((uint64(len(miners)) * cs.Period) - 1)) { //(3 * 3)
-		if (parent != nil) && (now-parent.Header.Time < cs.Period) { //(3 * 3)
-			log.CLog().WithFields(logrus.Fields{
-				"address": common.AddressToHex(cs.coinbase),
-			}).Debug("Interval is short")
-			return nil
-		}
-
-		log.CLog().WithFields(logrus.Fields{
-			"address": common.BytesToHex(cs.coinbase[:]),
-		}).Debug("my turn")
-		block.Header.Coinbase = cs.coinbase
-
-		block.Transactions = make([]*core.Transaction, 0)
-		accs := block.AccountState
-		firstVote := true
-		// var voteTx *core.Transaction
-		for i := 0; i < bc.TxPool.Len(); i++ {
-			tx := bc.TxPool.Pop()
-			if tx == nil {
-				break
-			}
-			//TODO: remove code duplicattion in ExecuteTransaction
-			fromAccount := accs.GetAccount(tx.From)
-			//TODO: check at txpool
-			if fromAccount == nil {
-				log.CLog().WithFields(logrus.Fields{
-					"Address": common.AddressToHex(tx.From),
-				}).Warning("Not found account")
-			} else if fromAccount.Nonce+1 == tx.Nonce {
-				// if signer is miner, include  voting tx
-				if tx.Payload != nil {
-					if tx.From == cs.coinbase && firstVote {
-						firstVote = false
-						// voteTx = tx
-						block.Transactions = append(block.Transactions, tx)
-					} else {
-						bc.TxPool.Put(tx)
-					}
-				} else {
-					block.Transactions = append(block.Transactions, tx)
-				}
-			} else if fromAccount.Nonce+1 < tx.Nonce {
-				//use in future
-				bc.TxPool.Put(tx)
-			} else {
-				log.CLog().WithFields(logrus.Fields{
-					"Address": common.AddressToHex(tx.From),
-				}).Warning("cannot accept a transaction with wrong nonce")
-			}
-		}
-		bc.RewardForCoinbase(block)
-		bc.ExecuteTransaction(block)
-		block.Header.AccountHash = block.AccountState.RootHash()
-		block.Header.TransactionHash = block.TransactionState.RootHash()
-		cs.SaveState(block)
-		if err := cs.Verify(block); err != nil {
-			log.CLog().WithFields(logrus.Fields{
-				"address": common.BytesToHex(cs.coinbase[:]),
-			}).Debug("not my turn")
-		}
-		block.Header.ConsensusHash = state.RootHash()
-		// _ = voteTx
-		// newSnap := snapshot.Copy()
-		// l := len(newSnap.Signers)
-		// if voteTx != nil {
-		// 	//TODO: fix after dpos coding
-		// 	// authorize := bool(true)
-		// 	// rlp.DecodeBytes(voteTx.Payload, &authorize)
-		// 	// if newSnap.Cast(cs.coinbase, voteTx.To, authorize) {
-		// 	// 	newSnap.Apply()
-		// 	// }
-		// }
-		// if l != len(newSnap.Signers) {
-		// 	log.CLog().WithFields(logrus.Fields{
-		// 		"Size": len(newSnap.Signers),
-		// 	}).Info("changed signers")
-		// }
-		// block.Header.SnapshotHash = newSnap.CalcHash()
-		block.MakeHash()
-		// newSnap.BlockHash = block.Hash()
-		// newSnap.Store(cs.Storage)
-		// //this code need, because of rlp encoding
-		// block.Snapshot = nil
-		return block
-	} else {
-		log.CLog().WithFields(logrus.Fields{
-			"address": common.BytesToHex(cs.coinbase[:]),
-		}).Debug("not my turn")
-		return nil
-	}
-}
-
-func (cs *Poa) Start() {
-	if cs.enableMining {
-		go cs.loop()
-	}
-}
-
-func (cs *Poa) loop() {
-	ticker := time.NewTicker(1 * time.Second)
-	for {
-		select {
-		case now := <-ticker.C:
-			block := cs.MakeBlock(uint64(now.Unix()))
-			if block != nil {
-				sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
-				if err != nil {
-					log.CLog().WithFields(logrus.Fields{
-						"Msg": err,
-					}).Warning("SignHash")
-				}
-				block.SignWithSignature(sig)
-				cs.bc.PutBlockByCoinbase(block)
-				cs.bc.Consensus.UpdateLIB()
-				cs.bc.RemoveOrphanBlock()
-				message, _ := net.NewRLPMessage(net.MsgNewBlock, block.BaseBlock)
-				cs.streamPool.BroadcastMessage(&message)
-			}
-		}
-	}
-}
-
-
-func (cs *Poa) getMinerSize(block *core.Block) (minerSize int, err error) {
-	parentBlock := cs.bc.GetBlockByHash(block.Header.ParentHash)
-	if parentBlock == nil {
-		return 0, errors.New("Parent is nil")
-	}
-	block.ConsensusState, err = cs.LoadState(parentBlock)
-	if err != nil {
-		return 0, err
-	}
-	state := block.ConsensusState.(*PoaState)
-	ms, err := state.GetMiners()
-	if err != nil {
-		return 0, err
-	}
-	minerSize = len(ms)
-	if minerSize == 0 {
-		return 0, errors.New("Miners length cannot is zero")
-	}
-	return minerSize, nil
-}
-
-
-
 //----------    Consensus  ----------------//
 func (cs *Poa) UpdateLIB() {
 	bc := cs.bc

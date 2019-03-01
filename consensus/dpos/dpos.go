@@ -50,7 +50,7 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		log.CLog().Warning(err)
 	}
 	block.Header.Time = now
-	state := block.ConsensusState.(*DposState)
+	state := block.ConsensusState().(*DposState)
 	electedTime := state.GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)
 
 	//electedTime := cs.state.GetNewElectedTime(bc.Tail.Hash(), now, 3, 3, 3)
@@ -158,7 +158,7 @@ func (cs *Dpos) loop() {
 
 func (cs *Dpos) Verify(block *core.Block) (err error) {
 	//block.Header.Coinbase
-	state := block.ConsensusState.(*DposState)
+	state := block.ConsensusState().(*DposState)
 	miners, err := state.GetMiners(state.MinersHash)
 	if err != nil {
 		return err
@@ -171,7 +171,7 @@ func (cs *Dpos) Verify(block *core.Block) (err error) {
 }
 
 func (cs *Dpos) SaveState(block *core.Block) (err error) {
-	state := block.ConsensusState.(*DposState)
+	state := block.ConsensusState().(*DposState)
 	accs := block.AccountState
 	electedTime := state.GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)
 	if electedTime == block.Header.Time {
@@ -292,7 +292,7 @@ func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) (err
 	state.ElectedTime = block.Header.Time
 	state.Put(block.Header.Height, state.ElectedTime, state.MinersHash)
 
-	block.ConsensusState = state
+	block.SetConsensusState(state)
 	block.Header.ConsensusHash = state.RootHash()
 	bc.GenesisBlock = block
 	bc.GenesisBlock.MakeHash()

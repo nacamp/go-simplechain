@@ -3,6 +3,7 @@ package core
 import (
 	"crypto/ecdsa"
 	"errors"
+	"sync"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"
@@ -34,16 +35,24 @@ type BaseBlock struct {
 
 type Block struct {
 	BaseBlock
-
+	mu               sync.RWMutex
 	AccountState     *AccountState
 	TransactionState *TransactionState
-	ConsensusState   ConsensusState
+	consensusState   ConsensusState
 }
 
 func (b *BaseBlock) NewBlock() *Block {
 	return &Block{
 		BaseBlock: *b,
 	}
+}
+
+func (b *Block) SetConsensusState(c ConsensusState) {
+	b.consensusState = c
+}
+
+func (b *Block) ConsensusState() ConsensusState {
+	return b.consensusState
 }
 
 func (b *Block) Hash() common.Hash {

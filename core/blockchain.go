@@ -108,10 +108,11 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 		return err
 	}
 
-	block.ConsensusState, err = bc.Consensus.LoadState(block)
+	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
+	block.SetConsensusState(consensusState)
 
 	bc.GenesisBlock = block
 	return nil
@@ -206,10 +207,11 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return fmt.Errorf("error NewTransactionStateRootHash: %s", err)
 	}
 
-	block.ConsensusState, err = bc.Consensus.LoadState(parentBlock)
+	consensusState, err := bc.Consensus.LoadState(parentBlock)
 	if err != nil {
 		return fmt.Errorf("error LoadState: %s", err)
 	}
+	block.SetConsensusState(consensusState)
 	// TODO: parent maybe not have ConsensusState
 	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 
@@ -237,7 +239,7 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return errors.New("block.TransactionState.RootHash() != block.Header.TransactionHash")
 	}
 
-	if block.ConsensusState.RootHash() != block.Header.ConsensusHash {
+	if block.ConsensusState().RootHash() != block.Header.ConsensusHash {
 		return errors.New("block.ConsensusState.RootHash() != block.Header.ConsensusHash")
 	}
 
@@ -274,7 +276,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			toAccount.AddBalance(tx.Amount)
 			accs.PutAccount(toAccount)
 		} else {
-			block.ConsensusState.ExecuteTransaction(block, i, fromAccount)
+			block.ConsensusState().ExecuteTransaction(block, i, fromAccount)
 		}
 		accs.PutAccount(fromAccount)
 		txs.PutTransaction(tx)
@@ -410,6 +412,8 @@ func encodeBlockHeight(number uint64) []byte {
 }
 
 func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
 	parentBlock := bc.Tail
 	h := &Header{
 		ParentHash: parentBlock.Hash(),
@@ -426,10 +430,11 @@ func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
 	// }
 
 	//Tail block always have state, but We can not guarantee that another block will have a state.
-	block.ConsensusState, err = parentBlock.ConsensusState.Clone()
+	consensusState, err := parentBlock.ConsensusState().Clone()
 	if err != nil {
 		return nil, err
 	}
+	block.SetConsensusState(consensusState)
 
 	block.AccountState, err = parentBlock.AccountState.Clone()
 	if err != nil {
@@ -560,10 +565,11 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 	if err != nil {
 		return err
 	}
-	block.ConsensusState, err = bc.Consensus.LoadState(block)
+	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
+	block.SetConsensusState(consensusState)
 
 	bc.Lib = block
 	return nil
@@ -604,10 +610,11 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 		return err
 	}
 
-	block.ConsensusState, err = bc.Consensus.LoadState(block)
+	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
+	block.SetConsensusState(consensusState)
 
 	bc.Tail = block
 	return nil
