@@ -46,7 +46,6 @@ func TestStake(t *testing.T) {
 	_storage, _ := storage.NewMemoryStorage()
 	state, err := NewInitState(common.Hash{}, 0, _storage)
 	assert.NoError(t, err)
-	_ = state
 
 	var newAddr = "0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2"
 	state.Stake(tests.Address0, common.HexToAddress(newAddr), new(big.Int).SetUint64(10))
@@ -74,11 +73,11 @@ func TestStake(t *testing.T) {
 
 	//test Put and Get
 	state.Put(1, 5, minersHash)
-	candidateHash, votersHash, minersHash, electedTime, err := state.Get(1)
-	assert.Equal(t, state.Candidate.RootHash(), common.HashToBytes(candidateHash))
-	assert.Equal(t, state.Voter.RootHash(), common.HashToBytes(votersHash))
-	assert.Equal(t, minersHash, minersHash)
-	assert.Equal(t, electedTime, uint64(5))
+	stateHash, err := state.Get(1)
+	assert.Equal(t, state.Candidate.RootHash(), stateHash.Candidate)
+	assert.Equal(t, state.Voter.RootHash(), stateHash.Voter)
+	assert.Equal(t, minersHash, common.BytesToHash(stateHash.Miner))
+	assert.Equal(t, uint64(5), stateHash.ElectedTime)
 
 	//test NewInitState
 	state2, err := NewInitState(state.RootHash(), 1, _storage)

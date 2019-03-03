@@ -165,22 +165,29 @@ func (ds *DposState) PutMiners(miners []common.Address) (hash common.Hash, err e
 	return hash, nil
 }
 
+type StateHash struct {
+	Candidate   []byte
+	Voter       []byte
+	Miner       []byte
+	ElectedTime uint64
+}
+
 func (ds *DposState) Put(blockNumber, electedTime uint64, minersHash common.Hash) error {
-	vals := make([]byte, 0)
 	keyEncodedBytes, err := rlp.EncodeToBytes(blockNumber)
 	if err != nil {
 		return err
 	}
-	encodedTimeBytes, err := rlp.EncodeToBytes(electedTime)
+	stateHash := new(StateHash)
+	stateHash.ElectedTime = electedTime
+	stateHash.Candidate = ds.Candidate.RootHash()
+	stateHash.Voter = ds.Voter.RootHash()
+	stateHash.Miner = minersHash[:]
+
+	encodedStateHash, err := rlp.EncodeToBytes(stateHash)
 	if err != nil {
 		return err
 	}
-
-	vals = append(vals, ds.Candidate.RootHash()...)
-	vals = append(vals, ds.Voter.RootHash()...)
-	vals = append(vals, minersHash[:]...)
-	vals = append(vals, encodedTimeBytes...)
-	_, err = ds.Miner.Put(crypto.Sha3b256(keyEncodedBytes), vals)
+	_, err = ds.Miner.Put(crypto.Sha3b256(keyEncodedBytes), encodedStateHash)
 	if err != nil {
 		return err
 	}
@@ -189,29 +196,23 @@ func (ds *DposState) Put(blockNumber, electedTime uint64, minersHash common.Hash
 }
 
 /* return candidateHash, minersHash, electedTime*/
-func (ds *DposState) Get(blockNumber uint64) (common.Hash, common.Hash, common.Hash, uint64, error) {
+func (ds *DposState) Get(blockNumber uint64) (stateHash *StateHash, err error) {
 	keyEncodedBytes, err := rlp.EncodeToBytes(blockNumber)
 	if err != nil {
-		return common.Hash{}, common.Hash{}, common.Hash{}, 0, err
+		return nil, err
 	}
 	//TODO: check minimum key size
 	encbytes, err := ds.Miner.Get(crypto.Sha3b256(keyEncodedBytes))
 	if err != nil {
-		return common.Hash{}, common.Hash{}, common.Hash{}, 0, err
-	}
-	if len(encbytes) < common.HashLength*3 {
-		return common.Hash{}, common.Hash{}, common.Hash{}, 0, errors.New("Bytes lenght must be more than 64 bits")
+		return nil, err
 	}
 
-	electedTime := uint64(0)
-	err = rlp.Decode(bytes.NewReader(encbytes[common.HashLength*3:]), &electedTime)
+	stateHash = new(StateHash)
+	err = rlp.Decode(bytes.NewReader(encbytes), stateHash)
 	if err != nil {
-		return common.Hash{}, common.Hash{}, common.Hash{}, 0, err
+		return nil, err
 	}
-	return common.BytesToHash(encbytes[:common.HashLength]),
-		common.BytesToHash(encbytes[common.HashLength : common.HashLength*2]),
-		common.BytesToHash(encbytes[common.HashLength*2 : common.HashLength*3]),
-		electedTime, nil
+	return stateHash, nil
 }
 
 func (ds *DposState) RootHash() (hash common.Hash) {
@@ -282,7 +283,7 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 
 	state := new(DposState)
 	state.Miner = tr
-	candidateHash, votersHash, minersHash, electedTime, err := state.Get(blockNumber)
+	stateHash, err := state.Get(blockNumber)
 	if err != nil {
 		if err == trie.ErrNotFound {
 			tr2, err := trie.NewTrie(nil, storage, false)
@@ -301,18 +302,18 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 
-	tr2, err := trie.NewTrie(candidateHash[:], storage, false)
+	tr2, err := trie.NewTrie(stateHash.Candidate, storage, false)
 	if err != nil {
 		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	state.Candidate = tr2
-	tr3, err := trie.NewTrie(votersHash[:], storage, false)
+	tr3, err := trie.NewTrie(stateHash.Voter, storage, false)
 	if err != nil {
 		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	state.Voter = tr3
-	state.MinersHash = minersHash
-	state.ElectedTime = electedTime
+	state.MinersHash = common.BytesToHash(stateHash.Miner)
+	state.ElectedTime = stateHash.ElectedTime
 	return state, nil
 }
 
