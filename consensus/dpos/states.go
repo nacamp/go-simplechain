@@ -99,9 +99,8 @@ func (cs *DposState) Unstake(voter, candidate common.Address, amount *big.Int) e
 	return nil
 }
 
-func (ds *DposState) GetNewElectedTime(parentElectedTime, now uint64, cycle, round, totalMiners int) uint64 {
-	// electedTime, err := ds.GetElectedTime(parentBlockHash)
-	if now < parentElectedTime+uint64(cycle*round*totalMiners) {
+func GetNewElectedTime(parentElectedTime, now uint64, cycle, round, totalMiners int) uint64 {
+	if now >= parentElectedTime+uint64(cycle*round*totalMiners) {
 		return now
 	}
 	return parentElectedTime

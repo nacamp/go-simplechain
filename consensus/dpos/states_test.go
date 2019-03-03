@@ -41,15 +41,12 @@ func TestStakeUnstake(t *testing.T) {
 	assert.Error(t, err)
 }
 
-/*
-func (ds *DposState) GetNewElectedTime(parentElectedTime, now uint64, cycle, round, totalMiners int) uint64 {
-	// electedTime, err := ds.GetElectedTime(parentBlockHash)
-	if now < parentElectedTime+uint64(cycle*round*totalMiners) {
-		return now
-	}
-	return parentElectedTime
+func TestGetNewElectedTime(t *testing.T) {
+	assert.Equal(t, uint64(0), GetNewElectedTime(0, 26, 3, 3, 3))
+	assert.Equal(t, uint64(27), GetNewElectedTime(0, 27, 3, 3, 3))
 }
 
+/*
 func (ds *DposState) GetMiners(minerHash common.Hash) ([]common.Address, error) {
 	miner := []common.Address{}
 	decodedBytes, _ := ds.Miner.Get(minerHash[:])
@@ -223,43 +220,6 @@ func shuffle(slice []common.Address, seed int64) {
 	}
 }
 
-// func (ds *DposState) PutElectedTime(blockHash common.Hash, time uint64) error {
-// 	encodedBytes, err := rlp.EncodeToBytes(time)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	ds.Miner.Put(blockHash[:], encodedBytes)
-// 	return nil
-// }
-
-// func (ds *DposState) GetElectedTime(blockHash common.Hash) (uint64, error) {
-// 	encodedBytes, err := ds.Candidate.Get(blockHash[:])
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	electedTime := uint64(0)
-// 	err = rlp.Decode(bytes.NewReader(encodedBytes), &electedTime)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	return electedTime, nil
-// }
-
-// func (ds *DposState) PutMiners(electedTime uint64, miners []common.Address) error {
-// 	// miner := Miner{MinerGroup: minerGroup, SnapshotVoterHash: snapshotVoterHash}
-// 	encodedBytes1, err := rlp.EncodeToBytes(electedTime)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	encodedBytes2, err := rlp.EncodeToBytes(miners)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	ds.Miner.Put(encodedBytes1, encodedBytes2)
-// 	return nil
-// }
-
-
 func (bc *BlockChain) PutMinerState(block *Block) error {
 
 	// save status
@@ -296,102 +256,4 @@ func (ds *DposState) GetMiners(minerHash common.Hash) ([]common.Address, error) 
 	return miner, nil
 }
 
-
-// func (ds *DposState) GetMinerss(newRound bool, electedTime uint64, totalMiners int) ([]common.Address, error) {
-// 	if newRound {
-// 		iter, err := ds.Candidate.Iterator(nil)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		exist, _ := iter.Next()
-// 		candidates := []core.BasicAccount{}
-// 		for exist {
-// 			account := core.BasicAccount{Address: common.Address{}}
-
-// 			encodedBytes1 := iter.Key()
-// 			key := []byte{}
-// 			rlp.NewStream(bytes.NewReader(encodedBytes1), 0).Decode(&key)
-// 			account.Address = common.BytesToAddress(key)
-
-// 			encodedBytes2 := iter.Value()
-// 			value := new(big.Int)
-// 			rlp.NewStream(bytes.NewReader(encodedBytes2), 0).Decode(value)
-// 			account.Balance = value
-
-// 			candidates = append(candidates, account)
-// 			exist, err = iter.Next()
-// 		}
-
-// 		if len(candidates) < totalMiners {
-// 			return nil, errors.New("The number of candidated miner is smaller than the minimum miner number.")
-// 		}
-
-// 		sort.Slice(candidates, func(i, j int) bool {
-// 			return candidates[i].Balance.Cmp(candidates[j].Balance) > 0
-// 		})
-
-// 		candidates = candidates[:totalMiners]
-// 		candidateAddrs := []common.Address{}
-// 		for _, v := range candidates {
-// 			candidateAddrs = append(candidateAddrs, v.Address)
-// 		}
-// 		shuffle(candidateAddrs, int64(electedTime))
-// 		return candidateAddrs, nil
-// 	}
-// 	miners, err := ds.GetMiners(electedTime)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return miners, nil
-
-// }
-
-// func (ds *DposState) GetMinersAndElectedTime(blockTime, electedTime uint64, cycle, round, totalMiners int) (uint64, []common.Address, error) {
-// 	if blockTime < electedTime+uint64(cycle*round*totalMiners) {
-// 		iter, err := ds.Candidate.Iterator(nil)
-// 		if err != nil {
-// 			return 0, nil, err
-// 		}
-// 		exist, _ := iter.Next()
-// 		candidates := []core.BasicAccount{}
-// 		for exist {
-// 			account := core.BasicAccount{Address: common.Address{}}
-
-// 			encodedBytes1 := iter.Key()
-// 			key := []byte{}
-// 			rlp.NewStream(bytes.NewReader(encodedBytes1), 0).Decode(&key)
-// 			account.Address = common.BytesToAddress(key)
-
-// 			encodedBytes2 := iter.Value()
-// 			value := new(big.Int)
-// 			rlp.NewStream(bytes.NewReader(encodedBytes2), 0).Decode(value)
-// 			account.Balance = value
-
-// 			candidates = append(candidates, account)
-// 			exist, err = iter.Next()
-// 		}
-
-// 		if len(candidates) < totalMiners {
-// 			return 0, nil, errors.New("The number of candidated miner is smaller than the minimum miner number.")
-// 		}
-
-// 		sort.Slice(candidates, func(i, j int) bool {
-// 			return candidates[i].Balance.Cmp(candidates[j].Balance) > 0
-// 		})
-
-// 		candidates = candidates[:totalMiners]
-// 		candidateAddrs := []common.Address{}
-// 		for _, v := range candidates {
-// 			candidateAddrs = append(candidateAddrs, v.Address)
-// 		}
-// 		shuffle(candidateAddrs, int64(blockTime))
-// 		return blockTime, candidateAddrs, nil
-// 	}
-// 	miners, err := ds.GetMiners(electedTime)
-// 	if err != nil {
-// 		return 0, nil, err
-// 	}
-// 	return electedTime, miners, nil
-
-// }
 */
