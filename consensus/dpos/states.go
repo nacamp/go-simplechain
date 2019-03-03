@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"math/rand"
 	"sort"
+	"sync"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
@@ -23,6 +24,7 @@ type Candidate struct {
 }
 
 type DposState struct {
+	mu          sync.RWMutex
 	Candidate   *trie.Trie
 	Miner       *trie.Trie
 	Voter       *trie.Trie
@@ -31,16 +33,21 @@ type DposState struct {
 }
 
 //TODO:prefix for candidate address
-func (ds *DposState) Stake(voter, candidate common.Address, amount *big.Int) error {
-	encodedBytes, err := ds.Candidate.Get(candidate[:])
+func (cs *DposState) Stake(voter, candidate common.Address, amount *big.Int) (err error) {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	if amount.Cmp(new(big.Int)) <= 0 {
+		return errors.New("Stake amout must be greater than 0")
+	}
+	encodedBytes, err := cs.Candidate.Get(candidate[:])
 	if err != nil {
 		if err == trie.ErrNotFound {
 			encodedBytes, err := rlp.EncodeToBytes(amount)
 			if err != nil {
 				return err
 			}
-			ds.Voter.Put(voter[:], []byte{})
-			ds.Candidate.Put(candidate[:], encodedBytes)
+			cs.Voter.Put(voter[:], []byte{})
+			cs.Candidate.Put(candidate[:], encodedBytes)
 			return nil
 		}
 		return err
@@ -55,13 +62,19 @@ func (ds *DposState) Stake(voter, candidate common.Address, amount *big.Int) err
 	if err != nil {
 		return err
 	}
-	ds.Voter.Put(voter[:], []byte{})
-	ds.Candidate.Put(candidate[:], encodedBytes)
+	cs.Voter.Put(voter[:], []byte{})
+	cs.Candidate.Put(candidate[:], encodedBytes)
 	return nil
 }
 
-func (ds *DposState) Unstake(voter, candidate common.Address, amount *big.Int) error {
-	encodedBytes, err := ds.Candidate.Get(candidate[:])
+/*
+There is no record of who voted for the candidate, so un-voting users can unstack it
+Before Unstake we must check staking  at Account in advance
+*/
+func (cs *DposState) Unstake(voter, candidate common.Address, amount *big.Int) error {
+	cs.mu.Lock()
+	defer cs.mu.Unlock()
+	encodedBytes, err := cs.Candidate.Get(candidate[:])
 	if err != nil {
 		if err == trie.ErrNotFound {
 			return errors.New("Staking is insufficient for candidate")
@@ -81,8 +94,8 @@ func (ds *DposState) Unstake(voter, candidate common.Address, amount *big.Int) e
 	if err != nil {
 		return err
 	}
-	ds.Voter.Put(voter[:], []byte{})
-	ds.Candidate.Put(candidate[:], encodedBytes)
+	cs.Voter.Put(voter[:], []byte{})
+	cs.Candidate.Put(candidate[:], encodedBytes)
 	return nil
 }
 
