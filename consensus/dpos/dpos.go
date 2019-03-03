@@ -97,8 +97,6 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		}
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
-		block.Header.AccountHash = block.AccountState.RootHash()
-		block.Header.TransactionHash = block.TransactionState.RootHash()
 		cs.SaveState(block)
 		if err := cs.Verify(block); err != nil {
 			log.CLog().WithFields(logrus.Fields{
@@ -106,6 +104,9 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 			}).Debug("not my turn")
 			return nil
 		}
+		//we need to create an AccountHash after SaveState because the AccountState may change in SaveState.
+		block.Header.AccountHash = block.AccountState.RootHash()
+		block.Header.TransactionHash = block.TransactionState.RootHash()
 		block.Header.ConsensusHash = state.RootHash()
 		block.MakeHash()
 		return block
@@ -161,7 +162,7 @@ func (cs *Dpos) Verify(block *core.Block) (err error) {
 	return nil
 }
 
-// not use this at GenesisBlock 
+// not use this at GenesisBlock
 func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	state := block.ConsensusState().(*DposState)
 	accs := block.AccountState
@@ -199,7 +200,6 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	}
 	return nil
 }
-
 
 //----------    Consensus  ----------------//
 
