@@ -174,6 +174,7 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 		} else {
 			miners, err := state.GetNewRoundMiners(block.Header.Time, 3)
 			if err != nil {
+				log.CLog().WithFields(logrus.Fields{}).Panic(err)
 				return err
 			}
 			state.MinersHash, err = state.PutMiners(miners)
@@ -181,14 +182,18 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 
 			iter, err := state.Voter.Iterator(nil)
 			if err != nil {
-				return err
-			}
-			exist, _ := iter.Next()
-			for exist {
-				account := accs.GetAccount(common.BytesToAddress(iter.Key()))
-				account.CalcSetTotalPeggedStake()
-				accs.PutAccount(account)
-				exist, err = iter.Next()
+				if err != trie.ErrNotFound {
+					log.CLog().WithFields(logrus.Fields{}).Panic(err)
+					return err
+				}
+			} else {
+				exist, _ := iter.Next()
+				for exist {
+					account := accs.GetAccount(common.BytesToAddress(iter.Key()))
+					account.CalcSetTotalPeggedStake()
+					accs.PutAccount(account)
+					exist, err = iter.Next()
+				}
 			}
 			//reset voter if this round is new
 			state.Voter, err = trie.NewTrie(nil, cs.bc.Storage, false)
