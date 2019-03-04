@@ -521,7 +521,7 @@ func (bc *BlockChain) RebuildBlockHeight() error {
 	}
 	var err error
 	for {
-		if block.Hash() == bc.Lib.Hash() {
+		if bc.Lib.Header.Height+1 == block.Header.Height { //block.Hash() == bc.Lib.Hash()
 			break
 		}
 		block = bc.GetBlockByHash(block.Header.ParentHash)

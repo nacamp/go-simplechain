@@ -342,3 +342,105 @@ func TestUpdateLIB3(t *testing.T) {
 	bc1.Consensus.UpdateLIB()
 	assert.Equal(t, block4.Hash(), bc1.Lib.Hash(), "")
 }
+
+/*
+     N0  LIB
+   /   \
+N1       N2
+|        |
+N4		 N3
+|        |
+N5       N6
+|
+N7
+*/
+// At PutBlockByCoinbase SetTail call RebuildBlockHeight
+func TestRebuildBlockHeight(t *testing.T) {
+	miner3 := NewDposMiner(0)
+	miner1 := NewDposMiner(1)
+	miner2 := NewDposMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+	var err error
+	var b *core.Block
+
+	// block1 := miner2.MakeBlock(27 + 3*1)
+	// err = bc2.PutBlock(block1)
+	// assert.NoError(t, err)
+
+	//mining 1~3 height by miner2
+	block2 := miner2.MakeBlock(27 + 3*4)
+	err = bc2.PutBlock(block2)
+	assert.NoError(t, err)
+
+	block3 := miner2.MakeBlock(27 + 3*7)
+	err = bc2.PutBlock(block3)
+	assert.NoError(t, err)
+
+	block6 := miner2.MakeBlock(27 + 3*28) // shuffle because of new round ( 3*10 order is not same)
+	err = bc2.PutBlock(block6)
+	assert.NoError(t, err)
+
+	//mining 1~4 height by miner3
+	block1 := miner3.MakeBlock(27 + 3*2)
+	err = bc3.PutBlock(block1)
+	assert.NoError(t, err)
+
+	block4 := miner3.MakeBlock(27 + 3*5)
+	err = bc3.PutBlock(block4)
+	assert.NoError(t, err)
+
+	block5 := miner3.MakeBlock(27 + 3*8) // shuffle because of new round ( 3*10 order is not same)
+	err = bc3.PutBlock(block5)
+	assert.NoError(t, err)
+
+	block7 := miner3.MakeBlock(27 + 3*11) // shuffle because of new round ( 3*10 order is not same)
+	err = bc3.PutBlock(block7)
+	assert.NoError(t, err)
+
+	//1,4,5 from miner3
+	err = bc1.PutBlockIfParentExist(block1)
+	b = bc1.GetBlockByHeight(1)
+	assert.Equal(t, block1.Hash(), b.Hash())
+
+	err = bc1.PutBlockIfParentExist(block4)
+	b = bc1.GetBlockByHeight(2)
+	assert.Equal(t, block4.Hash(), b.Hash())
+
+	err = bc1.PutBlockIfParentExist(block5)
+	b = bc1.GetBlockByHeight(3)
+	assert.Equal(t, block5.Hash(), b.Hash())
+
+	//2,3,6 from miner2
+	err = bc1.PutBlockIfParentExist(block2)
+	b = bc1.GetBlockByHeight(1)
+	assert.Equal(t, block2.Hash(), b.Hash())
+
+	err = bc1.PutBlockIfParentExist(block3)
+	b = bc1.GetBlockByHeight(2)
+	assert.Equal(t, block3.Hash(), b.Hash())
+
+	err = bc1.PutBlockIfParentExist(block6)
+	b = bc1.GetBlockByHeight(3)
+	assert.Equal(t, block6.Hash(), b.Hash())
+
+	//set lib block2 , height 1
+	bc1.SetLib(block2)
+
+	//7 from miner3
+	err = bc1.PutBlockIfParentExist(block7)
+	b = bc1.GetBlockByHeight(4)
+	assert.Equal(t, block7.Hash(), b.Hash())
+
+	//blocchain changed from block7' parents to Lib's height
+	// front of Lib not changed
+	b = bc1.GetBlockByHeight(1)
+	assert.Equal(t, block2.Hash(), b.Hash())
+
+	// behind Lib, changed
+	b = bc1.GetBlockByHeight(2)
+	assert.Equal(t, block4.Hash(), b.Hash())
+	b = bc1.GetBlockByHeight(3)
+	assert.Equal(t, block5.Hash(), b.Hash())
+}
