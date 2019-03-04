@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/nacamp/go-simplechain/account"
@@ -79,6 +80,253 @@ func TestPoa(t *testing.T) {
 	//test getMinerSize
 	minerSize, _ := cs.getMinerSize(block)
 	assert.Equal(t, 3, minerSize)
+}
 
-	//TODO:  test UpdateLIB() with dpos at blockchain_test
+type PoaMiner struct {
+	Turn int
+	Cs   *Poa
+	Bc   *core.BlockChain
+}
+
+func NewPoaMiner(index int) *PoaMiner {
+	var err error
+	//config
+	config := tests.NewConfig(index)
+	voters := cmd.MakeVoterAccountsFromConfig(config)
+	mstrg, _ := storage.NewMemoryStorage()
+
+	cs := NewPoa(net.NewPeerStreamPool(), mstrg)
+	wallet := account.NewWallet(config.KeystoreFile)
+	wallet.Load()
+	err = wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
+	if err != nil {
+		log.CLog().Fatal(err)
+	}
+
+	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
+	bc := core.NewBlockChain(mstrg)
+	bc.Setup(cs, voters)
+
+	tester := new(PoaMiner)
+	tester.Cs = cs
+	tester.Bc = bc
+	return tester
+}
+
+func (m *PoaMiner) MakeBlock(time int) *core.Block {
+	cs := m.Cs
+	block := cs.MakeBlock(uint64(time))
+	if block != nil {
+		sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
+		if err != nil {
+			log.CLog().WithFields(logrus.Fields{
+				"Msg": err,
+			}).Warning("SignHash")
+			return nil
+		}
+		block.SignWithSignature(sig)
+		cs.bc.PutBlockByCoinbase(block)
+		cs.bc.Consensus.UpdateLIB()
+		cs.bc.RemoveOrphanBlock()
+		return block
+	}
+	return nil
+
+}
+
+/*
+At N+3, LIB set N1
+N+1		N+2		N+3
+miner1  miner2   miner3
+*/
+func TestUpdateLIBN1(t *testing.T) {
+	miner1 := NewPoaMiner(0)
+	miner2 := NewPoaMiner(1)
+	miner3 := NewPoaMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+	var err error
+
+	block1 := miner1.MakeBlock(27 + 3*0)
+	err = bc1.PutBlock(block1)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block1)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block1)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block2 := miner2.MakeBlock(27 + 3*1)
+	err = bc1.PutBlock(block2)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block2)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block2)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block3 := miner3.MakeBlock(27 + 3*2)
+	err = bc1.PutBlock(block3)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block3)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block3)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, block1.Hash(), bc1.Lib.Hash(), "")
+
+}
+
+/*
+At N+5, LIB set N+3
+N+1		N+2		N+3     N+4		N+5
+miner1	miner2	miner3
+				miner1	miner2	miner3
+*/
+func TestUpdateLIBN3(t *testing.T) {
+	miner1 := NewPoaMiner(0)
+	miner2 := NewPoaMiner(1)
+	miner3 := NewPoaMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+	var err error
+
+	block1 := miner1.MakeBlock(27 + 3*0)
+	err = bc1.PutBlock(block1)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block1)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block1)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block2 := miner2.MakeBlock(27 + 3*1)
+	err = bc1.PutBlock(block2)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block2)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block2)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block33 := miner3.MakeBlock(27 + 3*2)
+	block31 := miner1.MakeBlock(27 + 3*3)
+	err = bc1.PutBlock(block31)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block31)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block33)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	//assert.Equal(t, block1.Hash(), bc1.Lib.Hash(), "")
+
+	block4 := miner2.MakeBlock(27 + 3*4)
+	err = bc1.PutBlock(block4)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block4)
+	assert.NoError(t, err)
+	err = bc3.PutBlockIfParentExist(block4)
+	assert.NoError(t, err)
+	err = bc3.PutBlockIfParentExist(block31) //receive missing block
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block5 := miner3.MakeBlock(27 + 3*5)
+	err = bc1.PutBlock(block5)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block5)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block5)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, block31.Hash(), bc1.Lib.Hash(), "")
+
+}
+
+/*
+At N+6, LIB set N+4
+N+1		N+2		N+3      N+4	N+5     N+6
+miner1	miner2	miner3   miner2	miner3  miner1
+				miner1
+*/
+func TestUpdateLIB3(t *testing.T) {
+	miner1 := NewPoaMiner(0)
+	miner2 := NewPoaMiner(1)
+	miner3 := NewPoaMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+	var err error
+
+	block1 := miner1.MakeBlock(27 + 3*0)
+	err = bc1.PutBlock(block1)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block1)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block1)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block2 := miner2.MakeBlock(27 + 3*1)
+	err = bc1.PutBlock(block2)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block2)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block2)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block33 := miner3.MakeBlock(27 + 3*2)
+	block31 := miner1.MakeBlock(27 + 3*3)
+	err = bc1.PutBlock(block31)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block33)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block33)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	//assert.Equal(t, block1.Hash(), bc1.Lib.Hash(), "")
+
+	block4 := miner2.MakeBlock(27 + 3*4)
+	err = bc1.PutBlockIfParentExist(block4)
+	assert.NoError(t, err)
+	err = bc1.PutBlockIfParentExist(block33) //receive missing block
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block4)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block4)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block5 := miner3.MakeBlock(27 + 3*5)
+	err = bc1.PutBlock(block5)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block5)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block5)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+
+	block6 := miner1.MakeBlock(27 + 3*6)
+	err = bc1.PutBlock(block6)
+	assert.NoError(t, err)
+	err = bc2.PutBlock(block6)
+	assert.NoError(t, err)
+	err = bc3.PutBlock(block6)
+	assert.NoError(t, err)
+	bc1.Consensus.UpdateLIB()
+	assert.Equal(t, block4.Hash(), bc1.Lib.Hash(), "")
 }
