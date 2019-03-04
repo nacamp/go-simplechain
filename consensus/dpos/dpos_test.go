@@ -444,3 +444,94 @@ func TestRebuildBlockHeight(t *testing.T) {
 	b = bc1.GetBlockByHeight(3)
 	assert.Equal(t, block5.Hash(), b.Hash())
 }
+
+/*
+	N0
+	|
+	N1
+   /    \
+N2        N3
+|        /  \
+N6(LIB)	N4
+|
+N7
+|
+N8
+*/
+/*
+	err = bc2.PutBlockIfParentExist(block7)
+	assert.NoError(t, err)
+*/
+func TestRemoveOrphanBlock(t *testing.T) {
+	miner3 := NewDposMiner(0)
+	miner1 := NewDposMiner(1)
+	miner2 := NewDposMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+	var err error
+	var b *core.Block
+
+	block1 := miner2.MakeBlock(27 + 3*1)
+	err = bc2.PutBlock(block1)
+	assert.NoError(t, err)
+
+	block2 := miner2.MakeBlock(27 + 3*4)
+	err = bc2.PutBlock(block2)
+	assert.NoError(t, err)
+
+	err = bc3.PutBlockIfParentExist(block1)
+	block3 := miner3.MakeBlock(27 + 3*2)
+	err = bc3.PutBlock(block3)
+	assert.NoError(t, err)
+
+	block4 := miner3.MakeBlock(27 + 3*5)
+	err = bc3.PutBlock(block4)
+	assert.NoError(t, err)
+
+	// block5 := miner2.MakeBlock(27 + 3*4)
+	// err = bc2.PutBlock(block5)
+	// assert.NoError(t, err)
+
+	block6 := miner2.MakeBlock(27 + 3*7)
+	err = bc2.PutBlock(block6)
+	assert.NoError(t, err)
+
+	block7 := miner2.MakeBlock(27 + 3*28)
+	err = bc2.PutBlock(block7)
+	assert.NoError(t, err)
+
+	block8 := miner2.MakeBlock(27 + 3*31)
+	err = bc2.PutBlock(block8)
+	assert.NoError(t, err)
+
+	// //1,4,5 from miner3
+	err = bc1.PutBlockIfParentExist(block1)
+	assert.NoError(t, err)
+	err = bc1.PutBlockIfParentExist(block2)
+	assert.NoError(t, err)
+	err = bc1.PutBlockIfParentExist(block3)
+	assert.NoError(t, err)
+	err = bc1.PutBlockIfParentExist(block4)
+	assert.NoError(t, err)
+	err = bc1.PutBlockIfParentExist(block6)
+	assert.NoError(t, err)
+	err = bc1.PutBlockIfParentExist(block7)
+	assert.NoError(t, err)
+	err = bc1.PutBlockIfParentExist(block8)
+	assert.NoError(t, err)
+
+	bc1.SetLib(block6)
+	bc1.SetTail(block6)
+
+	assert.Equal(t, bc1.TxPool.Len(), 0, "")
+	bc1.RemoveOrphanBlock()
+	b = bc1.GetBlockByHash(block3.Hash())
+	assert.Nil(t, b, "")
+
+	b = bc1.GetBlockByHash(block4.Hash())
+	assert.Nil(t, b, "")
+
+	// N3 same tx,  N4,N5 different tx
+	// assert.Equal(t, bc1.TxPool.Len(), 2, "")
+}
