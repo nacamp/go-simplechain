@@ -1,7 +1,9 @@
 package dpos
 
 import (
+	"bytes"
 	"fmt"
+	"math/big"
 	"reflect"
 	"testing"
 	"time"
@@ -12,6 +14,7 @@ import (
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/log"
 	"github.com/nacamp/go-simplechain/net"
+	"github.com/nacamp/go-simplechain/rlp"
 	"github.com/nacamp/go-simplechain/storage"
 	"github.com/nacamp/go-simplechain/tests"
 	"github.com/sirupsen/logrus"
@@ -107,7 +110,6 @@ func NewDposMiner(index int) *DposMiner {
 	bc := core.NewBlockChain(mstrg)
 	bc.Setup(cs, voters)
 
-
 	tester := new(DposMiner)
 	tester.Cs = cs
 	tester.Bc = bc
@@ -149,6 +151,143 @@ func findTurn(address common.Address, time int64) int {
 	}
 	return -1
 
+}
+
+func TestSendMoneyTransaction(t *testing.T) {
+	miner1 := NewDposMiner(1)
+	bc1 := miner1.Bc
+	var err error
+
+	block1 := miner1.MakeBlock(27 + 3*(0+3*0))
+	err = bc1.PutBlock(block1)
+	assert.NoError(t, err)
+
+	//send money
+	var tx *core.Transaction
+	for i := 3; i >= 1; i-- {
+		tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), uint64(i))
+		tx.MakeHash()
+		sig, err := miner1.Cs.wallet.SignHash(tests.Address1, tx.Hash[:])
+		assert.NoError(t, err)
+		tx.SignWithSignature(sig)
+		bc1.TxPool.Put(tx)
+
+	}
+
+	//Put tx in descending order, 3, 2, 1
+	tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), 10)
+	tx.MakeHash()
+	sig, err := miner1.Cs.wallet.SignHash(tests.Address1, tx.Hash[:])
+	assert.NoError(t, err)
+	tx.SignWithSignature(sig)
+	bc1.TxPool.Put(tx)
+
+	block2 := miner1.MakeBlock(27 + 3*(0+3*1))
+	err = bc1.PutBlock(block2)
+	assert.NoError(t, err)
+	accs := block2.AccountState
+	account2 := accs.GetAccount(tests.Address2)
+	// nonce 3,2,1 is included, but 10 is not included
+	assert.Equal(t, new(big.Int).SetUint64(15), account2.Balance)
+}
+
+func TestVoteTransaction(t *testing.T) {
+	miner3 := NewDposMiner(0)
+	miner1 := NewDposMiner(1)
+	miner2 := NewDposMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+	_ = bc1
+	_ = bc2
+	_ = bc3
+	var err error
+
+	block1 := miner1.MakeBlock(27 + 3*(0+3*0))
+	err = bc1.PutBlock(block1)
+	assert.NoError(t, err)
+
+	//send money
+	var tx *core.Transaction
+	for i := 2; i >= 1; i-- {
+		if i == 2 {
+			tx = core.NewTransaction(tests.Address1, tests.Address0, new(big.Int).SetUint64(5), uint64(i))
+		} else {
+			tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), uint64(i))
+		}
+		tx.MakeHash()
+		sig, err := miner1.Cs.wallet.SignHash(tests.Address1, tx.Hash[:])
+		assert.NoError(t, err)
+		tx.SignWithSignature(sig)
+		bc1.TxPool.Put(tx)
+	}
+	block2 := miner1.MakeBlock(27 + 3*(0+3*1))
+	err = bc1.PutBlock(block2)
+	assert.NoError(t, err)
+
+	//vote for joinning
+	var candidate = common.HexToAddress("0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
+	voter := []common.Address{tests.Address0, tests.Address1, tests.Address2}
+	signer := []*DposMiner{miner3, miner1, miner2}
+	nonces := []uint64{1, 3, 1}
+	for i := 0; i < 3; i++ {
+		payload := new(core.Payload)
+		payload.Code = core.TxCVoteStake
+		encodedStake, _ := rlp.EncodeToBytes(new(big.Int).SetUint64(5))
+		payload.Data = encodedStake
+		tx = core.NewTransactionPayload(voter[i], candidate, new(big.Int).SetUint64(0), nonces[i], payload)
+		tx.MakeHash()
+		sig, err := signer[i].Cs.wallet.SignHash(voter[i], tx.Hash[:])
+		assert.NoError(t, err)
+		tx.SignWithSignature(sig)
+		bc1.TxPool.Put(tx)
+	}
+	block3 := miner1.MakeBlock(27 + 3*(0+3*2))
+	err = bc1.PutBlock(block3)
+	assert.NoError(t, err)
+
+	//check voter, candiate
+	state := block3.ConsensusState().(*DposState)
+	encodedBytes, _ := state.Candidate.Get(candidate[:])
+	balance := new(big.Int)
+	err = rlp.Decode(bytes.NewReader(encodedBytes), balance)
+	assert.Equal(t, new(big.Int).SetUint64(15), balance)
+	for i := 0; i < 3; i++ {
+		_, err := state.Voter.Get(voter[i][:])
+		assert.NoError(t, err)
+	}
+
+	//vote for evicting
+	nonces = []uint64{2, 4, 2}
+	unstake := []*big.Int{new(big.Int).SetUint64(4), new(big.Int).SetUint64(5), new(big.Int).SetUint64(5)}
+	for i := 0; i < 3; i++ {
+		payload := new(core.Payload)
+		payload.Code = core.TxCVoteUnStake
+		encodedStake, _ := rlp.EncodeToBytes(unstake[i])
+		payload.Data = encodedStake
+		tx = core.NewTransactionPayload(voter[i], candidate, new(big.Int).SetUint64(0), nonces[i], payload)
+		tx.MakeHash()
+		sig, err := signer[i].Cs.wallet.SignHash(voter[i], tx.Hash[:])
+		assert.NoError(t, err)
+		tx.SignWithSignature(sig)
+		bc1.TxPool.Put(tx)
+	}
+	//new round
+	block4 := miner1.MakeBlock(27 + 3*(0+3*4)) //At 27 + 3*(0+3*3) different order
+	err = bc1.PutBlock(block4)
+	assert.NoError(t, err)
+
+	//check voter, candiate
+	state = block4.ConsensusState().(*DposState)
+	encodedBytes, _ = state.Candidate.Get(candidate[:])
+	balance = new(big.Int)
+	err = rlp.Decode(bytes.NewReader(encodedBytes), balance)
+	assert.Equal(t, new(big.Int).SetUint64(1), balance)
+	//There are no voters in new round
+	for i := 0; i < 3; i++ {
+		_, err := state.Voter.Get(voter[i][:])
+		assert.Error(t, err)
+	}
 }
 
 func TestNewRound(t *testing.T) {
