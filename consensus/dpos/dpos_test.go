@@ -1,6 +1,7 @@
 package dpos
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -79,8 +80,6 @@ func TestDpos(t *testing.T) {
 	assert.True(t, reflect.DeepEqual(miners, miners2))
 	//because genesis block time is 0, 1 height block become new round, so change only electedtime
 	assert.Equal(t, uint64(27+turn*3-3), state2.ElectedTime) // ElectedTime = block.header.Time -3
-
-	//TODO:  test new round case with dpos at blockchain_test
 }
 
 type DposMiner struct {
@@ -108,20 +107,11 @@ func NewDposMiner(index int) *DposMiner {
 	bc := core.NewBlockChain(mstrg)
 	bc.Setup(cs, voters)
 
-	tempMiners := make([]common.Address, 0)
-	tempMiners = append(tempMiners, tests.Address0)
-	tempMiners = append(tempMiners, tests.Address1)
-	tempMiners = append(tempMiners, tests.Address2)
-	shuffle(tempMiners, 0)
 
 	tester := new(DposMiner)
 	tester.Cs = cs
 	tester.Bc = bc
-	for i, v := range tempMiners {
-		if v == cs.coinbase {
-			tester.Turn = i
-		}
-	}
+	tester.Turn = findTurn(cs.coinbase, 0)
 	return tester
 }
 
@@ -143,6 +133,76 @@ func (m *DposMiner) MakeBlock(time int) *core.Block {
 		return block
 	}
 	return nil
+
+}
+
+func findTurn(address common.Address, time int64) int {
+	tempMiners := make([]common.Address, 0)
+	tempMiners = append(tempMiners, tests.Address0)
+	tempMiners = append(tempMiners, tests.Address1)
+	tempMiners = append(tempMiners, tests.Address2)
+	shuffle(tempMiners, time)
+	for i, v := range tempMiners {
+		if v == address {
+			return i
+		}
+	}
+	return -1
+
+}
+
+func TestNewRound(t *testing.T) {
+	miner3 := NewDposMiner(0)
+	miner1 := NewDposMiner(1)
+	miner2 := NewDposMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+
+	turn := findTurn(tests.Address0, 0)
+	var err error
+
+	//miner1 and miner2 mine 1 block before new round test because electedTime is changed  at first block
+	block1 := miner1.MakeBlock(27 + 3*(0+3*0))
+	err = bc1.PutBlock(block1)
+	assert.NoError(t, err)
+	block1 = miner2.MakeBlock(27 + 3*(1+3*0))
+	err = bc2.PutBlock(block1)
+	assert.NoError(t, err)
+
+	block1 = miner3.MakeBlock(27 + 3*(turn+3*0))
+	err = bc3.PutBlock(block1)
+	assert.NoError(t, err)
+
+	block2 := miner3.MakeBlock(27 + 3*(turn+3*1))
+	err = bc3.PutBlock(block2)
+	assert.NoError(t, err)
+
+	block3 := miner3.MakeBlock(27 + 3*(turn+3*2))
+	err = bc3.PutBlock(block3)
+	assert.NoError(t, err)
+
+	//new round
+	for i := 3; i < 10; i++ {
+		newTurn := findTurn(tests.Address0, int64(27+3*(turn+3*i)))
+		if turn != newTurn {
+			fmt.Println("newTurn : ", newTurn)
+			block := miner3.MakeBlock(27 + 3*(turn+3*i))
+			assert.Nil(t, block)
+			if turn == findTurn(tests.Address1, int64(27+3*(turn+3*i))) {
+				block := miner1.MakeBlock(27 + 3*(turn+3*i))
+				err = bc1.PutBlock(block)
+				assert.NoError(t, err)
+				fmt.Println(tests.Addr1, " mined")
+			} else if turn == findTurn(tests.Address2, int64(27+3*(turn+3*i))) {
+				block := miner2.MakeBlock(27 + 3*(turn+3*i))
+				err = bc2.PutBlock(block)
+				assert.NoError(t, err)
+				fmt.Println(tests.Addr2, " mined")
+			}
+			break
+		}
+	}
 
 }
 
