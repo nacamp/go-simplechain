@@ -2,6 +2,7 @@ package poa
 
 import (
 	"errors"
+	"sort"
 	"sync"
 	"time"
 
@@ -31,7 +32,6 @@ func NewPoa(streamPool *net.PeerStreamPool, storage storage.Storage) *Poa {
 	return &Poa{streamPool: streamPool, Storage: storage}
 }
 
-//Same as dpos
 func (cs *Poa) Setup(address common.Address, wallet *account.Wallet, period int) {
 	cs.enableMining = true
 	cs.coinbase = address
@@ -39,7 +39,6 @@ func (cs *Poa) Setup(address common.Address, wallet *account.Wallet, period int)
 	cs.Period = uint64(period)
 }
 
-//To be changed
 func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	bc := cs.bc
 	block, err := bc.NewBlockFromTail()
@@ -78,7 +77,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
 		firstVote := true
-		// var voteTx *core.Transaction
+		noncePool := make(map[common.Address][]*core.Transaction)
 		for i := 0; i < bc.TxPool.Len(); i++ {
 			tx := bc.TxPool.Pop()
 			if tx == nil {
@@ -105,24 +104,48 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 					block.Transactions = append(block.Transactions, tx)
 				}
 			} else if fromAccount.Nonce+1 < tx.Nonce {
-				//use in future
-				bc.TxPool.Put(tx)
+				// //use in future
+				// bc.TxPool.Put(tx)
+				v, ok := noncePool[tx.From]
+				if ok == true {
+					noncePool[tx.From] = append(v, tx)
+				} else {
+					noncePool[tx.From] = []*core.Transaction{tx}
+				}
 			} else {
 				log.CLog().WithFields(logrus.Fields{
 					"Address": common.AddressToHex(tx.From),
 				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
+		for k, v := range noncePool {
+			sort.Slice(v, func(i, j int) bool {
+				return v[i].Nonce < v[j].Nonce
+			})
+			fromAccount := accs.GetAccount(k)
+			nonce := fromAccount.Nonce + 2
+			for _, tx := range v {
+				if nonce == tx.Nonce {
+					block.Transactions = append(block.Transactions, tx)
+					nonce++
+				} else {
+					//use in future
+					bc.TxPool.Put(tx)
+				}
+			}
+		}
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
-		block.Header.AccountHash = block.AccountState.RootHash()
-		block.Header.TransactionHash = block.TransactionState.RootHash()
 		cs.SaveState(block)
 		if err := cs.Verify(block); err != nil {
 			log.CLog().WithFields(logrus.Fields{
 				"address": common.BytesToHex(cs.coinbase[:]),
 			}).Debug("not my turn")
+			return nil
 		}
+		//we need to create an AccountHash after SaveState because the AccountState may change in SaveState.
+		block.Header.AccountHash = block.AccountState.RootHash()
+		block.Header.TransactionHash = block.TransactionState.RootHash()
 		block.Header.ConsensusHash = state.RootHash()
 		block.MakeHash()
 		return block
