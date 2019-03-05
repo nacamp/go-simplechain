@@ -2,6 +2,7 @@ package dpos
 
 import (
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/nacamp/go-simplechain/account"
@@ -72,6 +73,7 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		//TODO: check double spending ?
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
+		noncePool := make(map[common.Address][]*core.Transaction)
 		for i := 0; i < bc.TxPool.Len(); i++ {
 			tx := bc.TxPool.Pop()
 			if tx == nil {
@@ -87,14 +89,35 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 			} else if fromAccount.Nonce+1 == tx.Nonce {
 				block.Transactions = append(block.Transactions, tx)
 			} else if fromAccount.Nonce+1 < tx.Nonce {
-				//use in future
-				bc.TxPool.Put(tx)
+				v, ok := noncePool[tx.From]
+				if ok == true {
+					noncePool[tx.From] = append(v, tx)
+				} else {
+					noncePool[tx.From] = []*core.Transaction{tx}
+				}
 			} else {
 				log.CLog().WithFields(logrus.Fields{
 					"Address": common.AddressToHex(tx.From),
 				}).Warning("cannot accept a transaction with wrong nonce")
 			}
 		}
+		for k, v := range noncePool {
+			sort.Slice(v, func(i, j int) bool {
+				return v[i].Nonce < v[j].Nonce
+			})
+			fromAccount := accs.GetAccount(k)
+			nonce := fromAccount.Nonce + 2
+			for _, tx := range v {
+				if nonce == tx.Nonce {
+					block.Transactions = append(block.Transactions, tx)
+					nonce++
+				} else {
+					//use in future
+					bc.TxPool.Put(tx)
+				}
+			}
+		}
+
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
 		cs.SaveState(block)
