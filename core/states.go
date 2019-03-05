@@ -175,8 +175,8 @@ func (accs *AccountState) PutAccount(account *Account) (hash common.Hash) {
 
 func (accs *AccountState) GetAccount(address common.Address) (account *Account) {
 	decodedBytes, err := accs.Trie.Get(address[:])
-	rlpAcc := new(rlpAccount)
 	if err == nil {
+		rlpAcc := new(rlpAccount)
 		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(rlpAcc)
 		account := Account{
 			Address:          rlpAcc.Address,
@@ -192,7 +192,7 @@ func (accs *AccountState) GetAccount(address common.Address) (account *Account) 
 	} else {
 		if err == storage.ErrKeyNotFound {
 			account := NewAccount()
-			account.Address = rlpAcc.Address
+			account.Address = address
 			return account
 		}
 		log.CLog().WithFields(logrus.Fields{}).Panic(err)
