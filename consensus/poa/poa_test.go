@@ -36,7 +36,7 @@ func TestPoa(t *testing.T) {
 	}
 
 	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
-	bc := core.NewBlockChain(mstrg)
+	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase))
 
 	//test MakeGenesisBlock in Setup
 	bc.Setup(cs, voters)
@@ -105,7 +105,7 @@ func NewPoaMiner(index int) *PoaMiner {
 	}
 
 	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
-	bc := core.NewBlockChain(mstrg)
+	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase))
 	bc.Setup(cs, voters)
 
 	tester := new(PoaMiner)
@@ -235,14 +235,14 @@ func TestVoteTransaction(t *testing.T) {
 		tx.SignWithSignature(sig)
 		signer[i].Bc.TxPool.Put(tx)
 
-		block = signer[i].MakeBlock(4*3 + 4 + 3*i) //4 to skip the new signer 
+		block = signer[i].MakeBlock(4*3 + 4 + 3*i) //4 to skip the new signer
 		for j := 0; j < 3; j++ {
 			err = signer[j].Bc.PutBlock(block)
 			assert.NoError(t, err)
 		}
 
 	}
-	block = signer[0].Cs.MakeBlock(uint64(3*3 +90+ 3*0))
+	block = signer[0].Cs.MakeBlock(uint64(3*3 + 90 + 3*0))
 	state = block.ConsensusState().(*PoaState)
 	signers, _ = state.GetMiners()
 	assert.Equal(t, 3, len(signers))

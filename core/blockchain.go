@@ -25,8 +25,6 @@ const (
 	maxFutureBlocks = 256
 )
 
-var GenesisCoinbaseAddress = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
-
 type BlockChain struct {
 	mu                  sync.RWMutex
 	GenesisBlock        *Block
@@ -39,12 +37,12 @@ type BlockChain struct {
 	MessageToRandomNode chan *net.Message
 	NewTXMessage        chan *Transaction
 	tailGroup           *sync.Map
-
+	coinbase            common.Address
 	//poa
 	Signers []common.Address
 }
 
-func NewBlockChain(storage storage.Storage) *BlockChain {
+func NewBlockChain(storage storage.Storage, coinbase common.Address) *BlockChain {
 	futureBlocks, _ := lru.New(maxFutureBlocks)
 	bc := BlockChain{
 		Storage:             storage,
@@ -52,6 +50,7 @@ func NewBlockChain(storage storage.Storage) *BlockChain {
 		tailGroup:           new(sync.Map),
 		MessageToRandomNode: make(chan *net.Message, 1),
 		NewTXMessage:        make(chan *Transaction, 1),
+		coinbase:            coinbase,
 	}
 	return &bc
 }
@@ -120,9 +119,8 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 }
 
 func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
-	common.FromHex(GenesisCoinbaseAddress)
 	header := &Header{
-		Coinbase: common.HexToAddress(GenesisCoinbaseAddress),
+		Coinbase: bc.coinbase,
 		Height:   0,
 		Time:     0,
 	}
@@ -136,7 +134,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 		return err
 	}
 	account := NewAccount()
-	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
+	copy(account.Address[:], bc.coinbase[:])
 	account.AddBalance(new(big.Int).SetUint64(100)) //FIXME: amount 0
 	accs.PutAccount(account)
 	block.AccountState = accs
@@ -251,7 +249,8 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 	accs := block.AccountState //NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	account := accs.GetAccount(block.Header.Coinbase)
 	if account == nil { // At first, genesisblock
-		account = &Account{Address: block.Header.Coinbase}
+		account = NewAccount()
+		account.Address = block.Header.Coinbase
 	}
 	//FIXME: 100 for reward
 	account.AddBalance(new(big.Int).SetUint64(100))

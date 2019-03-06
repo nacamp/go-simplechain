@@ -39,7 +39,7 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	} else {
 		ns.db, _ = storage.NewLevelDBStorage(config.DBPath)
 	}
-	ns.bc = core.NewBlockChain(ns.db)
+	ns.bc = core.NewBlockChain(ns.db, common.HexToAddress(config.Coinbase))
 
 	ns.wallet = account.NewWallet(config.KeystoreFile)
 	ns.wallet.Load()

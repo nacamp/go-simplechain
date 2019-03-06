@@ -34,6 +34,8 @@ type Config struct {
 	Consensus       string          `json:"consensus"`
 	NodeKeyPath     string          `json:"node_key_path"`
 	KeystoreFile    string          `json:"keystore_file"`
+	Coinbase        string          `json:"coinbase"`
+	MiningReward    int             `json:"mining_reward"`
 }
 
 func MakeVoterAccountsFromConfig(config *Config) (voters []*core.Account) {
