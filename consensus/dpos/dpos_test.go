@@ -38,7 +38,7 @@ func TestDpos(t *testing.T) {
 	}
 
 	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
-	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase))
+	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 
 	//test MakeGenesisBlock in Setup
 	bc.Setup(cs, voters)
@@ -107,7 +107,7 @@ func NewDposMiner(index int) *DposMiner {
 	}
 
 	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
-	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase))
+	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 	bc.Setup(cs, voters)
 
 	tester := new(DposMiner)

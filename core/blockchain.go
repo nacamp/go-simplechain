@@ -38,11 +38,12 @@ type BlockChain struct {
 	NewTXMessage        chan *Transaction
 	tailGroup           *sync.Map
 	coinbase            common.Address
+	miningReward        uint64
 	//poa
 	Signers []common.Address
 }
 
-func NewBlockChain(storage storage.Storage, coinbase common.Address) *BlockChain {
+func NewBlockChain(storage storage.Storage, coinbase common.Address, miningReward uint64) *BlockChain {
 	futureBlocks, _ := lru.New(maxFutureBlocks)
 	bc := BlockChain{
 		Storage:             storage,
@@ -51,6 +52,7 @@ func NewBlockChain(storage storage.Storage, coinbase common.Address) *BlockChain
 		MessageToRandomNode: make(chan *net.Message, 1),
 		NewTXMessage:        make(chan *Transaction, 1),
 		coinbase:            coinbase,
+		miningReward:        miningReward,
 	}
 	return &bc
 }
@@ -135,7 +137,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	}
 	account := NewAccount()
 	copy(account.Address[:], bc.coinbase[:])
-	account.AddBalance(new(big.Int).SetUint64(100)) //FIXME: amount 0
+	account.AddBalance(new(big.Int).SetUint64(bc.miningReward))
 	accs.PutAccount(account)
 	block.AccountState = accs
 	header.AccountHash = accs.RootHash()
@@ -252,8 +254,7 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 		account = NewAccount()
 		account.Address = block.Header.Coinbase
 	}
-	//FIXME: 100 for reward
-	account.AddBalance(new(big.Int).SetUint64(100))
+	account.AddBalance(new(big.Int).SetUint64(bc.miningReward))
 	accs.PutAccount(account)
 }
 
