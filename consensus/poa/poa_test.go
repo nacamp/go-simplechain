@@ -2,6 +2,7 @@ package poa
 
 import (
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 
@@ -132,6 +133,119 @@ func (m *PoaMiner) MakeBlock(time int) *core.Block {
 	}
 	return nil
 
+}
+
+func TestSendMoneyTransaction(t *testing.T) {
+	miner1 := NewPoaMiner(0)
+	// miner2 := NewPoaMiner(1)
+	// miner3 := NewPoaMiner(2)
+	bc1 := miner1.Bc
+	// bc2 := miner2.Bc
+	// bc3 := miner3.Bc
+	var err error
+
+	block1 := miner1.MakeBlock(27 + 3*(0+3*0))
+	err = bc1.PutBlock(block1)
+	assert.NoError(t, err)
+
+	//send money
+	var tx *core.Transaction
+	for i := 3; i >= 1; i-- {
+		tx = core.NewTransaction(tests.Address0, tests.Address2, new(big.Int).SetUint64(5), uint64(i))
+		tx.MakeHash()
+		sig, err := miner1.Cs.wallet.SignHash(tests.Address0, tx.Hash[:])
+		assert.NoError(t, err)
+		tx.SignWithSignature(sig)
+		bc1.TxPool.Put(tx)
+
+	}
+
+	//Put tx in descending order, 3, 2, 1
+	tx = core.NewTransaction(tests.Address0, tests.Address2, new(big.Int).SetUint64(5), 10)
+	tx.MakeHash()
+	sig, err := miner1.Cs.wallet.SignHash(tests.Address0, tx.Hash[:])
+	assert.NoError(t, err)
+	tx.SignWithSignature(sig)
+	bc1.TxPool.Put(tx)
+
+	block2 := miner1.MakeBlock(9 + 3*(0+3*1))
+	err = bc1.PutBlock(block2)
+	assert.NoError(t, err)
+	accs := block2.AccountState
+	account2 := accs.GetAccount(tests.Address2)
+	// nonce 3,2,1 is included, but 10 is not included
+	assert.Equal(t, new(big.Int).SetUint64(15), account2.Balance)
+}
+
+func TestVoteTransaction(t *testing.T) {
+	miner1 := NewPoaMiner(0)
+	miner2 := NewPoaMiner(1)
+	miner3 := NewPoaMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+	// var err error
+	_ = bc1
+	_ = bc2
+	_ = bc3
+
+	var candidate = common.HexToAddress("0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
+	voter := []common.Address{tests.Address0, tests.Address1, tests.Address2}
+	signer := []*PoaMiner{miner1, miner2, miner3}
+	nonces := []uint64{1, 1, 1}
+	var tx *core.Transaction
+	var block *core.Block
+	//vote for joinning
+	for i := 0; i < 2; i++ {
+		payload := new(core.Payload)
+		payload.Code = core.TxCVoteStake
+		tx = core.NewTransactionPayload(voter[i], candidate, new(big.Int).SetUint64(0), nonces[i], payload)
+		tx.MakeHash()
+		sig, err := signer[i].Cs.wallet.SignHash(voter[i], tx.Hash[:])
+		assert.NoError(t, err)
+		tx.SignWithSignature(sig)
+		signer[i].Bc.TxPool.Put(tx)
+
+		block = signer[i].MakeBlock(3*3 + 3*i)
+		for j := 0; j < 3; j++ {
+			err = signer[j].Bc.PutBlock(block)
+			assert.NoError(t, err)
+		}
+
+	}
+	//After 2/3 of the signers vote for the candidate, the candidate becomes the signer in the next block
+	state := block.ConsensusState().(*PoaState)
+	signers, _ := state.GetMiners()
+	assert.Equal(t, 3, len(signers))
+	//changed signers in the next block
+	block = signer[0].Cs.MakeBlock(uint64(4*3 + 4 + 3*0))
+	state = block.ConsensusState().(*PoaState)
+	signers, _ = state.GetMiners()
+	assert.Equal(t, 4, len(signers))
+
+	//vote for evicting
+	nonces = []uint64{2, 2, 1}
+	for i := 0; i < 3; i++ {
+		payload := new(core.Payload)
+		payload.Code = core.TxCVoteUnStake
+		tx = core.NewTransactionPayload(voter[i], candidate, new(big.Int).SetUint64(0), nonces[i], payload)
+		tx.MakeHash()
+		sig, err := signer[i].Cs.wallet.SignHash(voter[i], tx.Hash[:])
+		assert.NoError(t, err)
+		tx.SignWithSignature(sig)
+		signer[i].Bc.TxPool.Put(tx)
+
+		block = signer[i].MakeBlock(4*3 + 4 + 3*i) //4 to skip the new signer 
+		for j := 0; j < 3; j++ {
+			err = signer[j].Bc.PutBlock(block)
+			assert.NoError(t, err)
+		}
+
+	}
+	block = signer[0].Cs.MakeBlock(uint64(3*3 +90+ 3*0))
+	state = block.ConsensusState().(*PoaState)
+	signers, _ = state.GetMiners()
+	assert.Equal(t, 3, len(signers))
 }
 
 /*

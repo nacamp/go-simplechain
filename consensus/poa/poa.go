@@ -48,6 +48,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 
 	block.Header.Time = now
 	state := block.ConsensusState().(*PoaState)
+	state.RefreshSigner()
 	miners, err := state.GetMiners()
 	if len(miners) == 0 {
 		log.CLog().WithFields(logrus.Fields{
@@ -304,7 +305,7 @@ func (cs *Poa) Verify(block *core.Block) error {
 
 func (cs *Poa) SaveState(block *core.Block) (err error) {
 	state := block.ConsensusState().(*PoaState)
-	state.RefreshSigner()
+	//call state.RefreshSigner when loading(at MakeBlock, LoadState )
 	err = state.Put(block.Header.Height)
 	if err != nil {
 		return err
@@ -319,5 +320,6 @@ func (cs *Poa) LoadState(block *core.Block) (state core.ConsensusState, err erro
 	if err != nil {
 		return nil, err
 	}
+	state.(*PoaState).RefreshSigner()
 	return state, nil
 }
