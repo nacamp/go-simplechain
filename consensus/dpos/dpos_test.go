@@ -28,8 +28,7 @@ func TestDpos(t *testing.T) {
 	config := tests.MakeConfig()
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	mstrg, _ := storage.NewMemoryStorage()
-
-	cs := NewDpos(net.NewPeerStreamPool())
+	cs := NewDpos(net.NewPeerStreamPool(), config.Consensus.Period, config.Consensus.Round, config.Consensus.TotalMiners)
 	wallet := account.NewWallet(config.KeystoreFile)
 	wallet.Load()
 	err = wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
@@ -37,7 +36,7 @@ func TestDpos(t *testing.T) {
 		log.CLog().Fatal(err)
 	}
 
-	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
+	cs.Setup(common.HexToAddress(config.MinerAddress), wallet)
 	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 
 	//test MakeGenesisBlock in Setup
@@ -98,7 +97,7 @@ func NewDposMiner(index int) *DposMiner {
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	mstrg, _ := storage.NewMemoryStorage()
 
-	cs := NewDpos(net.NewPeerStreamPool())
+	cs := NewDpos(net.NewPeerStreamPool(), config.Consensus.Period, config.Consensus.Round, config.Consensus.TotalMiners)
 	wallet := account.NewWallet(config.KeystoreFile)
 	wallet.Load()
 	err = wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
@@ -106,7 +105,7 @@ func NewDposMiner(index int) *DposMiner {
 		log.CLog().Fatal(err)
 	}
 
-	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
+	cs.Setup(common.HexToAddress(config.MinerAddress), wallet)
 	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 	bc.Setup(cs, voters)
 

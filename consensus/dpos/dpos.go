@@ -21,13 +21,20 @@ type Dpos struct {
 	wallet       *account.Wallet
 	enableMining bool
 	streamPool   *net.PeerStreamPool
+
+	period      uint64
+	round       uint64
+	totalMiners uint64
 }
 
-func NewDpos(streamPool *net.PeerStreamPool) *Dpos {
-	return &Dpos{streamPool: streamPool}
+func NewDpos(streamPool *net.PeerStreamPool, period, round, totalMiners uint64) *Dpos {
+	return &Dpos{streamPool: streamPool,
+		period:      period,
+		round:       round,
+		totalMiners: totalMiners}
 }
 
-func (cs *Dpos) Setup(address common.Address, wallet *account.Wallet, period int) {
+func (cs *Dpos) Setup(address common.Address, wallet *account.Wallet) {
 	cs.enableMining = true
 	cs.coinbase = address
 	cs.wallet = wallet
@@ -37,16 +44,14 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 	bc := cs.bc
 	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
 	//Fix: when ticker is 1 second, server mining...
-	turn := (now % 9) / 3
+	turn := (now % (cs.totalMiners * cs.period)) / cs.period
 	block, err := bc.NewBlockFromTail()
 	if err != nil {
 		log.CLog().Warning(err)
 	}
 	block.Header.Time = now
 	state := block.ConsensusState().(*DposState)
-	electedTime := GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)
-
-	//electedTime := cs.state.GetNewElectedTime(bc.Tail.Hash(), now, 3, 3, 3)
+	electedTime := GetNewElectedTime(state.ElectedTime, block.Header.Time, cs.period, cs.round, cs.totalMiners)
 	var minerGroup []common.Address
 	if electedTime != now {
 		minerGroup, err = state.GetMiners(state.MinersHash)
@@ -58,7 +63,7 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 	if electedTime == now || minerGroup[turn] == cs.coinbase {
 		parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
 
-		if (parent != nil) && (now-parent.Header.Time < 3) { //(3 * 3)
+		if (parent != nil) && (now-parent.Header.Time < cs.period) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
 				"address": common.AddressToHex(cs.coinbase),
 			}).Warning("Interval is short")
@@ -178,7 +183,7 @@ func (cs *Dpos) Verify(block *core.Block) (err error) {
 	if err != nil {
 		return err
 	}
-	turn := (block.Header.Time % 9) / 3
+	turn := (block.Header.Time % (cs.totalMiners * cs.period)) / cs.period
 	if miners[turn] != block.Header.Coinbase {
 		return errors.New("This time is not your turn")
 	}
@@ -189,13 +194,13 @@ func (cs *Dpos) Verify(block *core.Block) (err error) {
 func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	state := block.ConsensusState().(*DposState)
 	accs := block.AccountState
-	electedTime := GetNewElectedTime(state.ElectedTime, block.Header.Time, 3, 3, 3)
+	electedTime := GetNewElectedTime(state.ElectedTime, block.Header.Time, cs.period, cs.round, cs.totalMiners)
 	if electedTime == block.Header.Time {
 		//because genesis block time is 0, 1 height block become new round, so change only electedtime and skip othe process
 		if block.Header.Height == 1 {
-			state.ElectedTime = electedTime - 3
+			state.ElectedTime = electedTime - cs.period
 		} else {
-			miners, err := state.GetNewRoundMiners(block.Header.Time, 3)
+			miners, err := state.GetNewRoundMiners(block.Header.Time, cs.totalMiners)
 			if err != nil {
 				log.CLog().WithFields(logrus.Fields{}).Panic(err)
 				return err
@@ -231,17 +236,16 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 
 //----------    Consensus  ----------------//
 
-func (d *Dpos) UpdateLIB() {
-	bc := d.bc
+func (cs *Dpos) UpdateLIB() {
+	bc := cs.bc
 	block := bc.Tail
 	//FIXME: consider timestamp, changed minerGroup
 	miners := make(map[common.Address]bool)
 	turn := 1
 	for bc.Lib.Hash() != block.Hash() {
 		miners[block.Header.Coinbase] = true
-		//minerGroup, _, _ := block.MinerState.GetMinerGroup(bc, block)
-		if turn == 3 {
-			if len(miners) == 3 {
+		if turn == int(cs.totalMiners) {
+			if len(miners) == int(cs.totalMiners) {
 				bc.SetLib(block)
 				log.CLog().WithFields(logrus.Fields{
 					"Height": block.Header.Height,
@@ -285,7 +289,7 @@ func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) (err
 	for _, v := range voters {
 		state.Stake(v.Address, v.Address, v.Balance)
 	}
-	miners, err := state.GetNewRoundMiners(block.Header.Time, 3)
+	miners, err := state.GetNewRoundMiners(block.Header.Time, cs.totalMiners)
 	if err != nil {
 		return err
 	}

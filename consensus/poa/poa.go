@@ -12,7 +12,6 @@ import (
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/log"
 	"github.com/nacamp/go-simplechain/net"
-	"github.com/nacamp/go-simplechain/storage"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,21 +21,20 @@ type Poa struct {
 	// node         *net.Node
 	coinbase     common.Address
 	enableMining bool
-	Storage      storage.Storage
-	Period       uint64
-	wallet       *account.Wallet
-	streamPool   *net.PeerStreamPool
+	// Storage      storage.Storage
+	period     uint64
+	wallet     *account.Wallet
+	streamPool *net.PeerStreamPool
 }
 
-func NewPoa(streamPool *net.PeerStreamPool, storage storage.Storage) *Poa {
-	return &Poa{streamPool: streamPool, Storage: storage}
+func NewPoa(streamPool *net.PeerStreamPool, period uint64) *Poa {
+	return &Poa{streamPool: streamPool, period: period}
 }
 
-func (cs *Poa) Setup(address common.Address, wallet *account.Wallet, period int) {
+func (cs *Poa) Setup(address common.Address, wallet *account.Wallet) {
 	cs.enableMining = true
 	cs.coinbase = address
 	cs.wallet = wallet
-	cs.Period = uint64(period)
 }
 
 func (cs *Poa) MakeBlock(now uint64) *core.Block {
@@ -58,12 +56,12 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	if err != nil {
 		log.CLog().Warning(err)
 	}
-	turn := (now % (uint64(len(miners)) * cs.Period)) / cs.Period
+	turn := (now % (uint64(len(miners)) * cs.period)) / cs.period
 	if miners[turn] == cs.coinbase {
 		parent := bc.GetBlockByHash(block.Header.ParentHash)
 
 		//if (parent != nil) && (now-parent.Header.Time < ((uint64(len(miners)) * cs.Period) - 1)) { //(3 * 3)
-		if (parent != nil) && (now-parent.Header.Time < cs.Period) { //(3 * 3)
+		if (parent != nil) && (now-parent.Header.Time < cs.period) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
 				"address": common.AddressToHex(cs.coinbase),
 			}).Debug("Interval is short")
@@ -296,7 +294,7 @@ func (cs *Poa) Verify(block *core.Block) error {
 	if err != nil {
 		return err
 	}
-	index := (block.Header.Time % (uint64(len(miners)) * cs.Period)) / cs.Period
+	index := (block.Header.Time % (uint64(len(miners)) * cs.period)) / cs.period
 	if miners[index] != block.Header.Coinbase {
 		return errors.New("This turn is not this miner's turn ")
 	}

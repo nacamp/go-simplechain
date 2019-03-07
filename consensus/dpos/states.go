@@ -99,8 +99,8 @@ func (cs *DposState) Unstake(voter, candidate common.Address, amount *big.Int) e
 	return nil
 }
 
-func GetNewElectedTime(parentElectedTime, now uint64, cycle, round, totalMiners int) uint64 {
-	if now >= parentElectedTime+uint64(cycle*round*totalMiners) {
+func GetNewElectedTime(parentElectedTime, now, cycle, round, totalMiners uint64) uint64 {
+	if now >= parentElectedTime+(cycle*round*totalMiners) {
 		return now
 	}
 	return parentElectedTime
@@ -113,7 +113,7 @@ func (ds *DposState) GetMiners(minerHash common.Hash) ([]common.Address, error) 
 	return miner, nil
 }
 
-func (ds *DposState) GetNewRoundMiners(electedTime uint64, totalMiners int) ([]common.Address, error) {
+func (ds *DposState) GetNewRoundMiners(electedTime uint64, totalMiners uint64) ([]common.Address, error) {
 	iter, err := ds.Candidate.Iterator(nil)
 	if err != nil {
 		return nil, err
@@ -137,7 +137,7 @@ func (ds *DposState) GetNewRoundMiners(electedTime uint64, totalMiners int) ([]c
 		exist, err = iter.Next()
 	}
 
-	if len(candidates) < totalMiners {
+	if len(candidates) < int(totalMiners) {
 		return nil, errors.New("The number of candidated miner is smaller than the minimum miner number.")
 	}
 

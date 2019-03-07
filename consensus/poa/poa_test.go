@@ -27,7 +27,7 @@ func TestPoa(t *testing.T) {
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	mstrg, _ := storage.NewMemoryStorage()
 
-	cs := NewPoa(net.NewPeerStreamPool(), mstrg)
+	cs := NewPoa(net.NewPeerStreamPool(), config.Consensus.Period)
 	wallet := account.NewWallet(config.KeystoreFile)
 	wallet.Load()
 	err = wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
@@ -35,7 +35,7 @@ func TestPoa(t *testing.T) {
 		log.CLog().Fatal(err)
 	}
 
-	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
+	cs.Setup(common.HexToAddress(config.MinerAddress), wallet)
 	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 
 	//test MakeGenesisBlock in Setup
@@ -96,7 +96,7 @@ func NewPoaMiner(index int) *PoaMiner {
 	voters := cmd.MakeVoterAccountsFromConfig(config)
 	mstrg, _ := storage.NewMemoryStorage()
 
-	cs := NewPoa(net.NewPeerStreamPool(), mstrg)
+	cs := NewPoa(net.NewPeerStreamPool(), config.Consensus.Period)
 	wallet := account.NewWallet(config.KeystoreFile)
 	wallet.Load()
 	err = wallet.TimedUnlock(common.HexToAddress(config.MinerAddress), config.MinerPassphrase, time.Duration(0))
@@ -104,7 +104,7 @@ func NewPoaMiner(index int) *PoaMiner {
 		log.CLog().Fatal(err)
 	}
 
-	cs.Setup(common.HexToAddress(config.MinerAddress), wallet, 3)
+	cs.Setup(common.HexToAddress(config.MinerAddress), wallet)
 	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 	bc.Setup(cs, voters)
 

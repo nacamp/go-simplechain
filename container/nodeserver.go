@@ -52,10 +52,10 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	}
 	ns.node = net.NewNode(config.Port, privKey, ns.streamPool)
 
-	if config.Consensus == "dpos" {
-		ns.consensus = dpos.NewDpos(ns.streamPool)
+	if config.Consensus.Name == "dpos" {
+		ns.consensus = dpos.NewDpos(ns.streamPool, config.Consensus.Period, config.Consensus.Round, config.Consensus.TotalMiners)
 	} else {
-		ns.consensus = poa.NewPoa(ns.streamPool, ns.db)
+		ns.consensus = poa.NewPoa(ns.streamPool, config.Consensus.Period)
 	}
 
 	// if config.Consensus == "dpos" {
@@ -73,11 +73,11 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 		if err != nil {
 			log.CLog().Fatal(err)
 		}
-		if config.Consensus == "dpos" {
+		if config.Consensus.Name == "dpos" {
 			//? Setup is not suitable to exist in consensus because setup have wallet(not core package)
-			ns.consensus.(*dpos.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+			ns.consensus.(*dpos.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet)
 		} else {
-			ns.consensus.(*poa.Poa).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+			ns.consensus.(*poa.Poa).Setup(common.HexToAddress(config.MinerAddress), ns.wallet)
 		}
 		// if config.Consensus == "dpos" {
 		// 	//? Setup is not suitable to exist in consensus because setup have wallet(not core package)
