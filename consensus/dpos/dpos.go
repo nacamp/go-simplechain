@@ -34,7 +34,7 @@ func NewDpos(streamPool *net.PeerStreamPool, period, round, totalMiners uint64) 
 		totalMiners: totalMiners}
 }
 
-func (cs *Dpos) Setup(address common.Address, wallet *account.Wallet) {
+func (cs *Dpos) SetupMining(address common.Address, wallet *account.Wallet) {
 	cs.enableMining = true
 	cs.coinbase = address
 	cs.wallet = wallet

@@ -31,7 +31,7 @@ func NewPoa(streamPool *net.PeerStreamPool, period uint64) *Poa {
 	return &Poa{streamPool: streamPool, period: period}
 }
 
-func (cs *Poa) Setup(address common.Address, wallet *account.Wallet) {
+func (cs *Poa) SetupMining(address common.Address, wallet *account.Wallet) {
 	cs.enableMining = true
 	cs.coinbase = address
 	cs.wallet = wallet

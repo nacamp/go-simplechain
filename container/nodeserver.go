@@ -74,10 +74,10 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 			log.CLog().Fatal(err)
 		}
 		if config.Consensus.Name == "dpos" {
-			//? Setup is not suitable to exist in consensus because setup have wallet(not core package)
-			ns.consensus.(*dpos.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet)
+			//? Setup is not suitable to exist in consensus package because setup have wallet(not core package)
+			ns.consensus.(*dpos.Dpos).SetupMining(common.HexToAddress(config.MinerAddress), ns.wallet)
 		} else {
-			ns.consensus.(*poa.Poa).Setup(common.HexToAddress(config.MinerAddress), ns.wallet)
+			ns.consensus.(*poa.Poa).SetupMining(common.HexToAddress(config.MinerAddress), ns.wallet)
 		}
 		// if config.Consensus == "dpos" {
 		// 	//? Setup is not suitable to exist in consensus because setup have wallet(not core package)

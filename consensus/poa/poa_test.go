@@ -35,7 +35,7 @@ func TestPoa(t *testing.T) {
 		log.CLog().Fatal(err)
 	}
 
-	cs.Setup(common.HexToAddress(config.MinerAddress), wallet)
+	cs.SetupMining(common.HexToAddress(config.MinerAddress), wallet)
 	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 
 	//test MakeGenesisBlock in Setup
@@ -104,7 +104,7 @@ func NewPoaMiner(index int) *PoaMiner {
 		log.CLog().Fatal(err)
 	}
 
-	cs.Setup(common.HexToAddress(config.MinerAddress), wallet)
+	cs.SetupMining(common.HexToAddress(config.MinerAddress), wallet)
 	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 	bc.Setup(cs, voters)
 
