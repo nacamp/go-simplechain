@@ -28,12 +28,12 @@ func TestStakeUnstake(t *testing.T) {
 	_ = state
 
 	//var newAddr = "0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2"
-	err = state.Stake(common.HexToAddress(tests.Addr0), common.HexToAddress(tests.Addr0), new(big.Int).SetUint64(0))
+	err = state.Stake(common.HexToAddress(tests.AddressHex0), common.HexToAddress(tests.AddressHex0), new(big.Int).SetUint64(0))
 	assert.Error(t, err)
-	err = state.Stake(common.HexToAddress(tests.Addr0), common.HexToAddress(tests.Addr0), new(big.Int).SetUint64(10))
+	err = state.Stake(common.HexToAddress(tests.AddressHex0), common.HexToAddress(tests.AddressHex0), new(big.Int).SetUint64(10))
 	assert.NoError(t, err)
-	state.Stake(common.HexToAddress(tests.Addr0), common.HexToAddress(tests.Addr2), new(big.Int).SetUint64(20))
-	state.Stake(common.HexToAddress(tests.Addr1), common.HexToAddress(tests.Addr2), new(big.Int).SetUint64(30))
+	state.Stake(common.HexToAddress(tests.AddressHex0), common.HexToAddress(tests.AddressHex2), new(big.Int).SetUint64(20))
+	state.Stake(common.HexToAddress(tests.AddressHex1), common.HexToAddress(tests.AddressHex2), new(big.Int).SetUint64(30))
 	assert.True(t, candidate(state, tests.Address2).Cmp(new(big.Int).SetUint64(50)) == 0)
 
 	err = state.Unstake(tests.Address2, tests.Address2, new(big.Int).SetUint64(10))

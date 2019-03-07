@@ -331,12 +331,12 @@ func TestNewRound(t *testing.T) {
 				block := miner1.MakeBlock(27 + 3*(turn+3*i))
 				err = bc1.PutBlock(block)
 				assert.NoError(t, err)
-				fmt.Println(tests.Addr1, " mined")
+				fmt.Println(tests.AddressHex1, " mined")
 			} else if turn == findTurn(tests.Address2, int64(27+3*(turn+3*i))) {
 				block := miner2.MakeBlock(27 + 3*(turn+3*i))
 				err = bc2.PutBlock(block)
 				assert.NoError(t, err)
-				fmt.Println(tests.Addr2, " mined")
+				fmt.Println(tests.AddressHex2, " mined")
 			}
 			break
 		}

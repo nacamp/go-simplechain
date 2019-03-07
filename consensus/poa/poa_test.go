@@ -42,11 +42,11 @@ func TestPoa(t *testing.T) {
 	bc.Setup(cs, voters)
 	state, _ := NewInitState(cs.bc.GenesisBlock.ConsensusState().RootHash(), 0, mstrg)
 	fmt.Println("0>>>>", common.HashToHex(cs.bc.GenesisBlock.ConsensusState().RootHash()))
-	_, err = state.Signer.Get(common.FromHex(tests.Addr0))
+	_, err = state.Signer.Get(common.FromHex(tests.AddressHex0))
 	assert.NoError(t, err)
-	_, err = state.Signer.Get(common.FromHex(tests.Addr1))
+	_, err = state.Signer.Get(common.FromHex(tests.AddressHex1))
 	assert.NoError(t, err)
-	_, err = state.Signer.Get(common.FromHex(tests.Addr2))
+	_, err = state.Signer.Get(common.FromHex(tests.AddressHex2))
 	assert.NoError(t, err)
 
 	//test MakeBlock

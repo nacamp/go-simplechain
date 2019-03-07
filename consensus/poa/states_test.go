@@ -37,33 +37,33 @@ func TestState(t *testing.T) {
 	assert.NoError(t, err)
 	_ = state
 
-	state.Signer.Put(common.FromHex(tests.Addr0), []byte{})
-	state.Signer.Put(common.FromHex(tests.Addr1), []byte{})
-	state.Signer.Put(common.FromHex(tests.Addr2), []byte{})
+	state.Signer.Put(common.FromHex(tests.AddressHex0), []byte{})
+	state.Signer.Put(common.FromHex(tests.AddressHex1), []byte{})
+	state.Signer.Put(common.FromHex(tests.AddressHex2), []byte{})
 
 	//test signers
 	addresses, _ := state.signers()
-	assert.Equal(t, common.FromHex(tests.Addr0), addresses[0][:])
-	assert.Equal(t, common.FromHex(tests.Addr1), addresses[1][:])
-	assert.Equal(t, common.FromHex(tests.Addr2), addresses[2][:])
+	assert.Equal(t, common.FromHex(tests.AddressHex0), addresses[0][:])
+	assert.Equal(t, common.FromHex(tests.AddressHex1), addresses[1][:])
+	assert.Equal(t, common.FromHex(tests.AddressHex2), addresses[2][:])
 
 	//test ValidVote
 	var newAddr = "0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2"
 	assert.False(t, state.ValidVote(common.HexToAddress(newAddr), false))
-	assert.False(t, state.ValidVote(common.HexToAddress(tests.Addr0), true))
+	assert.False(t, state.ValidVote(common.HexToAddress(tests.AddressHex0), true))
 	assert.True(t, state.ValidVote(common.HexToAddress(newAddr), true))
-	assert.True(t, state.ValidVote(common.HexToAddress(tests.Addr0), false))
+	assert.True(t, state.ValidVote(common.HexToAddress(tests.AddressHex0), false))
 
 	//test Vote & RefreshSigner
 	//FIXME: ban self vote, check if voter is signer
-	assert.False(t, state.Vote(common.HexToAddress(tests.Addr0), common.HexToAddress(newAddr), false))
+	assert.False(t, state.Vote(common.HexToAddress(tests.AddressHex0), common.HexToAddress(newAddr), false))
 
-	assert.True(t, state.Vote(common.HexToAddress(tests.Addr0), common.HexToAddress(newAddr), true))
+	assert.True(t, state.Vote(common.HexToAddress(tests.AddressHex0), common.HexToAddress(newAddr), true))
 	assert.Equal(t, 1, len(voters(state)))
 	_ = state.RefreshSigner()
 	assert.Equal(t, 3, len(signers(state)))
 
-	assert.True(t, state.Vote(common.HexToAddress(tests.Addr1), common.HexToAddress(newAddr), true))
+	assert.True(t, state.Vote(common.HexToAddress(tests.AddressHex1), common.HexToAddress(newAddr), true))
 	assert.Equal(t, 2, len(voters(state)))
 	_ = state.RefreshSigner()
 	assert.Equal(t, 4, len(signers(state)))
@@ -89,9 +89,9 @@ func TestState(t *testing.T) {
 	//test sort and size in GetMiners
 	signers, err := state.GetMiners()
 	assert.Equal(t, "0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", common.AddressToHex(signers[0]))
-	assert.Equal(t, tests.Addr0, common.AddressToHex(signers[1]))
-	assert.Equal(t, tests.Addr1, common.AddressToHex(signers[2]))
-	assert.Equal(t, tests.Addr2, common.AddressToHex(signers[3]))
+	assert.Equal(t, tests.AddressHex0, common.AddressToHex(signers[1]))
+	assert.Equal(t, tests.AddressHex1, common.AddressToHex(signers[2]))
+	assert.Equal(t, tests.AddressHex2, common.AddressToHex(signers[3]))
 	assert.Equal(t, 4, len(signers))
 
 	//test Clone
