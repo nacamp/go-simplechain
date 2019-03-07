@@ -58,6 +58,8 @@ func (bcs *BlockChainService) loop() {
 			bcs.bc.RequestMissingBlock()
 		case msg := <-bcs.bc.MessageToRandomNode:
 			bcs.streamPool.SendMessageToRandomNode(msg)
+		case msg := <-bcs.bc.BroadcastMessage:
+			bcs.streamPool.BroadcastMessage(msg)
 		case msg := <-bcs.bc.NewTXMessage:
 			bcs.BroadcastNewTXMessage(msg)
 		}
@@ -99,8 +101,8 @@ func (bcs *BlockChainService) onHandle() {
 			bcs.receiveBlock(ch.(*net.Message))
 		case ch := <-bcs.MsgMissingBlockCh:
 			msg := ch.(*net.Message)
-			height := uint64(0)
-			err := rlp.DecodeBytes(msg.Payload, &height)
+			hash := common.Hash{}
+			err := rlp.DecodeBytes(msg.Payload, &hash)
 			if err != nil {
 				log.CLog().WithFields(logrus.Fields{
 					"Msg":  err,
@@ -108,9 +110,9 @@ func (bcs *BlockChainService) onHandle() {
 				}).Warning("DecodeBytes")
 			}
 			log.CLog().WithFields(logrus.Fields{
-				"Height": height,
+				"Hash": common.HashToHex(hash),
 			}).Debug("missing block request arrived")
-			bcs.SendMissingBlock(height, msg.PeerID)
+			bcs.SendMissingBlock(hash, msg.PeerID)
 
 		case ch := <-bcs.MsgNewTxCh:
 			msg := ch.(*net.Message)
@@ -133,9 +135,9 @@ func (bcs *BlockChainService) onHandle() {
 	}
 }
 
-func (bcs *BlockChainService) SendMissingBlock(height uint64, peerID peer.ID) {
+func (bcs *BlockChainService) SendMissingBlock(hash common.Hash, peerID peer.ID) {
 	bc := bcs.bc
-	block := bc.GetBlockByHeight(height)
+	block := bc.GetBlockByHash(hash)
 	if block != nil {
 		message, _ := net.NewRLPMessage(net.MsgMissingBlockAck, block.BaseBlock)
 		ps, err := bcs.streamPool.GetStream(peerID)
@@ -146,11 +148,12 @@ func (bcs *BlockChainService) SendMissingBlock(height uint64, peerID peer.ID) {
 		}
 		ps.SendMessage(&message)
 		log.CLog().WithFields(logrus.Fields{
-			"Height": height,
+			"Height": block.Header.Height,
+			"Hash":   common.HashToHex(hash),
 		}).Info("Send missing block")
 	} else {
 		log.CLog().WithFields(logrus.Fields{
-			"Height": height,
+			"Hash": common.HashToHex(hash),
 		}).Info("We don't have missing block")
 	}
 }

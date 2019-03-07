@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"sort"
 	"sync"
 
 	"math/big"
@@ -35,6 +34,7 @@ type BlockChain struct {
 	Lib                 *Block
 	Tail                *Block
 	MessageToRandomNode chan *net.Message
+	BroadcastMessage    chan *net.Message
 	NewTXMessage        chan *Transaction
 	tailGroup           *sync.Map
 	coinbase            common.Address
@@ -50,6 +50,7 @@ func NewBlockChain(storage storage.Storage, coinbase common.Address, miningRewar
 		futureBlocks:        futureBlocks,
 		tailGroup:           new(sync.Map),
 		MessageToRandomNode: make(chan *net.Message, 1),
+		BroadcastMessage:    make(chan *net.Message, 1),
 		NewTXMessage:        make(chan *Transaction, 1),
 		coinbase:            coinbase,
 		miningReward:        miningReward,
@@ -391,15 +392,14 @@ func (bc *BlockChain) AddFutureBlock(block *Block) error {
 		"hash":   common.HashToHex(block.Hash()),
 	}).Debug("Inserted block into  future blocks")
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
-	//FIXME: temporarily, must send hash
 	if block.Header.Height > uint64(1) {
-		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.Height-uint64(1))
+		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
 		if err != nil {
 			return err
 		}
 		bc.MessageToRandomNode <- &msg
 		log.CLog().WithFields(logrus.Fields{
-			"Height": block.Header.Height - uint64(1),
+			"Hash": common.HashToHex(block.Header.ParentHash),
 		}).Info("Request missing block")
 	}
 	return nil
@@ -448,33 +448,36 @@ func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
 }
 
 //TODO: use code temporarily
+//TODO: change to request block chunk
 func (bc *BlockChain) RequestMissingBlock() error {
-	missigBlock := make(map[uint64]bool)
-	for _, k := range bc.futureBlocks.Keys() {
-		v, _ := bc.futureBlocks.Peek(k)
-		block := v.(*Block)
-		missigBlock[block.Header.Height] = true
-	}
-	var keys []int
-	for k := range missigBlock {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	if len(keys) == 0 {
-		return nil
-	}
-	bc.mu.RLock()
-	defer bc.mu.RUnlock()
-	for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
-		msg, err := net.NewRLPMessage(net.MsgMissingBlock, uint64(i))
-		if err != nil {
-			return err
-		}
-		bc.MessageToRandomNode <- &msg
-		log.CLog().WithFields(logrus.Fields{
-			"Height": i,
-		}).Info("Request missing block")
-	}
+	//comment
+	// missigBlock := make(map[uint64]bool)
+	// for _, k := range bc.futureBlocks.Keys() {
+	// 	v, _ := bc.futureBlocks.Peek(k)
+	// 	block := v.(*Block)
+	// 	missigBlock[block.Header.Height] = true
+	// }
+	// var keys []int
+	// for k := range missigBlock {
+	// 	keys = append(keys, int(k))
+	// }
+	// sort.Ints(keys)
+	// if len(keys) == 0 {
+	// 	return nil
+	// }
+	// bc.mu.RLock()
+	// defer bc.mu.RUnlock()
+	// //TODO: request chunk blocks
+	// for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
+	// 	msg, err := net.NewRLPMessage(net.MsgMissingBlock, uint64(i))
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	bc.MessageToRandomNode <- &msg
+	// 	log.CLog().WithFields(logrus.Fields{
+	// 		"Height": i,
+	// 	}).Info("Request missing block")
+	// }
 	return nil
 }
 
