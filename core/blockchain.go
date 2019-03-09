@@ -193,7 +193,6 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) *Block {
 
 func (bc *BlockChain) PutState(block *Block) error {
 	//the state save here except genesis block
-	//FIXME: verify genesis block
 	if block.Header.Height == uint64(0) {
 		return nil
 	}
@@ -208,20 +207,15 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return fmt.Errorf("error NewTransactionStateRootHash: %s", err)
 	}
 
+	// parent maybe not have ConsensusState
+	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 	consensusState, err := bc.Consensus.LoadState(parentBlock)
 	if err != nil {
 		return fmt.Errorf("error LoadState: %s", err)
 	}
 	block.SetConsensusState(consensusState)
-	// TODO: parent maybe not have ConsensusState
-	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 
 	bc.RewardForCoinbase(block)
-
-	//TODO: must replace SaveMiners with SaveState in poa
-	// if err := bc.Consensus.SaveMiners(block); err != nil {
-	// 	return err
-	// }
 
 	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
@@ -422,13 +416,8 @@ func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
 	block = &Block{
 		BaseBlock: BaseBlock{Header: h},
 	}
-	//state
-	//TODO: test in poa
-	// err = bc.Consensus.CloneFromParentBlock(block, parentBlock)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
+	//state
 	//Tail block always have state, but We can not guarantee that another block will have a state.
 	consensusState, err := parentBlock.ConsensusState().Clone()
 	if err != nil {
