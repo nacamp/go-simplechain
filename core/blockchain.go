@@ -392,7 +392,7 @@ func (bc *BlockChain) AddFutureBlock(block *Block) error {
 		"hash":   common.HashToHex(block.Hash()),
 	}).Debug("Inserted block into  future blocks")
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
-	if block.Header.Height > uint64(1) {
+	if block.Header.Height > bc.Lib.Header.Height && block.Header.Height > uint64(1) {
 		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
 		if err != nil {
 			return err
@@ -447,39 +447,74 @@ func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
 	return block, nil
 }
 
-//TODO: use code temporarily
-//TODO: change to request block chunk
-func (bc *BlockChain) RequestMissingBlock() error {
-	//comment
-	// missigBlock := make(map[uint64]bool)
-	// for _, k := range bc.futureBlocks.Keys() {
-	// 	v, _ := bc.futureBlocks.Peek(k)
-	// 	block := v.(*Block)
-	// 	missigBlock[block.Header.Height] = true
-	// }
-	// var keys []int
-	// for k := range missigBlock {
-	// 	keys = append(keys, int(k))
-	// }
-	// sort.Ints(keys)
-	// if len(keys) == 0 {
-	// 	return nil
-	// }
-	// bc.mu.RLock()
-	// defer bc.mu.RUnlock()
-	// //TODO: request chunk blocks
-	// for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
-	// 	msg, err := net.NewRLPMessage(net.MsgMissingBlock, uint64(i))
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	bc.MessageToRandomNode <- &msg
-	// 	log.CLog().WithFields(logrus.Fields{
-	// 		"Height": i,
-	// 	}).Info("Request missing block")
-	// }
+func (bc *BlockChain) RequestMissingBlocks() error {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+	maxHeight := uint64(18446744073709551615)
+	olderHeight := maxHeight
+	for _, k := range bc.futureBlocks.Keys() {
+		v, _ := bc.futureBlocks.Peek(k)
+		block := v.(*Block)
+		if bc.Tail.Header.Height < block.Header.Height && olderHeight > block.Header.Height {
+			olderHeight = block.Header.Height
+		}
+	}
+	if olderHeight == maxHeight {
+		return nil
+	}
+	var blockRange [2]uint64
+	blockRange[0] = bc.Tail.Header.Height + 1
+	blockRange[1] = olderHeight
+	//request max 100 blocks
+	if olderHeight-bc.Tail.Header.Height > 100 {
+		blockRange[1] = bc.Tail.Header.Height + 100
+	}
+
+	msg, err := net.NewRLPMessage(net.MsgMissingBlocks, blockRange)
+	if err != nil {
+		return err
+	}
+	bc.MessageToRandomNode <- &msg
+	log.CLog().WithFields(logrus.Fields{
+		"Height Start": blockRange[0],
+		"Height End":   blockRange[1],
+	}).Info("Request missing blocks")
+
 	return nil
 }
+
+//TODO: change to request block chunk
+// func (bc *BlockChain) RequestMissingBlock() error {
+// 	//comment
+// 	// missigBlock := make(map[uint64]bool)
+// 	// for _, k := range bc.futureBlocks.Keys() {
+// 	// 	v, _ := bc.futureBlocks.Peek(k)
+// 	// 	block := v.(*Block)
+// 	// 	missigBlock[block.Header.Height] = true
+// 	// }
+// 	// var keys []int
+// 	// for k := range missigBlock {
+// 	// 	keys = append(keys, int(k))
+// 	// }
+// 	// sort.Ints(keys)
+// 	// if len(keys) == 0 {
+// 	// 	return nil
+// 	// }
+// 	// bc.mu.RLock()
+// 	// defer bc.mu.RUnlock()
+// 	// //TODO: request chunk blocks
+// 	// for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
+// 	// 	msg, err := net.NewRLPMessage(net.MsgMissingBlock, uint64(i))
+// 	// 	if err != nil {
+// 	// 		return err
+// 	// 	}
+// 	// 	bc.MessageToRandomNode <- &msg
+// 	// 	log.CLog().WithFields(logrus.Fields{
+// 	// 		"Height": i,
+// 	// 	}).Info("Request missing block")
+// 	// }
+// 	return nil
+// }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
 	bc.mu.RLock()

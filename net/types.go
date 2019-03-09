@@ -13,10 +13,12 @@ const (
 	MsgNearestPeers    = uint64(0x04)
 	MsgNearestPeersAck = uint64(0x05)
 
-	MsgNewBlock        = 0x10
-	MsgMissingBlock    = 0x12
-	MsgMissingBlockAck = 0x13
-	MsgNewTx           = 0x14
+	MsgNewBlock         = 0x10
+	MsgMissingBlock     = 0x12
+	MsgMissingBlockAck  = 0x13
+	MsgMissingBlocks    = 0x14
+	MsgMissingBlocksAck = 0x15
+	MsgNewTx            = 0x16
 
 	StatusStreamClosed = 0x101
 )
