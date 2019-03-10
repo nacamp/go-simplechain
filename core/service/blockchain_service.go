@@ -157,7 +157,7 @@ func (bcs *BlockChainService) onHandle() {
 				"Amount": tx.Amount,
 			}).Info("Received tx")
 			bc.TxPool.Put(tx)
-
+			bcs.streamPool.BroadcastMessage(msg)
 		}
 	}
 }
