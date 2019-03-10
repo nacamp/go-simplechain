@@ -72,7 +72,7 @@ func (bcs *BlockChainService) loop() {
 	}
 }
 
-func (bcs *BlockChainService) receiveBlock(msg *net.Message) {
+func (bcs *BlockChainService) receiveBlock(msg *net.Message, isNew bool) {
 	bc := bcs.bc
 	// msg := ch.(*Message)
 	baseBlock := &core.BaseBlock{}
@@ -95,6 +95,9 @@ func (bcs *BlockChainService) receiveBlock(msg *net.Message) {
 	}
 	bc.Consensus.UpdateLIB()
 	bc.RemoveOrphanBlock()
+	if isNew {
+		bcs.streamPool.BroadcastMessage(msg)
+	}
 }
 
 func (bcs *BlockChainService) onHandle() {
@@ -102,11 +105,11 @@ func (bcs *BlockChainService) onHandle() {
 	for {
 		select {
 		case ch := <-bcs.MsgMissingBlockAckCh:
-			bcs.receiveBlock(ch.(*net.Message))
+			bcs.receiveBlock(ch.(*net.Message), false)
 		case ch := <-bcs.MsgMissingBlocksAckCh:
-			bcs.receiveBlock(ch.(*net.Message))
+			bcs.receiveBlock(ch.(*net.Message), false)
 		case ch := <-bcs.MsgNewBlockCh:
-			bcs.receiveBlock(ch.(*net.Message))
+			bcs.receiveBlock(ch.(*net.Message), true)
 		case ch := <-bcs.MsgMissingBlockCh:
 			msg := ch.(*net.Message)
 			hash := common.Hash{}

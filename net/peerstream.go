@@ -3,6 +3,7 @@ package net
 import (
 	"bufio"
 	"errors"
+	"hash/crc32"
 	"sync"
 
 	libnet "github.com/libp2p/go-libp2p-net"
@@ -53,6 +54,7 @@ func (ps *PeerStream) callHandler(message *Message) {
 	v, ok := ps.handlers.Load(message.Code)
 	if ok {
 		handler := v.(chan interface{})
+		RecordRecvMessage(message.PeerID, crc32.ChecksumIEEE(message.Payload))
 		handler <- message
 	}
 }
