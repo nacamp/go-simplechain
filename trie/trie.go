@@ -60,6 +60,10 @@ const (
 	branch
 )
 
+func Prefix(prefix string, key []byte) []byte {
+	return append([]byte(prefix), key...)
+}
+
 // Node in trie, three kinds,
 // Branch Node [hash_0, hash_1, ..., hash_f]
 // Extension Node [flag, encodedPath, next hash]
