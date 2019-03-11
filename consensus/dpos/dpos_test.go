@@ -82,6 +82,17 @@ func TestDpos(t *testing.T) {
 	assert.True(t, reflect.DeepEqual(miners, miners2))
 	//because genesis block time is 0, 1 height block become new round, so change only electedtime
 	assert.Equal(t, uint64(27+turn*3-3), state2.ElectedTime) // ElectedTime = block.header.Time -3
+
+	//test setup when loading storage
+	//save block before testing
+	sig, _ := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
+	block.SignWithSignature(sig)
+	bc.PutBlock(block)
+
+	cs2 := NewDpos(net.NewPeerStreamPool(), config.Consensus.Period, config.Consensus.Round, config.Consensus.TotalMiners)
+	bc2 := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
+	bc2.Setup(cs2, voters)
+	assert.Equal(t, uint64(1), bc2.Tail.Header.Height)
 }
 
 type DposMiner struct {
