@@ -147,16 +147,11 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	} else {
 		code, _ := strconv.ParseUint(p.Payload.Code, 10, 64)
 		data, _ := strconv.ParseUint(p.Payload.Data, 10, 64)
-		bytePpayload, _ := rlp.EncodeToBytes(data)
+		bytePayload, _ := rlp.EncodeToBytes(data)
 		txPayload := new(core.Payload)
 		txPayload.Code = code
-		txPayload.Data = bytePpayload
+		txPayload.Data = bytePayload
 		tx = core.NewTransactionPayload(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce, txPayload)
-		//TODO: poa
-		// } else {
-		// 	payload, _ := strconv.ParseBool(p.Payload)
-		// 	bytePpayload, _ := rlp.EncodeToBytes(payload)
-		// 	tx = core.NewTransactionPayload(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce, bytePpayload)
 	}
 	tx.MakeHash()
 	sig, err := h.w.SignHash(common.HexToAddress(p.From), tx.Hash[:])
