@@ -50,11 +50,24 @@ curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "metho
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "getTransactionCount", "params":["0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d"]}' http://localhost:8080/jrpc
 
 #sendTransaction
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0x3068c6c17a079f67b3f29a9844cbf6137a2bd7a3a58f0d0eac11b8afcd4564b8e4173af7","to": "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1","amount": "1", "nonce": "1"}}' http://localhost:8080/jrpc
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d","to": "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2","amount": "1", "nonce": "2"}}' http://localhost:8080/jrpc
 
-#sendTransaction vote evicting  when consensus is poa
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d","to": "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2","amount": "0", "nonce": "1", "payload":"false"}
-}' http://localhost:8080/jrpc
+
+#sendTransaction vote when consensus is dpos
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d","to": "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2","amount": "0", "nonce": "3", "payload":{"code":"0", "data":"10"}}}' http://localhost:8080/jrpc
+
+payload.code==1  : stake
+payload.code==0  : unstake
+payload.data : amount
+
+
+#sendTransaction vote when consensus is poa
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d","to": "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2","amount": "0", "nonce": "2", "payload":{"code":"1"}}}' http://localhost:8080/jrpc
+
+payload.code==1  : joinning  
+payload.code==0  : evicting 
+
+
 
 #getTransactionByHash
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "getTransactionByHash", "params":["0x3e551a9b75dcb741b8b4a2bc431c8c21ce65bbf37889365dbff874d4351bde89"]}' http://localhost:8080/jrpc
@@ -63,9 +76,21 @@ curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "metho
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "newAccount", "params":["password"]}' http://localhost:8080/jrpc
 
 #unlock
-curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "unlock", "params": {"address": "0x3068c6c17a079f67b3f29a9844cbf6137a2bd7a3a58f0d0eac11b8afcd4564b8e4173af7","password": "password","timeout": 300}}' http://localhost:8080/jrpc
+curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "unlock", "params": {"address": "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d","password": "password","timeout": 300}}' http://localhost:8080/jrpc
 ```
+
+
 
 ## Reference
 * https://github.com/nebulasio/go-nebulas 
 * https://github.com/ethereum/go-ethereum
+
+
+
+## POA
+### Voting
+Only Miners can vote to evict another miner or to elect a new miner and vote 1 in a block they mined
+When a miner or candidate receives more than one-half (1/2) vote, he can mine or is evicted.
+
+### Mining
+Miners can mined a block in their turn and blocks mined in order of over 1/2  become Last Irreversible Block
