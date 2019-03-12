@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"sort"
+	"fmt"
 	"sync"
 
 	"math/big"
@@ -24,8 +24,6 @@ const (
 	maxFutureBlocks = 256
 )
 
-var GenesisCoinbaseAddress = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
-
 type BlockChain struct {
 	mu                  sync.RWMutex
 	GenesisBlock        *Block
@@ -36,21 +34,26 @@ type BlockChain struct {
 	Lib                 *Block
 	Tail                *Block
 	MessageToRandomNode chan *net.Message
+	BroadcastMessage    chan *net.Message
 	NewTXMessage        chan *Transaction
 	tailGroup           *sync.Map
-
+	coinbase            common.Address
+	miningReward        uint64
 	//poa
 	Signers []common.Address
 }
 
-func NewBlockChain(storage storage.Storage) *BlockChain {
+func NewBlockChain(storage storage.Storage, coinbase common.Address, miningReward uint64) *BlockChain {
 	futureBlocks, _ := lru.New(maxFutureBlocks)
 	bc := BlockChain{
 		Storage:             storage,
 		futureBlocks:        futureBlocks,
 		tailGroup:           new(sync.Map),
 		MessageToRandomNode: make(chan *net.Message, 1),
+		BroadcastMessage:    make(chan *net.Message, 1),
 		NewTXMessage:        make(chan *Transaction, 1),
+		coinbase:            coinbase,
+		miningReward:        miningReward,
 	}
 	return &bc
 }
@@ -107,19 +110,20 @@ func (bc *BlockChain) LoadBlockChainFromStorage() error {
 		return err
 	}
 
-	err = bc.Consensus.LoadConsensusStatus(block)
+	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
+	block.SetConsensusState(consensusState)
+
 	bc.GenesisBlock = block
 	return nil
 
 }
 
 func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
-	common.FromHex(GenesisCoinbaseAddress)
 	header := &Header{
-		Coinbase: common.HexToAddress(GenesisCoinbaseAddress),
+		Coinbase: bc.coinbase,
 		Height:   0,
 		Time:     0,
 	}
@@ -132,10 +136,10 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	if err != nil {
 		return err
 	}
-	account := Account{}
-	copy(account.Address[:], common.FromHex(GenesisCoinbaseAddress))
-	account.AddBalance(new(big.Int).SetUint64(100)) //FIXME: amount 0
-	accs.PutAccount(&account)
+	account := NewAccount()
+	copy(account.Address[:], bc.coinbase[:])
+	account.AddBalance(new(big.Int).SetUint64(bc.miningReward))
+	accs.PutAccount(account)
 	block.AccountState = accs
 	header.AccountHash = accs.RootHash()
 
@@ -189,7 +193,6 @@ func (bc *BlockChain) GetBlockByHeight(height uint64) *Block {
 
 func (bc *BlockChain) PutState(block *Block) error {
 	//the state save here except genesis block
-	//FIXME: verify genesis block
 	if block.Header.Height == uint64(0) {
 		return nil
 	}
@@ -197,27 +200,30 @@ func (bc *BlockChain) PutState(block *Block) error {
 	parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
 	block.AccountState, err = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	if err != nil {
-		return err
+		return fmt.Errorf("error NewAccountStateRootHash: %s", err)
 	}
 	block.TransactionState, err = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
 	if err != nil {
-		return err
+		return fmt.Errorf("error NewTransactionStateRootHash: %s", err)
 	}
 
-	err = bc.Consensus.LoadConsensusStatus(block)
+	// parent maybe not have ConsensusState
+	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
+	consensusState, err := bc.Consensus.LoadState(parentBlock)
 	if err != nil {
-		return err
+		return fmt.Errorf("error LoadState: %s", err)
 	}
+	block.SetConsensusState(consensusState)
 
 	bc.RewardForCoinbase(block)
 
-	if err := bc.Consensus.SaveMiners(block); err != nil {
-		return err
-	}
-
 	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
-		return err
+		return fmt.Errorf("error ExecuteTransaction: %s", err)
+	}
+
+	if err := bc.Consensus.SaveState(block); err != nil {
+		return fmt.Errorf("error SaveState: %s", err)
 	}
 
 	//check rootHash
@@ -228,35 +234,11 @@ func (bc *BlockChain) PutState(block *Block) error {
 		return errors.New("block.TransactionState.RootHash() != block.Header.TransactionHash")
 	}
 
-	if err := bc.Consensus.VerifyConsensusStatusHash(block); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (bc *BlockChain) PutMinerState(block *Block) error {
-
-	// save status
-	ms := block.MinerState
-	minerGroup, voterBlock, err := ms.GetMinerGroup(bc, block)
-	if err != nil {
-		return err
-	}
-	//TODO: we need to test  when voter transaction make
-	//make new miner group
-	if voterBlock.Header.Height == block.Header.Height {
-
-		ms.Put(minerGroup, block.Header.VoterHash) //TODO voterhash
-	}
-	//else use parent miner group
-	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
-	index := (block.Header.Time % 9) / 3
-	if minerGroup[index] != block.Header.Coinbase {
-		return errors.New("minerGroup[index] != block.Header.Coinbase")
+	if block.ConsensusState().RootHash() != block.Header.ConsensusHash {
+		return errors.New("block.ConsensusState.RootHash() != block.Header.ConsensusHash")
 	}
 
 	return nil
-
 }
 
 func (bc *BlockChain) RewardForCoinbase(block *Block) {
@@ -264,24 +246,24 @@ func (bc *BlockChain) RewardForCoinbase(block *Block) {
 	accs := block.AccountState //NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	account := accs.GetAccount(block.Header.Coinbase)
 	if account == nil { // At first, genesisblock
-		account = &Account{Address: block.Header.Coinbase}
+		account = NewAccount()
+		account.Address = block.Header.Coinbase
 	}
-	//FIXME: 100 for reward
-	account.AddBalance(new(big.Int).SetUint64(100))
+	account.AddBalance(new(big.Int).SetUint64(bc.miningReward))
 	accs.PutAccount(account)
 }
 
 func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 	accs := block.AccountState
 	txs := block.TransactionState
-	firstVote := true
-	for _, tx := range block.Transactions {
+	// firstVote := true
+	for i, tx := range block.Transactions {
 		fromAccount := accs.GetAccount(tx.From)
 		if fromAccount.Nonce+1 != tx.Nonce {
 			return ErrTransactionNonce
 		}
 		fromAccount.Nonce += uint64(1)
-		if len(tx.Payload) == 0 {
+		if tx.Payload == nil {
 			toAccount := accs.GetAccount(tx.To)
 			if err := fromAccount.SubBalance(tx.Amount); err != nil {
 				return err
@@ -289,11 +271,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			toAccount.AddBalance(tx.Amount)
 			accs.PutAccount(toAccount)
 		} else {
-			if tx.From == block.Header.Coinbase && firstVote {
-				firstVote = false
-			} else {
-				return errors.New("This tx is not validated")
-			}
+			block.ConsensusState().ExecuteTransaction(block, i, fromAccount)
 		}
 		accs.PutAccount(fromAccount)
 		txs.PutTransaction(tx)
@@ -308,7 +286,7 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 		return errors.New("block.Hash() != block.CalcHash()")
 	}
 
-	//2.signer check
+	//2. check signer
 	err = block.VerifySign()
 	if err != nil {
 		return err
@@ -322,6 +300,12 @@ func (bc *BlockChain) PutBlock(block *Block) error {
 
 	//4. save status and verify hash
 	err = bc.PutState(block)
+	if err != nil {
+		return err
+	}
+
+	//5. verify consensus
+	err = bc.Consensus.Verify(block)
 	if err != nil {
 		return err
 	}
@@ -402,15 +386,14 @@ func (bc *BlockChain) AddFutureBlock(block *Block) error {
 		"hash":   common.HashToHex(block.Hash()),
 	}).Debug("Inserted block into  future blocks")
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
-	//FIXME: temporarily, must send hash
-	if block.Header.Height > uint64(1) {
-		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.Height-uint64(1))
+	if block.Header.Height > bc.Lib.Header.Height && block.Header.Height > uint64(1) {
+		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
 		if err != nil {
 			return err
 		}
 		bc.MessageToRandomNode <- &msg
 		log.CLog().WithFields(logrus.Fields{
-			"Height": block.Header.Height - uint64(1),
+			"Hash": common.HashToHex(block.Header.ParentHash),
 		}).Info("Request missing block")
 	}
 	return nil
@@ -422,7 +405,10 @@ func encodeBlockHeight(number uint64) []byte {
 	return enc
 }
 
-func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err error) {
+func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
+	bc.mu.Lock()
+	defer bc.mu.Unlock()
+	parentBlock := bc.Tail
 	h := &Header{
 		ParentHash: parentBlock.Hash(),
 		Height:     parentBlock.Header.Height + 1,
@@ -430,11 +416,14 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 	block = &Block{
 		BaseBlock: BaseBlock{Header: h},
 	}
+
 	//state
-	err = bc.Consensus.CloneFromParentBlock(block, parentBlock)
+	//Tail block always have state, but We can not guarantee that another block will have a state.
+	consensusState, err := parentBlock.ConsensusState().Clone()
 	if err != nil {
 		return nil, err
 	}
+	block.SetConsensusState(consensusState)
 
 	block.AccountState, err = parentBlock.AccountState.Clone()
 	if err != nil {
@@ -447,36 +436,74 @@ func (bc *BlockChain) NewBlockFromParent(parentBlock *Block) (block *Block, err 
 	return block, nil
 }
 
-//TODO: use code temporarily
-func (bc *BlockChain) RequestMissingBlock() error {
-	missigBlock := make(map[uint64]bool)
+func (bc *BlockChain) RequestMissingBlocks() error {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+	maxHeight := uint64(18446744073709551615)
+	olderHeight := maxHeight
 	for _, k := range bc.futureBlocks.Keys() {
 		v, _ := bc.futureBlocks.Peek(k)
 		block := v.(*Block)
-		missigBlock[block.Header.Height] = true
+		if bc.Tail.Header.Height < block.Header.Height && olderHeight > block.Header.Height {
+			olderHeight = block.Header.Height
+		}
 	}
-	var keys []int
-	for k := range missigBlock {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	if len(keys) == 0 {
+	if olderHeight == maxHeight {
 		return nil
 	}
-	bc.mu.RLock()
-	defer bc.mu.RUnlock()
-	for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
-		msg, err := net.NewRLPMessage(net.MsgMissingBlock, uint64(i))
-		if err != nil {
-			return err
-		}
-		bc.MessageToRandomNode <- &msg
-		log.CLog().WithFields(logrus.Fields{
-			"Height": i,
-		}).Info("Request missing block")
+	var blockRange [2]uint64
+	blockRange[0] = bc.Tail.Header.Height + 1
+	blockRange[1] = olderHeight
+	//request max 100 blocks
+	if olderHeight-bc.Tail.Header.Height > 100 {
+		blockRange[1] = bc.Tail.Header.Height + 100
 	}
+
+	msg, err := net.NewRLPMessage(net.MsgMissingBlocks, blockRange)
+	if err != nil {
+		return err
+	}
+	bc.MessageToRandomNode <- &msg
+	log.CLog().WithFields(logrus.Fields{
+		"Height Start": blockRange[0],
+		"Height End":   blockRange[1],
+	}).Info("Request missing blocks")
+
 	return nil
 }
+
+//TODO: change to request block chunk
+// func (bc *BlockChain) RequestMissingBlock() error {
+// 	//comment
+// 	// missigBlock := make(map[uint64]bool)
+// 	// for _, k := range bc.futureBlocks.Keys() {
+// 	// 	v, _ := bc.futureBlocks.Peek(k)
+// 	// 	block := v.(*Block)
+// 	// 	missigBlock[block.Header.Height] = true
+// 	// }
+// 	// var keys []int
+// 	// for k := range missigBlock {
+// 	// 	keys = append(keys, int(k))
+// 	// }
+// 	// sort.Ints(keys)
+// 	// if len(keys) == 0 {
+// 	// 	return nil
+// 	// }
+// 	// bc.mu.RLock()
+// 	// defer bc.mu.RUnlock()
+// 	// //TODO: request chunk blocks
+// 	// for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
+// 	// 	msg, err := net.NewRLPMessage(net.MsgMissingBlock, uint64(i))
+// 	// 	if err != nil {
+// 	// 		return err
+// 	// 	}
+// 	// 	bc.MessageToRandomNode <- &msg
+// 	// 	log.CLog().WithFields(logrus.Fields{
+// 	// 		"Height": i,
+// 	// 	}).Info("Request missing block")
+// 	// }
+// 	return nil
+// }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
 	bc.mu.RLock()
@@ -521,7 +548,7 @@ func (bc *BlockChain) RebuildBlockHeight() error {
 	}
 	var err error
 	for {
-		if block.Hash() == bc.Lib.Hash() {
+		if bc.Lib.Header.Height+1 == block.Header.Height { //block.Hash() == bc.Lib.Hash()
 			break
 		}
 		block = bc.GetBlockByHash(block.Header.ParentHash)
@@ -565,10 +592,11 @@ func (bc *BlockChain) LoadLibFromStorage() error {
 	if err != nil {
 		return err
 	}
-	err = bc.Consensus.LoadConsensusStatus(block)
+	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
+	block.SetConsensusState(consensusState)
 
 	bc.Lib = block
 	return nil
@@ -608,10 +636,12 @@ func (bc *BlockChain) LoadTailFromStorage() error {
 	if err != nil {
 		return err
 	}
-	err = bc.Consensus.LoadConsensusStatus(block)
+
+	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
 		return err
 	}
+	block.SetConsensusState(consensusState)
 
 	bc.Tail = block
 	return nil

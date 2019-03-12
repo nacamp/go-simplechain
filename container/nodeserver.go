@@ -6,7 +6,8 @@ import (
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/common"
-	"github.com/nacamp/go-simplechain/consensus"
+	"github.com/nacamp/go-simplechain/consensus/dpos"
+	"github.com/nacamp/go-simplechain/consensus/poa"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/core/service"
 	"github.com/nacamp/go-simplechain/log"
@@ -38,7 +39,7 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	} else {
 		ns.db, _ = storage.NewLevelDBStorage(config.DBPath)
 	}
-	ns.bc = core.NewBlockChain(ns.db)
+	ns.bc = core.NewBlockChain(ns.db, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 
 	ns.wallet = account.NewWallet(config.KeystoreFile)
 	ns.wallet.Load()
@@ -51,11 +52,17 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	}
 	ns.node = net.NewNode(config.Port, privKey, ns.streamPool)
 
-	if config.Consensus == "dpos" {
-		ns.consensus = consensus.NewDpos(ns.streamPool)
+	if config.Consensus.Name == "dpos" {
+		ns.consensus = dpos.NewDpos(ns.streamPool, config.Consensus.Period, config.Consensus.Round, config.Consensus.TotalMiners)
 	} else {
-		ns.consensus = consensus.NewPoa(ns.streamPool, ns.db)
+		ns.consensus = poa.NewPoa(ns.streamPool, config.Consensus.Period)
 	}
+
+	// if config.Consensus == "dpos" {
+	// 	ns.consensus = consensus.NewDpos(ns.streamPool)
+	// } else {
+	// 	ns.consensus = consensus.NewPoa(ns.streamPool, ns.db)
+	// }
 
 	if config.EnableMining {
 		log.CLog().WithFields(logrus.Fields{
@@ -66,12 +73,18 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 		if err != nil {
 			log.CLog().Fatal(err)
 		}
-		if config.Consensus == "dpos" {
-			//? Setup is not suitable to exist in consensus because setup have wallet(not core package)
-			ns.consensus.(*consensus.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+		if config.Consensus.Name == "dpos" {
+			//? Setup is not suitable to exist in consensus package because setup have wallet(not core package)
+			ns.consensus.(*dpos.Dpos).SetupMining(common.HexToAddress(config.MinerAddress), ns.wallet)
 		} else {
-			ns.consensus.(*consensus.Poa).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+			ns.consensus.(*poa.Poa).SetupMining(common.HexToAddress(config.MinerAddress), ns.wallet)
 		}
+		// if config.Consensus == "dpos" {
+		// 	//? Setup is not suitable to exist in consensus because setup have wallet(not core package)
+		// 	ns.consensus.(*consensus.Dpos).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+		// } else {
+		// 	ns.consensus.(*consensus.Poa).Setup(common.HexToAddress(config.MinerAddress), ns.wallet, 3)
+		// }
 	}
 	ns.bc.Setup(ns.consensus, cmd.MakeVoterAccountsFromConfig(config))
 

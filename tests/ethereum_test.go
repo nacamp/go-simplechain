@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"fmt"
+	"math/big"
 	"testing"
 
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -15,6 +16,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestBigint(t *testing.T) {
+	i := new(big.Int).SetUint64(10)
+	encodedBytes, err := rlp.EncodeToBytes(i)
+	if err != nil {
+		fmt.Printf("%#v\n", err)
+	}
+	i2 := new(big.Int)
+	rlp.Decode(bytes.NewReader(encodedBytes), i2)
+	assert.Equal(t, i, i2)
+	fmt.Println(i, i2)
+}
+
 func TestPeerInfo(t *testing.T) {
 	addr, _ := ma.NewMultiaddr(fmt.Sprintf("/ip4/127.0.0.1/tcp/100"))
 	id, _ := peer.IDB58Decode("16Uiu2HAkyN6nmD6F5Mzf354YeXKxpvRc7D7m1RF2v8vjk3VurpBY")
@@ -23,7 +36,7 @@ func TestPeerInfo(t *testing.T) {
 	if err != nil {
 		fmt.Printf("%#v\n", err)
 	}
-    //Multiaddr is interface, rlp not support interface
+	//Multiaddr is interface, rlp not support interface
 	info2 := net.PeerInfo2{}
 	rlp.Decode(bytes.NewReader(encodedBytes), &info2)
 	assert.Equal(t, &info, net.FromPeerInfo2(&info2), "")

@@ -3,6 +3,7 @@ package core
 import (
 	"crypto/ecdsa"
 	"errors"
+	"sync"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"
@@ -12,17 +13,14 @@ import (
 
 // Simple Header
 type Header struct {
-	ParentHash        common.Hash
-	Coinbase          common.Address
-	Height            uint64
-	Time              uint64
-	Hash              common.Hash
-	AccountHash       common.Hash
-	TransactionHash   common.Hash
-	MinerHash         common.Hash
-	VoterHash         common.Hash
-	SnapshotHash      common.Hash
-	SnapshotVoterTime uint64
+	ParentHash      common.Hash
+	Coinbase        common.Address
+	Height          uint64
+	Time            uint64
+	Hash            common.Hash
+	AccountHash     common.Hash
+	TransactionHash common.Hash
+	ConsensusHash   common.Hash
 	//not need signature at pow
 	//need signature, to prevent malicious behavior like to skip deliberately block in the previous turn
 	Signature common.Signature
@@ -37,18 +35,24 @@ type BaseBlock struct {
 
 type Block struct {
 	BaseBlock
-
+	mu               sync.RWMutex
 	AccountState     *AccountState
 	TransactionState *TransactionState
-	MinerState       MinerState
-	VoterState       *AccountState
-	Snapshot         interface{}
+	consensusState   ConsensusState
 }
 
 func (b *BaseBlock) NewBlock() *Block {
 	return &Block{
 		BaseBlock: *b,
 	}
+}
+
+func (b *Block) SetConsensusState(c ConsensusState) {
+	b.consensusState = c
+}
+
+func (b *Block) ConsensusState() ConsensusState {
+	return b.consensusState
 }
 
 func (b *Block) Hash() common.Hash {
@@ -68,8 +72,7 @@ func (b *Block) CalcHash() (hash common.Hash) {
 		b.Header.Time,
 		b.Header.AccountHash,
 		b.Header.TransactionHash,
-		b.Header.MinerHash,
-		b.Header.SnapshotHash,
+		b.Header.ConsensusHash,
 	})
 	hasher.Sum(hash[:0])
 	return hash

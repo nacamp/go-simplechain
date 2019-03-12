@@ -18,9 +18,20 @@ type Transaction struct {
 	To        common.Address
 	Amount    *big.Int
 	Nonce     uint64
-	Time      uint64 // int64 rlp encoding error
+	Time      uint64
+	Height    uint64
 	Signature common.Signature
-	Payload   []byte
+	Payload   *Payload //  other field is nil after nil  at rlp encoding ?
+}
+
+const (
+	TxCVoteUnStake = uint64(0x00)
+	TxCVoteStake   = uint64(0x01)
+)
+
+type Payload struct {
+	Code uint64
+	Data []byte
 }
 
 func NewTransaction(from, to common.Address, amount *big.Int, nonce uint64) *Transaction {
@@ -34,11 +45,17 @@ func NewTransaction(from, to common.Address, amount *big.Int, nonce uint64) *Tra
 	return tx
 }
 
-func NewTransactionPayload(from, to common.Address, amount *big.Int, nonce uint64, payload []byte) *Transaction {
+func NewTransactionPayload(from, to common.Address, amount *big.Int, nonce uint64, payload *Payload) *Transaction {
 	tx := NewTransaction(from, to, amount, nonce)
 	tx.Payload = payload
 	return tx
 }
+
+// func NewTransactionPayload(from, to common.Address, amount *big.Int, nonce uint64, payload []byte) *Transaction {
+// 	tx := NewTransaction(from, to, amount, nonce)
+// 	tx.Payload = payload
+// 	return tx
+// }
 
 func (tx *Transaction) MakeHash() {
 	tx.Hash = tx.CalcHash()

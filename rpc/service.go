@@ -108,11 +108,16 @@ func (h *GetTransactionCountHandler) Result() interface{} {
 
 // sendTransaction >>>>>>>>>>>
 type TempTx struct {
-	From    string `json:"from"`
-	To      string `json:"to"`
-	Amount  string `json:"amount"`
-	Nonce   string `json:"nonce"`
-	Payload string `json:"payload"`
+	From    string       `json:"from"`
+	To      string       `json:"to"`
+	Amount  string       `json:"amount"`
+	Nonce   string       `json:"nonce"`
+	Payload *TempPayload `json:"payload"`
+}
+
+type TempPayload struct {
+	Code string `json:"code"`
+	Data string `json:"data"`
 }
 
 type SendTransactionHandler struct {
@@ -137,12 +142,16 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	amount, _ := new(big.Int).SetString(p.Amount, 10)
 	nonce, _ := strconv.ParseUint(p.Nonce, 10, 64)
 	var tx *core.Transaction
-	if p.Payload == "" {
+	if p.Payload == nil {
 		tx = core.NewTransaction(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce)
 	} else {
-		payload, _ := strconv.ParseBool(p.Payload)
-		bytePpayload, _ := rlp.EncodeToBytes(payload)
-		tx = core.NewTransactionPayload(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce, bytePpayload)
+		code, _ := strconv.ParseUint(p.Payload.Code, 10, 64)
+		data, _ := strconv.ParseUint(p.Payload.Data, 10, 64)
+		bytePayload, _ := rlp.EncodeToBytes(data)
+		txPayload := new(core.Payload)
+		txPayload.Code = code
+		txPayload.Data = bytePayload
+		tx = core.NewTransactionPayload(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce, txPayload)
 	}
 	tx.MakeHash()
 	sig, err := h.w.SignHash(common.HexToAddress(p.From), tx.Hash[:])

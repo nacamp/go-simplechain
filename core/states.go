@@ -6,9 +6,11 @@ import (
 	"math/big"
 
 	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/log"
 	"github.com/nacamp/go-simplechain/rlp"
 	"github.com/nacamp/go-simplechain/storage"
 	"github.com/nacamp/go-simplechain/trie"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -18,36 +20,59 @@ var (
 	ErrContractAccountNotFound = errors.New("cannot found contract account in storage please check contract address is valid or deploy is success")
 )
 
+/*
+The stake amount that you voted for in the minors is added up in the next round to elect a new minor and
+can't be withdrawn to next round after the minors have been elected.
+*/
 type Account struct {
+	Address          common.Address
+	Balance          *big.Int
+	Nonce            uint64
+	Staking          map[common.Address]*big.Int
+	TotalPeggedStake *big.Int //Non-withdrawable stake
+}
+
+type BasicAccount struct {
+	Address common.Address
+	Balance *big.Int
+}
+
+type rlpAccount struct {
 	Address common.Address
 	Balance *big.Int
 	Nonce   uint64
-	// Root    common.Hash // Before trie put
+
+	Staking          []BasicAccount
+	TotalPeggedStake *big.Int
 }
 
 type AccountState struct {
 	Trie *trie.Trie
-	// Storage storage.Storage //FIMXE: current not use
 }
 
-//no state, but need merkle root
 type TransactionState struct {
 	Trie *trie.Trie
-	// Storage storage.Storage //FIMXE: current not use
+}
+
+func NewAccount() *Account {
+	return &Account{
+		Balance:          new(big.Int).SetUint64(0),
+		Staking:          make(map[common.Address]*big.Int),
+		TotalPeggedStake: new(big.Int).SetUint64(0),
+	}
 }
 
 func (acc *Account) AddBalance(amount *big.Int) {
-	if acc.Balance == nil {
-		acc.Balance = new(big.Int).SetUint64(0)
-	}
+	// if acc.Balance == nil {
+	// 	acc.Balance = new(big.Int).SetUint64(0)
+	// }
 	acc.Balance.Add(acc.Balance, amount)
 }
 
 func (acc *Account) SubBalance(amount *big.Int) error {
-
-	if acc.Balance == nil {
-		return ErrBalanceInsufficient
-	}
+	// if acc.Balance == nil {
+	// 	return ErrBalanceInsufficient
+	// }
 	if acc.Balance.Cmp(amount) < 0 {
 		return ErrBalanceInsufficient
 	}
@@ -55,12 +80,61 @@ func (acc *Account) SubBalance(amount *big.Int) error {
 	return nil
 }
 
+func (acc *Account) AvailableBalance() *big.Int {
+	tot := new(big.Int)
+	for _, v := range acc.Staking {
+		tot.Add(tot, v)
+	}
+	if tot.Cmp(acc.TotalPeggedStake) > 0 {
+		return tot.Sub(acc.Balance, tot)
+	}
+	return tot.Sub(acc.Balance, acc.TotalPeggedStake)
+}
+
+func (acc *Account) TotalStaking() *big.Int {
+	tot := new(big.Int)
+	for _, v := range acc.Staking {
+		tot.Add(tot, v)
+	}
+	return tot
+}
+
+func (acc *Account) Stake(address common.Address, amount *big.Int) error {
+	tmp := new(big.Int)
+	//acc.Balance - acc.TotalStaking <  amount
+	if tmp.Sub(acc.Balance, acc.TotalStaking()).Cmp(amount) < 0 {
+		return errors.New("There is insufficient stake.")
+	}
+
+	v, ok := acc.Staking[address]
+	if ok {
+		v.Add(v, amount)
+	} else {
+		acc.Staking[address] = amount
+	}
+	return nil
+}
+
+func (acc *Account) UnStake(address common.Address, amount *big.Int) (err error) {
+	v, ok := acc.Staking[address]
+	if !ok {
+		return errors.New("There is insufficient stake.")
+	}
+	if v.Cmp(amount) < 0 {
+		return errors.New("There is insufficient stake.")
+	}
+	v.Sub(v, amount)
+	return nil
+}
+
+func (acc *Account) CalcSetTotalPeggedStake() {
+	acc.TotalPeggedStake = acc.TotalStaking()
+}
+
 func NewAccountState(storage storage.Storage) (*AccountState, error) {
-	// storage, _ := storage.NewMemoryStorage()
 	tr, err := trie.NewTrie(nil, storage, false)
 	return &AccountState{
 		Trie: tr,
-		// Storage: storage,
 	}, err
 }
 
@@ -68,40 +142,62 @@ func NewAccountStateRootHash(rootHash common.Hash, storage storage.Storage) (*Ac
 	tr, err := trie.NewTrie(rootHash[:], storage, false)
 	return &AccountState{
 		Trie: tr,
-		// Storage: storage,
 	}, err
 }
 
 func (accs *AccountState) Clone() (*AccountState, error) {
-	// storage, _ := storage.NewMemoryStorage()
 	tr, err := accs.Trie.Clone()
 	return &AccountState{
 		Trie: tr,
 	}, err
 }
 
-//TODO: error
 func (accs *AccountState) PutAccount(account *Account) (hash common.Hash) {
-	encodedBytes, _ := rlp.EncodeToBytes(account)
+	rlpAcc := rlpAccount{
+		Address:          account.Address,
+		Balance:          account.Balance,
+		Nonce:            account.Nonce,
+		Staking:          make([]BasicAccount, 0),
+		TotalPeggedStake: account.TotalPeggedStake,
+	}
+	for k, v := range account.Staking {
+		rlpAcc.Staking = append(rlpAcc.Staking, BasicAccount{Address: k, Balance: v})
+	}
+
+	encodedBytes, err := rlp.EncodeToBytes(rlpAcc)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	}
 	accs.Trie.Put(account.Address[:], encodedBytes)
 	copy(hash[:], accs.Trie.RootHash())
 	return hash
 }
 
-//TODO: error
 func (accs *AccountState) GetAccount(address common.Address) (account *Account) {
 	decodedBytes, err := accs.Trie.Get(address[:])
-	//FIXME: TOBE
-	// if err != nil && err != storage.ErrKeyNotFound {
-	// 	return nil, err
-	// }
 	if err == nil {
-		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&account)
-		return account
+		rlpAcc := new(rlpAccount)
+		rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(rlpAcc)
+		account := Account{
+			Address:          rlpAcc.Address,
+			Balance:          rlpAcc.Balance,
+			Nonce:            rlpAcc.Nonce,
+			Staking:          make(map[common.Address]*big.Int),
+			TotalPeggedStake: rlpAcc.TotalPeggedStake,
+		}
+		for _, v := range rlpAcc.Staking {
+			account.Staking[v.Address] = v.Balance
+		}
+		return &account
 	} else {
-		return &Account{Address: address, Balance: new(big.Int).SetUint64(0)}
+		if err == storage.ErrKeyNotFound {
+			account := NewAccount()
+			account.Address = address
+			return account
+		}
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+		return nil
 	}
-
 }
 
 func (accs *AccountState) RootHash() (hash common.Hash) {
@@ -137,15 +233,22 @@ func (txs *TransactionState) Clone() (*TransactionState, error) {
 }
 
 func (txs *TransactionState) PutTransaction(tx *Transaction) (hash common.Hash) {
-	encodedBytes, _ := rlp.EncodeToBytes(tx)
+	encodedBytes, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	}
 	txs.Trie.Put(tx.Hash[:], encodedBytes)
 	copy(hash[:], txs.Trie.RootHash())
 	return hash
 }
 
 func (txs *TransactionState) GetTransaction(hash common.Hash) (tx *Transaction) {
-	decodedBytes, _ := txs.Trie.Get(hash[:])
-	rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&tx)
+	tx = new(Transaction)
+	encodedBytes, err := txs.Trie.Get(hash[:])
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	}
+	rlp.NewStream(bytes.NewReader(encodedBytes), 0).Decode(&tx)
 	return tx
 }
 

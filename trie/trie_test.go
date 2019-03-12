@@ -35,6 +35,31 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestTrieDel(t *testing.T) {
+	storage, _ := storage.NewMemoryStorage()
+	key1 := []byte{0x1, 0xf, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0xe, 0x9}
+	val1 := []byte("leaf 11")
+
+	tr1, _ := NewTrie(nil, storage, false)
+	tr1.Put(key1, val1)
+
+	tr2, _ := NewTrie(tr1.RootHash(), storage, false)
+	val2, _ := tr2.Get(key1)
+	assert.Equal(t, val1, val2)
+
+	tr3, err := tr2.Del(key1)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_ = tr3
+
+	_, notfound := tr2.Get(key1)
+	assert.Error(t, notfound)
+
+	val3, _ := tr1.Get(key1)
+	assert.Equal(t, val1, val3)
+}
+
 func TestTrie_Empty(t *testing.T) {
 	storage, _ := storage.NewMemoryStorage()
 	tr1, err := NewTrie(nil, storage, false)

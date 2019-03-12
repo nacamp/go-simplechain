@@ -14,12 +14,14 @@ import (
 
 type BlockChainService struct {
 	// node                 net.INode
-	bc                   *core.BlockChain
-	streamPool           *net.PeerStreamPool
-	MsgNewBlockCh        chan interface{}
-	MsgMissingBlockCh    chan interface{}
-	MsgMissingBlockAckCh chan interface{}
-	MsgNewTxCh           chan interface{}
+	bc                    *core.BlockChain
+	streamPool            *net.PeerStreamPool
+	MsgNewBlockCh         chan interface{}
+	MsgMissingBlockCh     chan interface{}
+	MsgMissingBlockAckCh  chan interface{}
+	MsgMissingBlocksCh    chan interface{}
+	MsgMissingBlocksAckCh chan interface{}
+	MsgNewTxCh            chan interface{}
 }
 
 func NewBlockChainService(bc *core.BlockChain, streamPool *net.PeerStreamPool) *BlockChainService {
@@ -31,6 +33,8 @@ func NewBlockChainService(bc *core.BlockChain, streamPool *net.PeerStreamPool) *
 	bcs.MsgNewBlockCh = make(chan interface{}, 1)
 	bcs.MsgMissingBlockCh = make(chan interface{}, 1)
 	bcs.MsgMissingBlockAckCh = make(chan interface{}, 1)
+	bcs.MsgMissingBlocksCh = make(chan interface{}, 1)
+	bcs.MsgMissingBlocksAckCh = make(chan interface{}, 1)
 	bcs.MsgNewTxCh = make(chan interface{}, 1)
 	return &bcs
 }
@@ -39,6 +43,8 @@ func (bcs *BlockChainService) Register(peerStream *net.PeerStream) {
 	peerStream.Register(net.MsgNewBlock, bcs.MsgNewBlockCh)
 	peerStream.Register(net.MsgMissingBlock, bcs.MsgMissingBlockCh)
 	peerStream.Register(net.MsgMissingBlockAck, bcs.MsgMissingBlockAckCh)
+	peerStream.Register(net.MsgMissingBlocks, bcs.MsgMissingBlocksCh)
+	peerStream.Register(net.MsgMissingBlocksAck, bcs.MsgMissingBlocksAckCh)
 	peerStream.Register(net.MsgNewTx, bcs.MsgNewTxCh)
 }
 
@@ -55,16 +61,18 @@ func (bcs *BlockChainService) loop() {
 	for {
 		select {
 		case <-ticker.C:
-			bcs.bc.RequestMissingBlock()
+			bcs.bc.RequestMissingBlocks()
 		case msg := <-bcs.bc.MessageToRandomNode:
 			bcs.streamPool.SendMessageToRandomNode(msg)
+		case msg := <-bcs.bc.BroadcastMessage:
+			bcs.streamPool.BroadcastMessage(msg)
 		case msg := <-bcs.bc.NewTXMessage:
 			bcs.BroadcastNewTXMessage(msg)
 		}
 	}
 }
 
-func (bcs *BlockChainService) receiveBlock(msg *net.Message) {
+func (bcs *BlockChainService) receiveBlock(msg *net.Message, isNew bool) {
 	bc := bcs.bc
 	// msg := ch.(*Message)
 	baseBlock := &core.BaseBlock{}
@@ -87,6 +95,9 @@ func (bcs *BlockChainService) receiveBlock(msg *net.Message) {
 	}
 	bc.Consensus.UpdateLIB()
 	bc.RemoveOrphanBlock()
+	if isNew {
+		bcs.streamPool.BroadcastMessage(msg)
+	}
 }
 
 func (bcs *BlockChainService) onHandle() {
@@ -94,13 +105,15 @@ func (bcs *BlockChainService) onHandle() {
 	for {
 		select {
 		case ch := <-bcs.MsgMissingBlockAckCh:
-			bcs.receiveBlock(ch.(*net.Message))
+			bcs.receiveBlock(ch.(*net.Message), false)
+		case ch := <-bcs.MsgMissingBlocksAckCh:
+			bcs.receiveBlock(ch.(*net.Message), false)
 		case ch := <-bcs.MsgNewBlockCh:
-			bcs.receiveBlock(ch.(*net.Message))
+			bcs.receiveBlock(ch.(*net.Message), true)
 		case ch := <-bcs.MsgMissingBlockCh:
 			msg := ch.(*net.Message)
-			height := uint64(0)
-			err := rlp.DecodeBytes(msg.Payload, &height)
+			hash := common.Hash{}
+			err := rlp.DecodeBytes(msg.Payload, &hash)
 			if err != nil {
 				log.CLog().WithFields(logrus.Fields{
 					"Msg":  err,
@@ -108,9 +121,25 @@ func (bcs *BlockChainService) onHandle() {
 				}).Warning("DecodeBytes")
 			}
 			log.CLog().WithFields(logrus.Fields{
-				"Height": height,
+				"Hash": common.HashToHex(hash),
 			}).Debug("missing block request arrived")
-			bcs.SendMissingBlock(height, msg.PeerID)
+			bcs.SendMissingBlock(hash, msg.PeerID)
+
+		case ch := <-bcs.MsgMissingBlocksCh:
+			msg := ch.(*net.Message)
+			var blockRange [2]uint64
+			err := rlp.DecodeBytes(msg.Payload, &blockRange)
+			if err != nil {
+				log.CLog().WithFields(logrus.Fields{
+					"Msg":  err,
+					"Code": msg.Code,
+				}).Warning("DecodeBytes")
+			}
+			log.CLog().WithFields(logrus.Fields{
+				"Height Start": blockRange[0],
+				"Height End":   blockRange[1],
+			}).Debug("missing block request arrived")
+			bcs.SendMissingBlocks(blockRange, msg.PeerID)
 
 		case ch := <-bcs.MsgNewTxCh:
 			msg := ch.(*net.Message)
@@ -128,14 +157,14 @@ func (bcs *BlockChainService) onHandle() {
 				"Amount": tx.Amount,
 			}).Info("Received tx")
 			bc.TxPool.Put(tx)
-
+			bcs.streamPool.BroadcastMessage(msg)
 		}
 	}
 }
 
-func (bcs *BlockChainService) SendMissingBlock(height uint64, peerID peer.ID) {
+func (bcs *BlockChainService) SendMissingBlock(hash common.Hash, peerID peer.ID) {
 	bc := bcs.bc
-	block := bc.GetBlockByHeight(height)
+	block := bc.GetBlockByHash(hash)
 	if block != nil {
 		message, _ := net.NewRLPMessage(net.MsgMissingBlockAck, block.BaseBlock)
 		ps, err := bcs.streamPool.GetStream(peerID)
@@ -146,13 +175,40 @@ func (bcs *BlockChainService) SendMissingBlock(height uint64, peerID peer.ID) {
 		}
 		ps.SendMessage(&message)
 		log.CLog().WithFields(logrus.Fields{
-			"Height": height,
+			"Height": block.Header.Height,
+			"Hash":   common.HashToHex(hash),
 		}).Info("Send missing block")
 	} else {
 		log.CLog().WithFields(logrus.Fields{
-			"Height": height,
+			"Hash": common.HashToHex(hash),
 		}).Info("We don't have missing block")
 	}
+}
+
+func (bcs *BlockChainService) SendMissingBlocks(blockRange [2]uint64, peerID peer.ID) {
+	bc := bcs.bc
+	ps, err := bcs.streamPool.GetStream(peerID)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{
+			"Msg": err,
+		}).Warn("GetStream")
+	}
+	for i := blockRange[0]; i <= blockRange[1]; i++ {
+		block := bc.GetBlockByHeight(i)
+		if block != nil {
+			message, _ := net.NewRLPMessage(net.MsgMissingBlockAck, block.BaseBlock)
+			ps.SendMessage(&message)
+			log.CLog().WithFields(logrus.Fields{
+				"Height": block.Header.Height,
+				"Hash":   common.HashToHex(block.Hash()),
+			}).Info("Send missing block")
+		} else {
+			log.CLog().WithFields(logrus.Fields{
+				"Hash": common.HashToHex(block.Hash()),
+			}).Info("We don't have missing block")
+		}
+	}
+
 }
 
 func (bcs *BlockChainService) BroadcastNewTXMessage(tx *core.Transaction) error {

@@ -21,6 +21,14 @@ type ConfigAccount struct {
 	Address string   `json:"address"`
 	Balance *big.Int `json:"balance"`
 }
+
+type Consensus struct {
+	Name        string `json:"name"`
+	Period      uint64 `json:"period"`
+	Round       uint64 `json:"round"`
+	TotalMiners uint64 `json:"total_miners"`
+}
+
 type Config struct {
 	HostId          string          `json:"host_id"`
 	RpcAddress      string          `json:"rpc_address"`
@@ -31,15 +39,17 @@ type Config struct {
 	Seeds           []string        `json:"seeds"`
 	Voters          []ConfigAccount `json:"voters"`
 	EnableMining    bool            `json:"enable_mining"`
-	Consensus       string          `json:"consensus"`
+	Consensus       Consensus       `json:"consensus"`
 	NodeKeyPath     string          `json:"node_key_path"`
 	KeystoreFile    string          `json:"keystore_file"`
+	Coinbase        string          `json:"coinbase"`
+	MiningReward    int             `json:"mining_reward"`
 }
 
 func MakeVoterAccountsFromConfig(config *Config) (voters []*core.Account) {
 	voters = make([]*core.Account, 3)
 	for i, voter := range config.Voters {
-		account := &core.Account{}
+		account := core.NewAccount()
 		copy(account.Address[:], common.FromHex(voter.Address))
 		account.Balance = voter.Balance
 		voters[i] = account

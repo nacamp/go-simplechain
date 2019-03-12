@@ -2,6 +2,7 @@ package net
 
 import (
 	"errors"
+	"hash/crc32"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -124,8 +125,11 @@ func (p *PeerStreamPool) SendMessageToRandomNode(message *Message) error {
 
 func (p *PeerStreamPool) BroadcastMessage(message *Message) {
 	p.streams.Range(func(key, value interface{}) bool {
+		id := key.(peer.ID)
 		ps := value.(*PeerStream)
-		ps.SendMessage(message)
+		if !HasRecvMessage(id, crc32.ChecksumIEEE(message.Payload)) {
+			ps.SendMessage(message)
+		}
 		return true
 	})
 }
