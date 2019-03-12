@@ -233,15 +233,22 @@ func (txs *TransactionState) Clone() (*TransactionState, error) {
 }
 
 func (txs *TransactionState) PutTransaction(tx *Transaction) (hash common.Hash) {
-	encodedBytes, _ := rlp.EncodeToBytes(tx)
+	encodedBytes, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	}
 	txs.Trie.Put(tx.Hash[:], encodedBytes)
 	copy(hash[:], txs.Trie.RootHash())
 	return hash
 }
 
 func (txs *TransactionState) GetTransaction(hash common.Hash) (tx *Transaction) {
-	decodedBytes, _ := txs.Trie.Get(hash[:])
-	rlp.NewStream(bytes.NewReader(decodedBytes), 0).Decode(&tx)
+	tx = new(Transaction)
+	encodedBytes, err := txs.Trie.Get(hash[:])
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	}
+	rlp.NewStream(bytes.NewReader(encodedBytes), 0).Decode(&tx)
 	return tx
 }
 
