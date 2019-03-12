@@ -18,9 +18,10 @@ type Transaction struct {
 	To        common.Address
 	Amount    *big.Int
 	Nonce     uint64
-	Time      uint64 // int64 rlp encoding error
+	Time      uint64
+	Height    uint64
 	Signature common.Signature
-	Payload   *Payload
+	Payload   *Payload //  other field is nil after nil  at rlp encoding ?
 }
 
 const (

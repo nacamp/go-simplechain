@@ -174,18 +174,20 @@ func TestSendMoneyTransaction(t *testing.T) {
 
 	//send money
 	var tx *core.Transaction
+	var txHash common.Hash
 	for i := 3; i >= 1; i-- {
 		tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), uint64(i))
+		assert.Equal(t, uint64(0), tx.Height)
 		tx.MakeHash()
 		sig, err := miner1.Cs.wallet.SignHash(tests.Address1, tx.Hash[:])
 		assert.NoError(t, err)
 		tx.SignWithSignature(sig)
 		bc1.TxPool.Put(tx)
-
+		txHash = tx.Hash
 	}
 
 	//Put tx in descending order, 3, 2, 1
-	tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), 10)
+	tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), 10) //not include
 	tx.MakeHash()
 	sig, err := miner1.Cs.wallet.SignHash(tests.Address1, tx.Hash[:])
 	assert.NoError(t, err)
@@ -199,6 +201,9 @@ func TestSendMoneyTransaction(t *testing.T) {
 	account2 := accs.GetAccount(tests.Address2)
 	// nonce 3,2,1 is included, but 10 is not included
 	assert.Equal(t, new(big.Int).SetUint64(15), account2.Balance)
+
+	//check transaction's height
+	assert.Equal(t, uint64(2), block2.TransactionState.GetTransaction(txHash).Height)
 }
 
 func TestVoteTransaction(t *testing.T) {

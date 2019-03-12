@@ -133,6 +133,9 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 				}
 			}
 		}
+		for _, tx := range block.Transactions {
+			tx.Height = block.Header.Height
+		}
 		bc.RewardForCoinbase(block)
 		bc.ExecuteTransaction(block)
 		cs.SaveState(block)
