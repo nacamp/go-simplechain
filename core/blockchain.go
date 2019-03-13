@@ -61,67 +61,44 @@ func NewBlockChain(storage storage.Storage, coinbase common.Address, miningRewar
 func (bc *BlockChain) Setup(consensus Consensus, voters []*Account) {
 	consensus.AddBlockChain(bc)
 	bc.Consensus = consensus
-	err := bc.LoadBlockChainFromStorage()
-	if err != nil {
-		if err == storage.ErrKeyNotFound {
-			err = bc.MakeGenesisBlock(voters)
-			if err != nil {
-				log.CLog().WithFields(logrus.Fields{
-					"Error": err,
-				}).Panic("MakeGenesisBlock")
-			}
-			bc.PutBlockByCoinbase(bc.GenesisBlock)
-		} else {
-			log.CLog().WithFields(logrus.Fields{
-				"Error": err,
-			}).Panic("")
-		}
+	if ok := bc.LoadBlockChainFromStorage(); ok {
+		bc.LoadLibFromStorage()
+		bc.LoadTailFromStorage()
 	} else {
-		err = bc.LoadLibFromStorage()
-		if err != nil {
-			log.CLog().WithFields(logrus.Fields{
-				"Error": err,
-			}).Panic("LoadLibFromStorage")
-		}
-		err = bc.LoadTailFromStorage()
-		if err != nil {
-			log.CLog().WithFields(logrus.Fields{
-				"Error": err,
-			}).Panic("LoadTailFromStorage")
-		}
+		bc.MakeGenesisBlock(voters)
+		bc.PutBlockByCoinbase(bc.GenesisBlock)
 	}
 	bc.TxPool = NewTransactionPool()
-
 }
 
-func (bc *BlockChain) LoadBlockChainFromStorage() error {
+func (bc *BlockChain) LoadBlockChainFromStorage() bool {
 	block := bc.GetBlockByHeight(0)
 	if block == nil {
-		return storage.ErrKeyNotFound
+		return false
 	}
 	var err error
 	//status
 	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block.TransactionState, err = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 
 	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block.SetConsensusState(consensusState)
 
 	bc.GenesisBlock = block
-	return nil
+	return true
 
 }
 
-func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
+func (bc *BlockChain) MakeGenesisBlock(voters []*Account) {
 	header := &Header{
 		Coinbase: bc.coinbase,
 		Height:   0,
@@ -134,7 +111,7 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	//AccountState
 	accs, err := NewAccountState(bc.Storage)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	account := NewAccount()
 	copy(account.Address[:], bc.coinbase[:])
@@ -146,18 +123,17 @@ func (bc *BlockChain) MakeGenesisBlock(voters []*Account) error {
 	//TransactionState
 	txs, err := NewTransactionState(bc.Storage)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	txs.PutTransaction(&Transaction{})
 	block.TransactionState = txs
 	header.TransactionHash = txs.RootHash()
 	err = bc.Consensus.MakeGenesisBlock(block, voters)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	bc.SetLib(bc.GenesisBlock)
 	bc.SetTail(bc.GenesisBlock)
-	return nil
 }
 
 func (bc *BlockChain) GetBlockByHash(hash common.Hash) *Block {
@@ -575,31 +551,30 @@ func (bc *BlockChain) SetLib(block *Block) {
 	bc.Storage.Put([]byte(libKey), block.Header.Hash[:])
 }
 
-func (bc *BlockChain) LoadLibFromStorage() error {
+func (bc *BlockChain) LoadLibFromStorage() {
 	hash, err := bc.Storage.Get([]byte(libKey))
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block := bc.GetBlockByHash(common.BytesToHash(hash))
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block.TransactionState, err = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block.SetConsensusState(consensusState)
 
 	bc.Lib = block
-	return nil
 }
 
 func (bc *BlockChain) SetTail(block *Block) {
@@ -619,32 +594,31 @@ func (bc *BlockChain) SetTail(block *Block) {
 	}
 }
 
-func (bc *BlockChain) LoadTailFromStorage() error {
+func (bc *BlockChain) LoadTailFromStorage() {
 	hash, err := bc.Storage.Get([]byte(tailKey))
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block := bc.GetBlockByHash(common.BytesToHash(hash))
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block.TransactionState, err = NewTransactionStateRootHash(block.Header.TransactionHash, bc.Storage)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 
 	consensusState, err := bc.Consensus.LoadState(block)
 	if err != nil {
-		return err
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block.SetConsensusState(consensusState)
 
 	bc.Tail = block
-	return nil
 }
 
 func (bc *BlockChain) RemoveTxInPool(block *Block) {
