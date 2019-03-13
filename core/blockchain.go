@@ -174,6 +174,9 @@ func (bc *BlockChain) PutState(block *Block) error {
 	}
 	var err error
 	parentBlock := bc.GetBlockByHash(block.Header.ParentHash)
+	if parentBlock == nil {
+		return errors.New("ParentBlock is nil")
+	}
 	block.AccountState, err = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	if err != nil {
 		return fmt.Errorf("error NewAccountStateRootHash: %s", err)
@@ -522,14 +525,13 @@ func (bc *BlockChain) RebuildBlockHeight() error {
 	if block.Header.Height == 0 {
 		return nil
 	}
-	var err error
 	for {
 		if bc.Lib.Header.Height+1 == block.Header.Height { //block.Hash() == bc.Lib.Hash()
 			break
 		}
 		block = bc.GetBlockByHash(block.Header.ParentHash)
-		if err != nil {
-			return err
+		if block == nil {
+			return errors.New("ParentBlock is nil")
 		}
 		bc.Storage.Put(encodeBlockHeight(block.Header.Height), block.Header.Hash[:])
 	}
@@ -557,8 +559,8 @@ func (bc *BlockChain) LoadLibFromStorage() {
 		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block := bc.GetBlockByHash(common.BytesToHash(hash))
-	if err != nil {
-		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	if block == nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic("Block is nil")
 	}
 	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
 	if err != nil {
@@ -600,8 +602,8 @@ func (bc *BlockChain) LoadTailFromStorage() {
 		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	block := bc.GetBlockByHash(common.BytesToHash(hash))
-	if err != nil {
-		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	if block == nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic("Block is nil")
 	}
 	block.AccountState, err = NewAccountStateRootHash(block.Header.AccountHash, bc.Storage)
 	if err != nil {
