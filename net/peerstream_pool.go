@@ -1,12 +1,13 @@
 package net
 
 import (
-	"errors"
 	"hash/crc32"
 	"math/rand"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pkg/errors"
 
 	peer "github.com/libp2p/go-libp2p-peer"
 )

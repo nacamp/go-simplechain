@@ -1,9 +1,10 @@
 package dpos
 
 import (
-	"errors"
 	"sort"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/common"

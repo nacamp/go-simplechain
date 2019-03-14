@@ -2,10 +2,11 @@ package account
 
 import (
 	"encoding/gob"
-	"errors"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"

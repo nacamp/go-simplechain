@@ -1,10 +1,11 @@
 package net
 
 import (
-	"errors"
 	"math/rand"
 	"runtime"
 	"time"
+
+	"github.com/pkg/errors"
 
 	ma "github.com/multiformats/go-multiaddr"
 

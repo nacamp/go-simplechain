@@ -1,10 +1,11 @@
 package poa
 
 import (
-	"errors"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/nacamp/go-simplechain/account"
 

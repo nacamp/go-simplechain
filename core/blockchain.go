@@ -3,9 +3,9 @@ package core
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
-	"fmt"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"math/big"
 
@@ -179,18 +179,18 @@ func (bc *BlockChain) PutState(block *Block) error {
 	}
 	block.AccountState, err = NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	if err != nil {
-		return fmt.Errorf("error NewAccountStateRootHash: %s", err)
+		return err
 	}
 	block.TransactionState, err = NewTransactionStateRootHash(parentBlock.Header.TransactionHash, bc.Storage)
 	if err != nil {
-		return fmt.Errorf("error NewTransactionStateRootHash: %s", err)
+		return err
 	}
 
 	// parent maybe not have ConsensusState
 	// block.ConsensusState, err = parentBlock.ConsensusState.Clone()
 	consensusState, err := bc.Consensus.LoadState(parentBlock)
 	if err != nil {
-		return fmt.Errorf("error LoadState: %s", err)
+		return err
 	}
 	block.SetConsensusState(consensusState)
 
@@ -198,11 +198,11 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
-		return fmt.Errorf("error ExecuteTransaction: %s", err)
+		return err
 	}
 
 	if err := bc.Consensus.SaveState(block); err != nil {
-		return fmt.Errorf("error SaveState: %s", err)
+		return err
 	}
 
 	//check rootHash
