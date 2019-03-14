@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -15,6 +14,8 @@ import (
 	b58 "github.com/mr-tron/base58/base58"
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
+	"github.com/nacamp/go-simplechain/log"
+	"github.com/sirupsen/logrus"
 )
 
 type ConfigAccount struct {
@@ -61,16 +62,16 @@ func NewConfigFromFile(file string) (config *Config) {
 	configFile, err := os.Open(file)
 	defer configFile.Close()
 	if err != nil {
-		fmt.Println(err.Error())
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	jsonParser := json.NewDecoder(configFile)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	config = &Config{}
 	err = jsonParser.Decode(config)
 	if err != nil {
-		fmt.Println(err.Error())
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
 	}
 	return config
 }
