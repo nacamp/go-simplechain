@@ -1,6 +1,7 @@
 package poa
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -42,7 +43,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	bc := cs.bc
 	block, err := bc.NewBlockFromTail()
 	if err != nil {
-		log.CLog().Warning(err)
+		log.CLog().Warning(fmt.Sprintf("%+v", err))
 	}
 
 	block.Header.Time = now
@@ -55,7 +56,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 		}).Panic("Miner must be one more")
 	}
 	if err != nil {
-		log.CLog().Warning(err)
+		log.CLog().Warning(fmt.Sprintf("%+v", err))
 	}
 	turn := (now % (uint64(len(miners)) * cs.period)) / cs.period
 	if miners[turn] == cs.coinbase {
@@ -175,9 +176,7 @@ func (cs *Poa) loop() {
 			if block != nil {
 				sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
 				if err != nil {
-					log.CLog().WithFields(logrus.Fields{
-						"Msg": err,
-					}).Warning("SignHash")
+					log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 				}
 				block.SignWithSignature(sig)
 				cs.bc.PutBlockByCoinbase(block)
@@ -220,9 +219,7 @@ func (cs *Poa) UpdateLIB() {
 	}
 	firstMinerSize, err := cs.getMinerSize(block)
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{
-			"Msg": err,
-		}).Warning("getMinerSize")
+		log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 		return
 	}
 	if firstMinerSize < 3 {
@@ -235,9 +232,7 @@ func (cs *Poa) UpdateLIB() {
 		miners[block.Header.Coinbase] = true
 		size, err := cs.getMinerSize(block)
 		if err != nil {
-			log.CLog().WithFields(logrus.Fields{
-				"Msg": err,
-			}).Warning("getMinerSize")
+			log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 			return
 		}
 		if firstMinerSize != size {

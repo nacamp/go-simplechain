@@ -40,7 +40,6 @@ func NewNode(port int, privKey crypto.PrivKey, streamPool *PeerStreamPool) *Node
 func (node *Node) Setup() {
 }
 
-
 func (node *Node) Start(seed string) {
 	host, _ := libp2p.New(
 		context.Background(),
@@ -90,9 +89,7 @@ func (node *Node) HandleStream(s libnet.Stream) {
 	log.CLog().WithFields(logrus.Fields{
 		"ID": peerStream.stream.Conn().RemotePeer(),
 	}).Warning("inbound")
-	if err != nil {
-		log.CLog().Warning(err)
-	}
+	log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 	node.streamPool.AddStream(peerStream)
 	peerStream.Start()
 }

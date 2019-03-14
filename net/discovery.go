@@ -1,6 +1,7 @@
 package net
 
 import (
+	"fmt"
 	"math/rand"
 	"runtime"
 	"time"
@@ -114,7 +115,7 @@ func (d *Discovery) findnode(peerInfo *peerstore.PeerInfo, targetID peer.ID, rep
 	}
 	peerStream, err := d.bond(peerInfo)
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{"Msg": err}).Warn("bond")
+		log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 		reply <- nil
 		d.Remove(peerInfo)
 		return
@@ -168,7 +169,7 @@ func (d *Discovery) bondReply(peerInfo *peerstore.PeerInfo, reply chan<- *peerst
 	}
 	_, err := d.bond(peerInfo)
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{"Msg": err}).Warn("bond")
+		log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 		reply <- nil
 		return
 	}
@@ -361,9 +362,7 @@ func (d *Discovery) randomLookup() error {
 func (d *Discovery) Start() {
 	err := d.randomLookup()
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{
-			"Msg": err,
-		}).Warning("randomLookup")
+		log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 	}
 	ticker := time.NewTicker(30 * time.Second)
 	for {
@@ -375,9 +374,7 @@ func (d *Discovery) Start() {
 			}).Debug("NumGoroutine")
 			err := d.randomLookup()
 			if err != nil {
-				log.CLog().WithFields(logrus.Fields{
-					"Msg": err,
-				}).Warning("randomLookup")
+				log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 			}
 			ticker = time.NewTicker(30 * time.Second)
 		}

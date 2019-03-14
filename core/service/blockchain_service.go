@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"time"
 
 	peer "github.com/libp2p/go-libp2p-peer"
@@ -78,20 +79,14 @@ func (bcs *BlockChainService) receiveBlock(msg *net.Message, isNew bool) {
 	baseBlock := &core.BaseBlock{}
 	err := rlp.DecodeBytes(msg.Payload, baseBlock)
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{
-			"Msg":  err,
-			"Code": msg.Code,
-		}).Warning("DecodeBytes")
+		log.CLog().WithFields(logrus.Fields{"Code": msg.Code}).Warning(fmt.Sprintf("%+v", err))
 	}
 	// rlp.DecodeBytes(message.Payload, &data)
 	log.CLog().WithFields(logrus.Fields{}).Debug("PeerID: ", msg.PeerID)
 
 	err = bc.PutBlockIfParentExist(baseBlock.NewBlock())
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{
-			"Msg":  err,
-			"Code": msg.Code,
-		}).Warning("PutBlockIfParentExist")
+		log.CLog().WithFields(logrus.Fields{"Code": msg.Code}).Warning(fmt.Sprintf("%+v", err))
 	}
 	bc.Consensus.UpdateLIB()
 	bc.RemoveOrphanBlock()
@@ -115,10 +110,7 @@ func (bcs *BlockChainService) onHandle() {
 			hash := common.Hash{}
 			err := rlp.DecodeBytes(msg.Payload, &hash)
 			if err != nil {
-				log.CLog().WithFields(logrus.Fields{
-					"Msg":  err,
-					"Code": msg.Code,
-				}).Warning("DecodeBytes")
+				log.CLog().WithFields(logrus.Fields{"Code": msg.Code}).Warning(fmt.Sprintf("%+v", err))
 			}
 			log.CLog().WithFields(logrus.Fields{
 				"Hash": common.HashToHex(hash),
@@ -130,10 +122,7 @@ func (bcs *BlockChainService) onHandle() {
 			var blockRange [2]uint64
 			err := rlp.DecodeBytes(msg.Payload, &blockRange)
 			if err != nil {
-				log.CLog().WithFields(logrus.Fields{
-					"Msg":  err,
-					"Code": msg.Code,
-				}).Warning("DecodeBytes")
+				log.CLog().WithFields(logrus.Fields{"Code": msg.Code}).Warning(fmt.Sprintf("%+v", err))
 			}
 			log.CLog().WithFields(logrus.Fields{
 				"Height Start": blockRange[0],
@@ -146,10 +135,7 @@ func (bcs *BlockChainService) onHandle() {
 			tx := &core.Transaction{}
 			err := rlp.DecodeBytes(msg.Payload, &tx)
 			if err != nil {
-				log.CLog().WithFields(logrus.Fields{
-					"Msg":  err,
-					"Code": msg.Code,
-				}).Warning("DecodeBytes")
+				log.CLog().WithFields(logrus.Fields{"Code": msg.Code}).Warning(fmt.Sprintf("%+v", err))
 			}
 			log.CLog().WithFields(logrus.Fields{
 				"From":   common.AddressToHex(tx.From),
@@ -169,9 +155,7 @@ func (bcs *BlockChainService) SendMissingBlock(hash common.Hash, peerID peer.ID)
 		message, _ := net.NewRLPMessage(net.MsgMissingBlockAck, block.BaseBlock)
 		ps, err := bcs.streamPool.GetStream(peerID)
 		if err != nil {
-			log.CLog().WithFields(logrus.Fields{
-				"Msg": err,
-			}).Warn("GetStream")
+			log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 		}
 		ps.SendMessage(&message)
 		log.CLog().WithFields(logrus.Fields{
@@ -189,9 +173,7 @@ func (bcs *BlockChainService) SendMissingBlocks(blockRange [2]uint64, peerID pee
 	bc := bcs.bc
 	ps, err := bcs.streamPool.GetStream(peerID)
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{
-			"Msg": err,
-		}).Warn("GetStream")
+		log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 	}
 	for i := blockRange[0]; i <= blockRange[1]; i++ {
 		block := bc.GetBlockByHeight(i)
