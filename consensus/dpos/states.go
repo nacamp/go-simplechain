@@ -2,11 +2,12 @@ package dpos
 
 import (
 	"bytes"
-	"errors"
 	"math/big"
 	"math/rand"
 	"sort"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"

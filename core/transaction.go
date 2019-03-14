@@ -2,9 +2,10 @@ package core
 
 import (
 	"crypto/ecdsa"
-	"errors"
 	"math/big"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/crypto"

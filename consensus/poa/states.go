@@ -2,8 +2,9 @@ package poa
 
 import (
 	"bytes"
-	"errors"
 	"sort"
+
+	"github.com/pkg/errors"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"

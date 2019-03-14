@@ -18,7 +18,7 @@
 
 package storage
 
-import "errors"
+import "github.com/pkg/errors"
 
 // const
 var (

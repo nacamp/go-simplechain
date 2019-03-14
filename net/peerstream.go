@@ -2,9 +2,10 @@ package net
 
 import (
 	"bufio"
-	"errors"
 	"hash/crc32"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	libnet "github.com/libp2p/go-libp2p-net"
 	ma "github.com/multiformats/go-multiaddr"

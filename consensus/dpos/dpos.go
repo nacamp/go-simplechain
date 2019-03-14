@@ -1,9 +1,11 @@
 package dpos
 
 import (
-	"errors"
+	"fmt"
 	"sort"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/common"
@@ -47,7 +49,7 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 	turn := (now % (cs.totalMiners * cs.period)) / cs.period
 	block, err := bc.NewBlockFromTail()
 	if err != nil {
-		log.CLog().Warning(err)
+		log.CLog().Warning(fmt.Sprintf("%+v", err))
 	}
 	block.Header.Time = now
 	state := block.ConsensusState().(*DposState)
@@ -57,7 +59,7 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		minerGroup, err = state.GetMiners(state.MinersHash)
 		//minerGroup, _, err := block.MinerState.GetMinerGroup(bc, block)
 		if err != nil {
-			log.CLog().Warning(err)
+			log.CLog().Warning(fmt.Sprintf("%+v", err))
 		}
 	}
 	if electedTime == now || minerGroup[turn] == cs.coinbase {
@@ -165,9 +167,7 @@ func (cs *Dpos) loop() {
 			if block != nil {
 				sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
 				if err != nil {
-					log.CLog().WithFields(logrus.Fields{
-						"Msg": err,
-					}).Warning("SignHash")
+					log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
 				}
 				block.SignWithSignature(sig)
 				cs.bc.PutBlockByCoinbase(block)

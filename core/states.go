@@ -2,8 +2,9 @@ package core
 
 import (
 	"bytes"
-	"errors"
 	"math/big"
+
+	"github.com/pkg/errors"
 
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/log"
