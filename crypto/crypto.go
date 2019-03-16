@@ -27,6 +27,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/nacamp/go-simplechain/common"
+	"github.com/pkg/errors"
 )
 
 //ethereum address : ECDSA(secp256k1)=>(priv, pub), last 20byte from Keccak256(pub)
@@ -84,7 +85,7 @@ func Ecrecover(hash, sig []byte) ([]byte, error) {
 
 func SigToPub(hash, sig []byte) (*ecdsa.PublicKey, error) {
 	pub, _, err := btcec.RecoverCompact(btcec.S256(), sig, hash)
-	return (*ecdsa.PublicKey)(pub), err
+	return (*ecdsa.PublicKey)(pub), errors.Wrap(err, "")
 }
 
 func Sign(hash []byte, prv *ecdsa.PrivateKey) ([]byte, error) {
