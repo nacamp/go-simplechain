@@ -9,11 +9,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/common"
+	"github.com/nacamp/go-simplechain/crypto"
 	"github.com/sirupsen/logrus"
 
 	"github.com/nacamp/go-simplechain/core"
@@ -28,16 +26,12 @@ type Pow struct {
 	enableMining bool
 	streamPool   *net.PeerStreamPool
 
-	period      uint64
 	round       uint64
 	totalMiners uint64
 }
 
-func NewPow(streamPool *net.PeerStreamPool, period, round, totalMiners uint64) *Pow {
-	return &Pow{streamPool: streamPool,
-		period:      period,
-		round:       round,
-		totalMiners: totalMiners}
+func NewPow(streamPool *net.PeerStreamPool) *Pow {
+	return &Pow{streamPool: streamPool}
 }
 
 func (cs *Pow) SetupMining(address common.Address, wallet *account.Wallet) {
@@ -46,7 +40,7 @@ func (cs *Pow) SetupMining(address common.Address, wallet *account.Wallet) {
 	cs.wallet = wallet
 }
 
-//copied from ethereum
+//code copied from ethereum >>>>>>>>>>
 var (
 	two256                 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
 	expDiffPeriod          = big.NewInt(100000)
@@ -54,54 +48,69 @@ var (
 	GenesisDifficulty      = big.NewInt(131072) // Difficulty of the Genesis block.
 	MinimumDifficulty      = big.NewInt(131072) // The minimum that the difficulty may ever be.
 	DurationLimit          = big.NewInt(13)     // The decision boundary on the blocktime duration used to determine whether difficulty should go up or not.
+
+	bigMinus99 = big.NewInt(-99)
+	big1       = new(big.Int).SetUint64(1)
+	big2       = new(big.Int).SetUint64(2)
+	big10      = new(big.Int).SetUint64(10)
 )
 
-//calcDifficultyFrontier in ethereum
+//calcDifficultyHomestead in ethereum
 func calcDifficulty(time uint64, parent *core.Header) *big.Int {
-	diff := new(big.Int)
-	adjust := new(big.Int).Div(parent.Difficulty, params.DifficultyBoundDivisor)
-	bigTime := new(big.Int)
-	bigParentTime := new(big.Int)
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-2.md
+	// algorithm:
+	// diff = (parent_diff +
+	//         (parent_diff / 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	//        ) + 2^(periodCount - 2)
 
-	bigTime.SetUint64(time)
-	bigParentTime.Set(new(big.Int).SetUint64(parent.Time))
+	bigTime := new(big.Int).SetUint64(time)
+	bigParentTime := new(big.Int).Set(new(big.Int).SetUint64(parent.Time))
 
-	if bigTime.Sub(bigTime, bigParentTime).Cmp(DurationLimit) < 0 {
-		diff.Add(parent.Difficulty, adjust)
-	} else {
-		diff.Sub(parent.Difficulty, adjust)
+	// holds intermediate values to make the algo easier to read & audit
+	x := new(big.Int)
+	y := new(big.Int)
+
+	// 1 - (block_timestamp - parent_timestamp) // 10
+	x.Sub(bigTime, bigParentTime)
+	x.Div(x, big10)
+	x.Sub(big1, x)
+
+	// max(1 - (block_timestamp - parent_timestamp) // 10, -99)
+	if x.Cmp(bigMinus99) < 0 {
+		x.Set(bigMinus99)
 	}
-	if diff.Cmp(MinimumDifficulty) < 0 {
-		diff.Set(MinimumDifficulty)
+	// (parent_diff + parent_diff // 2048 * max(1 - (block_timestamp - parent_timestamp) // 10, -99))
+	y.Div(parent.Difficulty, DifficultyBoundDivisor)
+	x.Mul(y, x)
+	x.Add(parent.Difficulty, x)
+
+	// minimum difficulty can ever be (before exponential factor)
+	if x.Cmp(MinimumDifficulty) < 0 {
+		x.Set(MinimumDifficulty)
 	}
-
-	big1 := new(big.Int).SetUint64(1)
-	big2 := new(big.Int).SetUint64(2)
-
+	// for the exponential factor
 	periodCount := new(big.Int).Add(new(big.Int).SetUint64(parent.Height), big1)
 	periodCount.Div(periodCount, expDiffPeriod)
+
+	// the exponential factor, commonly referred to as "the bomb"
+	// diff = diff + 2^(periodCount - 2)
 	if periodCount.Cmp(big1) > 0 {
-		// diff = diff + 2^(periodCount - 2)
-		expDiff := periodCount.Sub(periodCount, big2)
-		expDiff.Exp(big2, expDiff, nil)
-		diff.Add(diff, expDiff)
-		diff = math.BigMax(diff, params.MinimumDifficulty)
+		y.Sub(periodCount, big2)
+		y.Exp(big2, y, nil)
+		x.Add(x, y)
 	}
-	return diff
+	return x
 }
 
-func makeHashNonce(hash []byte, nonce uint64) []byte {
-	// Combine header+nonce into a 64 byte seed
-	seed := make([]byte, 140)
-	copy(seed, hash)
-	binary.LittleEndian.PutUint64(seed[32:], nonce)
-
-	return crypto.Keccak256(seed)
+func work(hash []byte, nonce uint64) []byte {
+	newHash := make([]byte, 40)
+	copy(newHash, hash)
+	binary.LittleEndian.PutUint64(newHash[32:], nonce)
+	return crypto.Sha3b256(newHash)
 }
 
-/*
-	header.Difficulty,
-*/
+//code copied from ethereum <<<<<<<<<<<
+
 func (cs *Pow) MakeBlock(now uint64) *core.Block {
 	bc := cs.bc
 	block, err := bc.NewBlockFromTail()
@@ -110,9 +119,6 @@ func (cs *Pow) MakeBlock(now uint64) *core.Block {
 	}
 	block.Header.Time = now
 	block.Header.Difficulty = calcDifficulty(now, bc.Tail.Header)
-
-	//parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
-
 	block.Header.Coinbase = cs.coinbase
 
 	//TODO: check double spending ?
@@ -175,17 +181,22 @@ func (cs *Pow) MakeBlock(now uint64) *core.Block {
 	block.MakeHash()
 
 	//mine
-	//TODO: abort when receving new block with same height
+	seed := rand.Int63()
 	target := new(big.Int).Div(two256, block.Header.Difficulty)
-	for i := 0; i < 10000000; i++ {
-		seed := rand.Int63()
-		result := makeHashNonce(common.HashToBytes(block.Hash()), uint64(seed+int64(i)))
-		if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
-			block.Header.Nonce = uint64(seed + int64(i))
-			fmt.Println(i, "break")
-			fmt.Println("target:", len(fmt.Sprintf("%s", target)), target)
-			fmt.Println("result:", len(fmt.Sprintf("%s", new(big.Int).SetBytes(result))), new(big.Int).SetBytes(result))
-			return block
+	inc := int64(0)
+	for {
+		if bc.Tail.Header.Height >= block.Header.Height {
+			log.CLog().WithFields(logrus.Fields{
+				"Height": block.Header.Height,
+			}).Info("Other miner mined the block")
+			return nil
+		} else {
+			result := work(common.HashToBytes(block.Hash()), uint64(seed+inc))
+			if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
+				block.Header.Nonce = uint64(seed + inc)
+				return block
+			}
+			inc++
 		}
 	}
 	return nil
@@ -198,17 +209,17 @@ func (cs *Pow) Start() {
 }
 
 func (cs *Pow) loop() {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	for {
 		select {
 		case now := <-ticker.C:
 			block := cs.MakeBlock(uint64(now.Unix()))
 			if block != nil {
-				// sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
-				// if err != nil {
-				// 	log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
-				// }
-				// block.SignWithSignature(sig)
+				sig, err := cs.wallet.SignHash(cs.coinbase, block.Header.Hash[:])
+				if err != nil {
+					log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
+				}
+				block.SignWithSignature(sig)
 				cs.bc.PutBlockByCoinbase(block)
 				cs.bc.Consensus.UpdateLIB()
 				cs.bc.RemoveOrphanBlock()
@@ -220,16 +231,20 @@ func (cs *Pow) loop() {
 }
 
 func (cs *Pow) Verify(block *core.Block) (err error) {
-
-	//TODO: check Difficulty
-	//block.Header.Difficulty = calcDifficulty(block.Header.Time, parent.Header)
-	// > 0
-	// if header.Difficulty.Sign() <= 0 {
-	// 	return errInvalidDifficulty
-	// }
+	bc := cs.bc
+	parent := bc.GetBlockByHash(block.Header.ParentHash)
+	if parent == nil {
+		return errors.New("Parent block is nil")
+	}
+	if block.Header.Difficulty.Cmp(calcDifficulty(block.Header.Time, parent.Header)) != 0 {
+		return errors.New("Difficulty is not valid")
+	}
+	if block.Header.Difficulty.Cmp(new(big.Int).SetUint64(0)) <= 0 {
+		return errors.New("Difficulty must be greater 0")
+	}
 
 	target := new(big.Int).Div(two256, block.Header.Difficulty)
-	result := makeHashNonce(common.HashToBytes(block.Hash()), block.Header.Nonce)
+	result := work(common.HashToBytes(block.Hash()), block.Header.Nonce)
 	if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
 		return nil
 	}
@@ -254,13 +269,21 @@ func (c *Pow) ConsensusType() string {
 
 //TODO: What result to return
 func (cs *Pow) LoadState(block *core.Block) (state core.ConsensusState, err error) {
-	return nil, nil
+	return &PowState{}, nil
 }
 
 func (cs *Pow) MakeGenesisBlock(block *core.Block, voters []*core.Account) (err error) {
 	bc := cs.bc
-	block.Header.Difficulty = GenesisDifficulty
+	//17179869184
+	block.Header.Difficulty = big.NewInt(5000000)
+	//block.Header.Difficulty = GenesisDifficulty
+	//GenesisDifficulty      = big.NewInt(131072)
 	bc.GenesisBlock = block
+
+	state := new(PowState)
+	block.SetConsensusState(state)
+	block.Header.ConsensusHash = state.RootHash()
+
 	bc.GenesisBlock.MakeHash()
 	return nil
 }
