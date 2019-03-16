@@ -259,6 +259,13 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 }
 
 func (bc *BlockChain) PutBlock(block *Block) error {
+	// if block := bc.GetBlockByHash(block.Hash()); block != nil {
+	// 	log.CLog().WithFields(logrus.Fields{
+	// 		"Height": block.Header.Height,
+	// 	}).Info("There is same block in blockchain")
+	// 	// return nil
+	// }
+
 	var err error
 	//1. verify block.hash
 	if block.Hash() != block.CalcHash() {

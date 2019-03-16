@@ -20,18 +20,16 @@ import (
 )
 
 type Pow struct {
-	bc           *core.BlockChain
-	coinbase     common.Address
-	wallet       *account.Wallet
-	enableMining bool
-	streamPool   *net.PeerStreamPool
-
-	round       uint64
-	totalMiners uint64
+	bc                *core.BlockChain
+	coinbase          common.Address
+	wallet            *account.Wallet
+	enableMining      bool
+	streamPool        *net.PeerStreamPool
+	genesisDifficulty *big.Int //big.NewInt(5000000)
 }
 
-func NewPow(streamPool *net.PeerStreamPool) *Pow {
-	return &Pow{streamPool: streamPool}
+func NewPow(streamPool *net.PeerStreamPool, difficulty *big.Int) *Pow {
+	return &Pow{streamPool: streamPool, genesisDifficulty: difficulty}
 }
 
 func (cs *Pow) SetupMining(address common.Address, wallet *account.Wallet) {
@@ -274,10 +272,7 @@ func (cs *Pow) LoadState(block *core.Block) (state core.ConsensusState, err erro
 
 func (cs *Pow) MakeGenesisBlock(block *core.Block, voters []*core.Account) (err error) {
 	bc := cs.bc
-	//17179869184
-	block.Header.Difficulty = big.NewInt(5000000)
-	//block.Header.Difficulty = GenesisDifficulty
-	//GenesisDifficulty      = big.NewInt(131072)
+	block.Header.Difficulty = cs.genesisDifficulty
 	bc.GenesisBlock = block
 
 	state := new(PowState)

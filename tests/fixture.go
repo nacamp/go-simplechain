@@ -63,7 +63,8 @@ func MakeConfig() *cmd.Config {
         "name":"dpos", 
         "period":3, 
         "round":3, 
-        "total_miners":3 
+		"total_miners":3,
+		"difficulty"  :1000
         },
 		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
 					{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
@@ -96,7 +97,8 @@ func NewConfig(turn int) *cmd.Config {
         "name":"dpos", 
         "period":3, 
         "round":3, 
-        "total_miners":3 
+		"total_miners":3,
+		"difficulty"  :1000
         },
 		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
 					{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
@@ -121,7 +123,8 @@ func NewConfig(turn int) *cmd.Config {
         "name":"dpos", 
         "period":3, 
         "round":3, 
-        "total_miners":3 
+		"total_miners":3,
+		"difficulty"  :1000
         },
 		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
 			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
@@ -146,7 +149,8 @@ func NewConfig(turn int) *cmd.Config {
         "name":"dpos", 
         "period":3, 
         "round":3, 
-        "total_miners":3 
+		"total_miners":3,
+		"difficulty"  :1000
         },
 		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
 			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
