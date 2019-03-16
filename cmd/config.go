@@ -24,10 +24,11 @@ type ConfigAccount struct {
 }
 
 type Consensus struct {
-	Name        string `json:"name"`
-	Period      uint64 `json:"period"`
-	Round       uint64 `json:"round"`
-	TotalMiners uint64 `json:"total_miners"`
+	Name        string   `json:"name"`
+	Period      uint64   `json:"period"`
+	Round       uint64   `json:"round"`
+	TotalMiners uint64   `json:"total_miners"`
+	Difficulty  *big.Int `json:"difficulty"`
 }
 
 type Config struct {

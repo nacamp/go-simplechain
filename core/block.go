@@ -2,6 +2,7 @@ package core
 
 import (
 	"crypto/ecdsa"
+	"math/big"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -24,7 +25,9 @@ type Header struct {
 	ConsensusHash   common.Hash
 	//not need signature at pow
 	//need signature, to prevent malicious behavior like to skip deliberately block in the previous turn
-	Signature common.Signature
+	Signature  common.Signature
+	Difficulty *big.Int
+	Nonce      uint64
 }
 
 // Simple Block
@@ -66,6 +69,7 @@ func (b *Block) MakeHash() {
 
 func (b *Block) CalcHash() (hash common.Hash) {
 	hasher := sha3.New256()
+	//TODO: add Difficulty  *big.Int
 	rlp.Encode(hasher, []interface{}{
 		b.Header.ParentHash,
 		b.Header.Coinbase,
