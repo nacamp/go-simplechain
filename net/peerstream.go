@@ -51,7 +51,6 @@ func (ps *PeerStream) Start() { //isHost bool
 }
 
 func (ps *PeerStream) callHandler(message *Message) {
-	message.PeerID = ps.stream.Conn().RemotePeer()
 	v, ok := ps.handlers.Load(message.Code)
 	if ok {
 		handler := v.(chan interface{})
@@ -74,6 +73,7 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 			ps.callHandler(&Message{Code: StatusStreamClosed})
 			return
 		}
+		message.PeerID = ps.stream.Conn().RemotePeer()
 		switch message.Code {
 		case MsgHello:
 			ps.onHello(&message)
