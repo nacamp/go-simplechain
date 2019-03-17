@@ -96,7 +96,7 @@ func (node *Node) HandleStream(s libnet.Stream) {
 
 func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
 	peerStream, err := node.streamPool.GetStream(id)
-	if err == nil && peerStream.status != statusClosed {
+	if err == nil && !peerStream.IsClosed() {
 		return peerStream, nil
 	}
 	log.CLog().WithFields(logrus.Fields{

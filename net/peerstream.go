@@ -136,11 +136,13 @@ func (ps *PeerStream) onHelloAck(message *Message) error {
 }
 
 func (ps *PeerStream) finshHandshake() {
+	ps.mu.Lock()
 	ps.status = statusHandshakeSucceed
+	ps.mu.Unlock()
 }
 
 func (ps *PeerStream) SendMessage(message *Message) error {
-	if ps.status != statusHandshakeSucceed && !(message.Code == MsgHello || message.Code == MsgHelloAck) {
+	if !ps.IsHandshakeSucceed() && !(message.Code == MsgHello || message.Code == MsgHelloAck) {
 		return errors.New("Handshake not completed")
 	}
 	encodedBytes, _ := rlp.EncodeToBytes(message)
@@ -171,10 +173,14 @@ func (ps *PeerStream) Register(code uint64, handler chan interface{}) {
 }
 
 func (ps *PeerStream) IsClosed() bool {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
 	return ps.status == statusClosed
 }
 
 func (ps *PeerStream) IsHandshakeSucceed() bool {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
 	return ps.status == statusHandshakeSucceed
 }
 
