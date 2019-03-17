@@ -63,12 +63,12 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		}
 	}
 	if electedTime == now || minerGroup[turn] == cs.coinbase {
-		parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
-
+		//parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
+		parent := bc.Tail
 		if (parent != nil) && (now-parent.Header.Time < cs.period) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
 				"address": common.AddressToHex(cs.coinbase),
-			}).Warning("Interval is short")
+			}).Debug("Interval is short")
 			return nil
 		}
 
@@ -159,7 +159,7 @@ func (dpos *Dpos) Start() {
 }
 
 func (cs *Dpos) loop() {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	for {
 		select {
 		case now := <-ticker.C:
