@@ -15,18 +15,12 @@ import (
 	"github.com/nacamp/go-simplechain/crypto"
 )
 
-/*
-    "voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
-                {"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
-                {"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
-}
-*/
 
 var AddressHex0 = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
 var AddressHex1 = string("0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44")
 var AddressHex2 = string("0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
 
-var Keystore = map[string]string{ //0, 2, 1
+var keystore = map[string]string{ //0, 2, 1
 	AddressHex0: "0x8a21cd44e684dd2d8d9205b0bfb69339435c7bd016ebc21fddaddffd0d47ed63",
 	AddressHex1: "0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff",
 	AddressHex2: "0x47661aa6cccada84454842404ec0cca83760254191232f1d4cc11653d397ac2e",
@@ -45,6 +39,8 @@ const (
 )
 
 func MakeConfig() *cmd.Config {
+	saveWallet(AddressHex0, "password", "/var/tmp/simple/keystore1.dat")
+
 	configStr := `
 	{
 		"port"  : 9991,
@@ -78,6 +74,9 @@ func MakeConfig() *cmd.Config {
 }
 
 func NewConfig(turn int) *cmd.Config {
+	saveWallet(AddressHex0, "password", "/var/tmp/simple/keystore1.dat")
+	saveWallet(AddressHex1, "password", "/var/tmp/simple/keystore2.dat")
+	saveWallet(AddressHex2, "password", "/var/tmp/simple/keystore3.dat")
 	configStr := []string{
 		`
 	{
@@ -283,18 +282,26 @@ func SignerSlice(signers []common.Address) []common.Address {
 func MakeTransaction(from, to string, amount *big.Int, nonce uint64) *core.Transaction {
 	tx := core.NewTransaction(common.HexToAddress(from), common.HexToAddress(to), amount, nonce)
 	tx.MakeHash()
-	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(Keystore[from]))
+	priv, _ := btcec.PrivKeyFromBytes(btcec.S256(), common.FromHex(keystore[from]))
 	tx.Sign((*ecdsa.PrivateKey)(priv))
 	return tx
 }
 
-func MakeWallet() *account.Wallet {
-	wallet := account.NewWallet("./test_keystore.dat")
-	for _, priv := range Keystore {
-		key := new(account.Key)
-		key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
-		key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
-		wallet.StoreKey(key, "test")
-	}
-	return wallet
+// func MakeWallet() *account.Wallet {
+// 	wallet := account.NewWallet("./test_keystore.dat")
+// 	for _, priv := range keystore {
+// 		key := new(account.Key)
+// 		key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
+// 		key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
+// 		wallet.StoreKey(key, "test")
+// 	}
+// 	return wallet
+// }
+
+func saveWallet(addr, pwd, path string) {
+	key := new(account.Key)
+	key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(keystore[addr]))
+	key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
+	w := account.NewWallet(path)
+	w.StoreKey(key, pwd)
 }
