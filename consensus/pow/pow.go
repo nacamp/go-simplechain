@@ -200,12 +200,6 @@ func (cs *Pow) MakeBlock(now uint64) *core.Block {
 	return nil
 }
 
-func (cs *Pow) Start() {
-	if cs.enableMining {
-		go cs.loop()
-	}
-}
-
 func (cs *Pow) loop() {
 	ticker := time.NewTicker(1 * time.Second)
 	for {
@@ -225,6 +219,14 @@ func (cs *Pow) loop() {
 				cs.streamPool.BroadcastMessage(&message)
 			}
 		}
+	}
+}
+
+//----------    Consensus  ----------------//
+
+func (cs *Pow) Start() {
+	if cs.enableMining {
+		go cs.loop()
 	}
 }
 
@@ -249,16 +251,14 @@ func (cs *Pow) Verify(block *core.Block) (err error) {
 	return errors.New("not solved")
 }
 
-// not use this at GenesisBlock
-func (cs *Pow) SaveState(block *core.Block) (err error) {
-	return nil
-}
-
-//----------    Consensus  ----------------//
-
 //TODO: How to use lib
 func (cs *Pow) UpdateLIB() {
 	return
+}
+
+// not use this at GenesisBlock
+func (cs *Pow) SaveState(block *core.Block) (err error) {
+	return nil
 }
 
 func (c *Pow) ConsensusType() string {

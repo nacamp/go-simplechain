@@ -31,7 +31,7 @@ type BlockChain struct {
 	Storage             storage.Storage
 	TxPool              *TransactionPool
 	Consensus           Consensus
-	Lib                 *Block
+	lib                 *Block
 	tail                *Block
 	MessageToRandomNode chan *net.Message
 	BroadcastMessage    chan *net.Message
@@ -372,7 +372,7 @@ func (bc *BlockChain) AddFutureBlock(block *Block) error {
 		"hash":   common.HashToHex(block.Hash()),
 	}).Debug("Inserted block into  future blocks")
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
-	if block.Header.Height > bc.Lib.Header.Height && block.Header.Height > uint64(1) {
+	if block.Header.Height > bc.Lib().Header.Height && block.Header.Height > uint64(1) {
 		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
 		if err != nil {
 			return err
@@ -423,8 +423,6 @@ func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
 }
 
 func (bc *BlockChain) RequestMissingBlocks() error {
-	// bc.mu.RLock()
-	// defer bc.mu.RUnlock()
 	maxHeight := uint64(18446744073709551615)
 	olderHeight := maxHeight
 	for _, k := range bc.futureBlocks.Keys() {
@@ -492,13 +490,11 @@ func (bc *BlockChain) RequestMissingBlocks() error {
 // }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
-	// bc.mu.RLock()
-	// defer bc.mu.RUnlock()
 	TailTxs := bc.Tail().TransactionState
 	bc.tailGroup.Range(func(key, value interface{}) bool {
 		tail := value.(*Block)
 		// var err error
-		if bc.Lib.Header.Height >= tail.Header.Height {
+		if bc.Lib().Header.Height >= tail.Header.Height {
 			validBlock := bc.GetBlockByHeight(tail.Header.Height)
 			if validBlock == nil {
 				return true
@@ -533,7 +529,7 @@ func (bc *BlockChain) RebuildBlockHeight() error {
 		return nil
 	}
 	for {
-		if bc.Lib.Header.Height+1 == block.Header.Height { //block.Hash() == bc.Lib.Hash()
+		if bc.Lib().Header.Height+1 == block.Header.Height { //block.Hash() == bc.Lib.Hash()
 			break
 		}
 		block = bc.GetBlockByHash(block.Header.ParentHash)
@@ -555,9 +551,15 @@ func (bc *BlockChain) putBlockToStorage(block *Block) error {
 	return nil
 }
 
+func (bc *BlockChain) Lib() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+	return bc.lib
+}
+
 func (bc *BlockChain) SetLib(block *Block) {
 	bc.mu.Lock()
-	bc.Lib = block
+	bc.lib = block
 	bc.Storage.Put([]byte(libKey), block.Header.Hash[:])
 	bc.mu.Unlock()
 }
@@ -585,7 +587,7 @@ func (bc *BlockChain) LoadLibFromStorage() {
 	}
 	block.SetConsensusState(consensusState)
 
-	bc.Lib = block
+	bc.SetLib(block)
 }
 
 func (bc *BlockChain) Tail() *Block {
@@ -596,9 +598,6 @@ func (bc *BlockChain) Tail() *Block {
 }
 
 func (bc *BlockChain) SetTail(block *Block) {
-	// bc.mu.Lock()
-	// defer bc.mu.Unlock()
-	// fmt.Println(3)
 	if bc.tail == nil {
 		bc.mu.Lock()
 		bc.tail = block

@@ -162,12 +162,6 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	}
 }
 
-func (cs *Poa) Start() {
-	if cs.enableMining {
-		go cs.loop()
-	}
-}
-
 func (cs *Poa) loop() {
 	ticker := time.NewTicker(1 * time.Second)
 	for {
@@ -209,6 +203,13 @@ func (cs *Poa) getMinerSize(block *core.Block) (minerSize int, err error) {
 }
 
 //----------    Consensus  ----------------//
+
+func (cs *Poa) Start() {
+	if cs.enableMining {
+		go cs.loop()
+	}
+}
+
 func (cs *Poa) UpdateLIB() {
 	bc := cs.bc
 	block := bc.Tail()
@@ -229,7 +230,7 @@ func (cs *Poa) UpdateLIB() {
 		}).Debug("At least 3 node are needed")
 		return
 	}
-	for bc.Lib.Hash() != block.Hash() {
+	for bc.Lib().Hash() != block.Hash() {
 		miners[block.Header.Coinbase] = true
 		size, err := cs.getMinerSize(block)
 		if err != nil {

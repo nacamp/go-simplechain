@@ -152,12 +152,6 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 	}
 }
 
-func (dpos *Dpos) Start() {
-	if dpos.enableMining {
-		go dpos.loop()
-	}
-}
-
 func (cs *Dpos) loop() {
 	ticker := time.NewTicker(1 * time.Second)
 	for {
@@ -177,6 +171,14 @@ func (cs *Dpos) loop() {
 				cs.streamPool.BroadcastMessage(&message)
 			}
 		}
+	}
+}
+
+//----------    Consensus  ----------------//
+
+func (dpos *Dpos) Start() {
+	if dpos.enableMining {
+		go dpos.loop()
 	}
 }
 
@@ -238,7 +240,7 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	return nil
 }
 
-//----------    Consensus  ----------------//
+
 
 func (cs *Dpos) UpdateLIB() {
 	bc := cs.bc
@@ -246,7 +248,7 @@ func (cs *Dpos) UpdateLIB() {
 	//FIXME: consider timestamp, changed minerGroup
 	miners := make(map[common.Address]bool)
 	turn := 1
-	for bc.Lib.Hash() != block.Hash() {
+	for bc.Lib().Hash() != block.Hash() {
 		miners[block.Header.Coinbase] = true
 		if turn == int(cs.totalMiners) {
 			if len(miners) == int(cs.totalMiners) {

@@ -382,7 +382,7 @@ func TestUpdateLIBN1(t *testing.T) {
 	err = bc3.PutBlock(block1)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block2 := miner2.MakeBlock(27 + 3*1)
 	err = bc1.PutBlock(block2)
@@ -392,7 +392,7 @@ func TestUpdateLIBN1(t *testing.T) {
 	err = bc3.PutBlock(block2)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block3 := miner3.MakeBlock(27 + 3*2)
 	err = bc1.PutBlock(block3)
@@ -402,7 +402,7 @@ func TestUpdateLIBN1(t *testing.T) {
 	err = bc3.PutBlock(block3)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, block1.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, block1.Hash(), bc1.Lib().Hash(), "")
 
 }
 
@@ -429,7 +429,7 @@ func TestUpdateLIBN3(t *testing.T) {
 	err = bc3.PutBlock(block1)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block2 := miner2.MakeBlock(27 + 3*1)
 	err = bc1.PutBlock(block2)
@@ -439,7 +439,7 @@ func TestUpdateLIBN3(t *testing.T) {
 	err = bc3.PutBlock(block2)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block33 := miner3.MakeBlock(27 + 3*2)
 	block31 := miner1.MakeBlock(27 + 3*3)
@@ -450,7 +450,7 @@ func TestUpdateLIBN3(t *testing.T) {
 	err = bc3.PutBlock(block33)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 	//assert.Equal(t, block1.Hash(), bc1.Lib.Hash(), "")
 
 	block4 := miner2.MakeBlock(27 + 3*4)
@@ -463,7 +463,7 @@ func TestUpdateLIBN3(t *testing.T) {
 	err = bc3.PutBlockIfParentExist(block31) //receive missing block
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block5 := miner3.MakeBlock(27 + 3*5)
 	err = bc1.PutBlock(block5)
@@ -473,7 +473,7 @@ func TestUpdateLIBN3(t *testing.T) {
 	err = bc3.PutBlock(block5)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, block31.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, block31.Hash(), bc1.Lib().Hash(), "")
 
 }
 
@@ -500,7 +500,7 @@ func TestUpdateLIB3(t *testing.T) {
 	err = bc3.PutBlock(block1)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block2 := miner2.MakeBlock(27 + 3*1)
 	err = bc1.PutBlock(block2)
@@ -510,7 +510,7 @@ func TestUpdateLIB3(t *testing.T) {
 	err = bc3.PutBlock(block2)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block33 := miner3.MakeBlock(27 + 3*2)
 	block31 := miner1.MakeBlock(27 + 3*3)
@@ -521,7 +521,7 @@ func TestUpdateLIB3(t *testing.T) {
 	err = bc3.PutBlock(block33)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 	//assert.Equal(t, block1.Hash(), bc1.Lib.Hash(), "")
 
 	block4 := miner2.MakeBlock(27 + 3*4)
@@ -534,7 +534,7 @@ func TestUpdateLIB3(t *testing.T) {
 	err = bc3.PutBlock(block4)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block5 := miner3.MakeBlock(27 + 3*5)
 	err = bc1.PutBlock(block5)
@@ -544,7 +544,7 @@ func TestUpdateLIB3(t *testing.T) {
 	err = bc3.PutBlock(block5)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, bc1.GenesisBlock.Hash(), bc1.Lib().Hash(), "")
 
 	block6 := miner1.MakeBlock(27 + 3*6)
 	err = bc1.PutBlock(block6)
@@ -554,7 +554,7 @@ func TestUpdateLIB3(t *testing.T) {
 	err = bc3.PutBlock(block6)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
-	assert.Equal(t, block4.Hash(), bc1.Lib.Hash(), "")
+	assert.Equal(t, block4.Hash(), bc1.Lib().Hash(), "")
 }
 
 /*
