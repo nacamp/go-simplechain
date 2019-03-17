@@ -63,8 +63,8 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		}
 	}
 	if electedTime == now || minerGroup[turn] == cs.coinbase {
-		//parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
-		parent := bc.Tail
+		//parent := bc.GetBlockByHash(bc.Tail().Header.ParentHash)
+		parent := bc.Tail()
 		if (parent != nil) && (now-parent.Header.Time < cs.period) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
 				"address": common.AddressToHex(cs.coinbase),
@@ -242,7 +242,7 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 
 func (cs *Dpos) UpdateLIB() {
 	bc := cs.bc
-	block := bc.Tail
+	block := bc.Tail()
 	//FIXME: consider timestamp, changed minerGroup
 	miners := make(map[common.Address]bool)
 	turn := 1

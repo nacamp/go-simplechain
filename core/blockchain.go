@@ -32,7 +32,7 @@ type BlockChain struct {
 	TxPool              *TransactionPool
 	Consensus           Consensus
 	Lib                 *Block
-	Tail                *Block
+	tail                *Block
 	MessageToRandomNode chan *net.Message
 	BroadcastMessage    chan *net.Message
 	NewTXMessage        chan *Transaction
@@ -392,9 +392,9 @@ func encodeBlockHeight(number uint64) []byte {
 }
 
 func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
+	parentBlock := bc.Tail()
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
-	parentBlock := bc.Tail
 	h := &Header{
 		ParentHash: parentBlock.Hash(),
 		Height:     parentBlock.Header.Height + 1,
@@ -423,14 +423,14 @@ func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
 }
 
 func (bc *BlockChain) RequestMissingBlocks() error {
-	bc.mu.RLock()
-	defer bc.mu.RUnlock()
+	// bc.mu.RLock()
+	// defer bc.mu.RUnlock()
 	maxHeight := uint64(18446744073709551615)
 	olderHeight := maxHeight
 	for _, k := range bc.futureBlocks.Keys() {
 		v, _ := bc.futureBlocks.Peek(k)
 		block := v.(*Block)
-		if bc.Tail.Header.Height < block.Header.Height && olderHeight > block.Header.Height {
+		if bc.Tail().Header.Height < block.Header.Height && olderHeight > block.Header.Height {
 			olderHeight = block.Header.Height
 		}
 	}
@@ -438,11 +438,11 @@ func (bc *BlockChain) RequestMissingBlocks() error {
 		return nil
 	}
 	var blockRange [2]uint64
-	blockRange[0] = bc.Tail.Header.Height + 1
+	blockRange[0] = bc.Tail().Header.Height + 1
 	blockRange[1] = olderHeight
 	//request max 100 blocks
-	if olderHeight-bc.Tail.Header.Height > 100 {
-		blockRange[1] = bc.Tail.Header.Height + 100
+	if olderHeight-bc.Tail().Header.Height > 100 {
+		blockRange[1] = bc.Tail().Header.Height + 100
 	}
 
 	msg, err := net.NewRLPMessage(net.MsgMissingBlocks, blockRange)
@@ -492,9 +492,9 @@ func (bc *BlockChain) RequestMissingBlocks() error {
 // }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
-	bc.mu.RLock()
-	defer bc.mu.RUnlock()
-	TailTxs := bc.Tail.TransactionState
+	// bc.mu.RLock()
+	// defer bc.mu.RUnlock()
+	TailTxs := bc.Tail().TransactionState
 	bc.tailGroup.Range(func(key, value interface{}) bool {
 		tail := value.(*Block)
 		// var err error
@@ -528,7 +528,7 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 }
 
 func (bc *BlockChain) RebuildBlockHeight() error {
-	block := bc.Tail
+	block := bc.Tail()
 	if block.Header.Height == 0 {
 		return nil
 	}
@@ -588,19 +588,32 @@ func (bc *BlockChain) LoadLibFromStorage() {
 	bc.Lib = block
 }
 
+func (bc *BlockChain) Tail() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+	return bc.tail
+
+}
+
 func (bc *BlockChain) SetTail(block *Block) {
-	if bc.Tail == nil {
-		bc.Tail = block
-		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
-	}
-	if block.Header.Height >= bc.Tail.Header.Height {
+	// bc.mu.Lock()
+	// defer bc.mu.Unlock()
+	// fmt.Println(3)
+	if bc.tail == nil {
 		bc.mu.Lock()
-		bc.Tail = block
+		bc.tail = block
+		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
 		bc.mu.Unlock()
+	}
+	if block.Header.Height >= bc.tail.Header.Height {
+		bc.mu.Lock()
+		bc.tail = block
 		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
 		log.CLog().WithFields(logrus.Fields{
 			"Height": block.Header.Height,
 		}).Debug("Tail")
+		bc.mu.Unlock()
+		//TODO: tow to call by channel
 		bc.RebuildBlockHeight()
 	}
 }
@@ -629,7 +642,7 @@ func (bc *BlockChain) LoadTailFromStorage() {
 	}
 	block.SetConsensusState(consensusState)
 
-	bc.Tail = block
+	bc.SetTail(block)
 }
 
 func (bc *BlockChain) RemoveTxInPool(block *Block) {

@@ -61,7 +61,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	turn := (now % (uint64(len(miners)) * cs.period)) / cs.period
 	if miners[turn] == cs.coinbase {
 		//parent := bc.GetBlockByHash(block.Header.ParentHash)
-		parent := bc.Tail
+		parent := bc.Tail()
 
 		//if (parent != nil) && (now-parent.Header.Time < ((uint64(len(miners)) * cs.Period) - 1)) { //(3 * 3)
 		if (parent != nil) && (now-parent.Header.Time < cs.period) { //(3 * 3)
@@ -211,7 +211,7 @@ func (cs *Poa) getMinerSize(block *core.Block) (minerSize int, err error) {
 //----------    Consensus  ----------------//
 func (cs *Poa) UpdateLIB() {
 	bc := cs.bc
-	block := bc.Tail
+	block := bc.Tail()
 	//FIXME: consider timestamp
 	miners := make(map[common.Address]bool)
 	turn := 1

@@ -61,7 +61,7 @@ func (h *GetBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.Raw
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
-	account := h.bc.Tail.AccountState.GetAccount(common.HexToAddress(p[0]))
+	account := h.bc.Tail().AccountState.GetAccount(common.HexToAddress(p[0]))
 	return account.Balance.String(), nil
 }
 
@@ -93,7 +93,7 @@ func (h *GetTransactionCountHandler) ServeJSONRPC(c context.Context, params *fas
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
-	account := h.bc.Tail.AccountState.GetAccount(common.HexToAddress(p[0]))
+	account := h.bc.Tail().AccountState.GetAccount(common.HexToAddress(p[0]))
 	return strconv.FormatUint(account.Nonce, 10), nil
 }
 
@@ -192,7 +192,7 @@ func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fa
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
-	tx := h.bc.Tail.TransactionState.GetTransaction(common.HexToHash(p[0]))
+	tx := h.bc.Tail().TransactionState.GetTransaction(common.HexToHash(p[0]))
 
 	rtx := &TempTx{}
 	rtx.From = common.AddressToHex(tx.From)

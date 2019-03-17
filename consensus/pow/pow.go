@@ -116,7 +116,7 @@ func (cs *Pow) MakeBlock(now uint64) *core.Block {
 		log.CLog().Warning(fmt.Sprintf("%+v", err))
 	}
 	block.Header.Time = now
-	block.Header.Difficulty = calcDifficulty(now, bc.Tail.Header)
+	block.Header.Difficulty = calcDifficulty(now, bc.Tail().Header)
 	block.Header.Coinbase = cs.coinbase
 
 	//TODO: check double spending ?
@@ -183,7 +183,7 @@ func (cs *Pow) MakeBlock(now uint64) *core.Block {
 	target := new(big.Int).Div(two256, block.Header.Difficulty)
 	inc := int64(0)
 	for {
-		if bc.Tail.Header.Height >= block.Header.Height {
+		if bc.Tail().Header.Height >= block.Header.Height {
 			log.CLog().WithFields(logrus.Fields{
 				"Height": block.Header.Height,
 			}).Info("Other miner mined the block")
