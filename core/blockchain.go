@@ -493,8 +493,8 @@ func (bc *BlockChain) RequestMissingBlocks() error {
 
 func (bc *BlockChain) RemoveOrphanBlock() {
 	bc.mu.RLock()
+	defer bc.mu.RUnlock()
 	TailTxs := bc.Tail.TransactionState
-	bc.mu.RUnlock()
 	bc.tailGroup.Range(func(key, value interface{}) bool {
 		tail := value.(*Block)
 		// var err error
@@ -556,8 +556,10 @@ func (bc *BlockChain) putBlockToStorage(block *Block) error {
 }
 
 func (bc *BlockChain) SetLib(block *Block) {
+	bc.mu.Lock()
 	bc.Lib = block
 	bc.Storage.Put([]byte(libKey), block.Header.Hash[:])
+	bc.mu.Unlock()
 }
 
 func (bc *BlockChain) LoadLibFromStorage() {
