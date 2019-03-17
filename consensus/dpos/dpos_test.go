@@ -92,7 +92,7 @@ func TestDpos(t *testing.T) {
 	cs2 := NewDpos(net.NewPeerStreamPool(), config.Consensus.Period, config.Consensus.Round, config.Consensus.TotalMiners)
 	bc2 := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 	bc2.Setup(cs2, voters)
-	assert.Equal(t, uint64(1), bc2.Tail.Header.Height)
+	assert.Equal(t, uint64(1), bc2.Tail().Header.Height)
 }
 
 type DposMiner struct {
