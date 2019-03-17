@@ -70,7 +70,7 @@ func (ps *PeerStream) readData(rw *bufio.ReadWriter) {
 			log.CLog().WithFields(logrus.Fields{
 				"Msg": err,
 			}).Info("closed")
-			ps.callHandler(&Message{Code: StatusStreamClosed})
+			ps.callHandler(&Message{Code: StatusStreamClosed, PeerID: ps.stream.Conn().RemotePeer()})
 			return
 		}
 		message.PeerID = ps.stream.Conn().RemotePeer()
