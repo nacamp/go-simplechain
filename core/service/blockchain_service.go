@@ -186,7 +186,7 @@ func (bcs *BlockChainService) SendMissingBlocks(blockRange [2]uint64, peerID pee
 			}).Info("Send missing block")
 		} else {
 			log.CLog().WithFields(logrus.Fields{
-				"Hash": common.HashToHex(block.Hash()),
+				"Height": i,
 			}).Info("We don't have missing block")
 		}
 	}
