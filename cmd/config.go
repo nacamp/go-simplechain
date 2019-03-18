@@ -49,12 +49,12 @@ type Config struct {
 }
 
 func MakeVoterAccountsFromConfig(config *Config) (voters []*core.Account) {
-	voters = make([]*core.Account, 3)
-	for i, voter := range config.Voters {
+	voters = make([]*core.Account, 0)
+	for _, voter := range config.Voters {
 		account := core.NewAccount()
 		copy(account.Address[:], common.FromHex(voter.Address))
 		account.Balance = voter.Balance
-		voters[i] = account
+		voters = append(voters, account)
 	}
 	return voters
 }

@@ -21,23 +21,17 @@ func TestConfig(t *testing.T) {
 		"miner_private_key" : "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
 		"node_key_path" : "/test/nodekey",
 		"seeds" :  ["080212201afa45f64cd5a28cd40e178889ed2e9f987658bc4d48d376ef6ecb1ab1b26211"],
-		"voters" : [{"address":"0x036407c079c962872d0ddadc121affba13090d99a9739e0d602ccfda2dab5b63c0", "balance":100 },
-				    {"address":"0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", "balance":20 },
-					{"address":"0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1", "balance":50 }]
+		"voters" : [
+			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
+			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
+			{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":80 },
+			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":70 },
+			{"address":"0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df", "balance":60 },
+			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":50 }
+		]
 		}`
 	contents := []byte(configStr)
 	config := &cmd.Config{}
-	// err := json.Unmarshal([]byte(contents), config)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// fmt.Println(config.HostId)
-	// fmt.Println(config.MinerAddress)
-	// fmt.Println(config.MinerPrivateKey)
-	// fmt.Println(config.Seeds)
-	// fmt.Println(config.Voters[0].Address, config.Voters[0].Balance)
-	// fmt.Println(config.Voters[1].Address, config.Voters[1].Balance)
-	// assert.Equal(t, 1, 1, "")
 
 	//tempfile
 	tmpfile, err := ioutil.TempFile("", "test_")
@@ -54,14 +48,8 @@ func TestConfig(t *testing.T) {
 
 	config = &cmd.Config{}
 	config = cmd.NewConfigFromFile(tmpfile.Name())
-	// fmt.Println(config.HostId)
-	// fmt.Println(config.MinerAddress)
-	// fmt.Println(config.MinerPrivateKey)
-	// fmt.Println(config.Seeds)
-	// fmt.Println(config.Voters[0].Address, config.Voters[0].Balance)
-	// fmt.Println(config.Voters[1].Address, config.Voters[1].Balance)
 	assert.Equal(t, new(big.Int).SetUint64(100), config.Voters[0].Balance, "")
-	assert.Equal(t, "0x03fdefdefbb2478f3d1ed3221d38b8bad6d939e50f17ffda40f0510b4d28506bd3", config.Voters[1].Address, "")
+	assert.Equal(t, "0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", config.Voters[1].Address, "")
 	assert.Equal(t, "/opt/simplechain/data", config.DBPath, "")
 	assert.Equal(t, "/test/nodekey", config.NodeKeyPath, "")
 
@@ -71,4 +59,6 @@ func TestConfig(t *testing.T) {
 	assert.Equal(t, priv1, priv2, "")
 	_, err = os.Stat(filepath.Join(config.NodeKeyPath, "node_pub.id"))
 	assert.False(t, os.IsNotExist(err), "")
+
+	assert.Equal(t, 6, len(cmd.MakeVoterAccountsFromConfig(config)))
 }
