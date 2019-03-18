@@ -51,7 +51,7 @@ func TestDpos(t *testing.T) {
 	tempMiners = append(tempMiners, tests.Address0)
 	tempMiners = append(tempMiners, tests.Address1)
 	tempMiners = append(tempMiners, tests.Address2)
-	shuffle(tempMiners, 0)
+	randomShuffle(tempMiners, 0)
 
 	turn := 0
 	wrongTurn := make([]int, 0)
@@ -153,7 +153,7 @@ func findTurn(address common.Address, time int64) int {
 	tempMiners = append(tempMiners, tests.Address0)
 	tempMiners = append(tempMiners, tests.Address1)
 	tempMiners = append(tempMiners, tests.Address2)
-	shuffle(tempMiners, time)
+	randomShuffle(tempMiners, time)
 	for i, v := range tempMiners {
 		if v == address {
 			return i
@@ -164,7 +164,8 @@ func findTurn(address common.Address, time int64) int {
 }
 
 func TestSendMoneyTransaction(t *testing.T) {
-	miner1 := NewDposMiner(1)
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
 	bc1 := miner1.Bc
 	var err error
 
@@ -176,10 +177,10 @@ func TestSendMoneyTransaction(t *testing.T) {
 	var tx *core.Transaction
 	var txHash common.Hash
 	for i := 3; i >= 1; i-- {
-		tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), uint64(i))
+		tx = core.NewTransaction(tests.Address0, tests.Address2, new(big.Int).SetUint64(5), uint64(i))
 		assert.Equal(t, uint64(0), tx.Height)
 		tx.MakeHash()
-		sig, err := miner1.Cs.wallet.SignHash(tests.Address1, tx.Hash[:])
+		sig, err := miner1.Cs.wallet.SignHash(tests.Address0, tx.Hash[:])
 		assert.NoError(t, err)
 		tx.SignWithSignature(sig)
 		bc1.TxPool.Put(tx)
@@ -187,9 +188,9 @@ func TestSendMoneyTransaction(t *testing.T) {
 	}
 
 	//Put tx in descending order, 3, 2, 1
-	tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), 10) //not include
+	tx = core.NewTransaction(tests.Address0, tests.Address2, new(big.Int).SetUint64(5), 10) //not include
 	tx.MakeHash()
-	sig, err := miner1.Cs.wallet.SignHash(tests.Address1, tx.Hash[:])
+	sig, err := miner1.Cs.wallet.SignHash(tests.Address0, tx.Hash[:])
 	assert.NoError(t, err)
 	tx.SignWithSignature(sig)
 	bc1.TxPool.Put(tx)
@@ -207,15 +208,11 @@ func TestSendMoneyTransaction(t *testing.T) {
 }
 
 func TestVoteTransaction(t *testing.T) {
-	miner3 := NewDposMiner(0)
-	miner1 := NewDposMiner(1)
-	miner2 := NewDposMiner(2)
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
+	miner2 := NewDposMiner(1)
+	miner3 := NewDposMiner(2)
 	bc1 := miner1.Bc
-	bc2 := miner2.Bc
-	bc3 := miner3.Bc
-	_ = bc1
-	_ = bc2
-	_ = bc3
 	var err error
 
 	block1 := miner1.MakeBlock(27 + 3*(0+3*0))
@@ -226,12 +223,12 @@ func TestVoteTransaction(t *testing.T) {
 	var tx *core.Transaction
 	for i := 2; i >= 1; i-- {
 		if i == 2 {
-			tx = core.NewTransaction(tests.Address1, tests.Address0, new(big.Int).SetUint64(5), uint64(i))
+			tx = core.NewTransaction(tests.Address0, tests.Address1, new(big.Int).SetUint64(5), uint64(i))
 		} else {
-			tx = core.NewTransaction(tests.Address1, tests.Address2, new(big.Int).SetUint64(5), uint64(i))
+			tx = core.NewTransaction(tests.Address0, tests.Address2, new(big.Int).SetUint64(5), uint64(i))
 		}
 		tx.MakeHash()
-		sig, err := miner1.Cs.wallet.SignHash(tests.Address1, tx.Hash[:])
+		sig, err := miner1.Cs.wallet.SignHash(tests.Address0, tx.Hash[:])
 		assert.NoError(t, err)
 		tx.SignWithSignature(sig)
 		bc1.TxPool.Put(tx)
@@ -243,8 +240,8 @@ func TestVoteTransaction(t *testing.T) {
 	//vote for joinning
 	var candidate = common.HexToAddress("0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
 	voter := []common.Address{tests.Address0, tests.Address1, tests.Address2}
-	signer := []*DposMiner{miner3, miner1, miner2}
-	nonces := []uint64{1, 3, 1}
+	signer := []*DposMiner{miner1, miner2, miner3}
+	nonces := []uint64{3, 1, 1}
 	for i := 0; i < 3; i++ {
 		payload := new(core.Payload)
 		payload.Code = core.TxCVoteStake
@@ -273,7 +270,7 @@ func TestVoteTransaction(t *testing.T) {
 	}
 
 	//vote for evicting
-	nonces = []uint64{2, 4, 2}
+	nonces = []uint64{4, 2, 2}
 	unstake := []*big.Int{new(big.Int).SetUint64(4), new(big.Int).SetUint64(5), new(big.Int).SetUint64(5)}
 	for i := 0; i < 3; i++ {
 		payload := new(core.Payload)
@@ -306,17 +303,17 @@ func TestVoteTransaction(t *testing.T) {
 }
 
 func TestNewRound(t *testing.T) {
-	miner3 := NewDposMiner(0)
-	miner1 := NewDposMiner(1)
-	miner2 := NewDposMiner(2)
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
+	miner2 := NewDposMiner(1)
+	miner3 := NewDposMiner(2)
 	bc1 := miner1.Bc
 	bc2 := miner2.Bc
 	bc3 := miner3.Bc
-
-	turn := findTurn(tests.Address0, 0)
+	turn := 2
 	var err error
 
-	//miner1 and miner2 mine 1 block before new round test because electedTime is changed  at first block
+	//miner0 and miner1 mine 1 block before new round test because electedTime is changed  at first block
 	block1 := miner1.MakeBlock(27 + 3*(0+3*0))
 	err = bc1.PutBlock(block1)
 	assert.NoError(t, err)
@@ -337,22 +334,23 @@ func TestNewRound(t *testing.T) {
 	assert.NoError(t, err)
 
 	//new round
+	_stateShuffle = nil
 	for i := 3; i < 10; i++ {
-		newTurn := findTurn(tests.Address0, int64(27+3*(turn+3*i)))
+		newTurn := findTurn(tests.Address2, int64(27+3*(turn+3*i)))
 		if turn != newTurn {
 			fmt.Println("newTurn : ", newTurn)
 			block := miner3.MakeBlock(27 + 3*(turn+3*i))
 			assert.Nil(t, block)
-			if turn == findTurn(tests.Address1, int64(27+3*(turn+3*i))) {
+			if turn == findTurn(tests.Address0, int64(27+3*(turn+3*i))) {
 				block := miner1.MakeBlock(27 + 3*(turn+3*i))
 				err = bc1.PutBlock(block)
 				assert.NoError(t, err)
-				fmt.Println(tests.AddressHex1, " mined")
-			} else if turn == findTurn(tests.Address2, int64(27+3*(turn+3*i))) {
+				fmt.Println(tests.AddressHex0, " mined")
+			} else if turn == findTurn(tests.Address1, int64(27+3*(turn+3*i))) {
 				block := miner2.MakeBlock(27 + 3*(turn+3*i))
 				err = bc2.PutBlock(block)
 				assert.NoError(t, err)
-				fmt.Println(tests.AddressHex2, " mined")
+				fmt.Println(tests.AddressHex1, " mined")
 			}
 			break
 		}
@@ -366,9 +364,10 @@ N+1		N+2		N+3
 miner1  miner2   miner3
 */
 func TestUpdateLIBN1(t *testing.T) {
-	miner3 := NewDposMiner(0)
-	miner1 := NewDposMiner(1)
-	miner2 := NewDposMiner(2)
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
+	miner2 := NewDposMiner(1)
+	miner3 := NewDposMiner(2)
 	bc1 := miner1.Bc
 	bc2 := miner2.Bc
 	bc3 := miner3.Bc
@@ -413,9 +412,10 @@ miner1	miner2	miner3
 				miner1	miner2	miner3
 */
 func TestUpdateLIBN3(t *testing.T) {
-	miner3 := NewDposMiner(0)
-	miner1 := NewDposMiner(1)
-	miner2 := NewDposMiner(2)
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
+	miner2 := NewDposMiner(1)
+	miner3 := NewDposMiner(2)
 	bc1 := miner1.Bc
 	bc2 := miner2.Bc
 	bc3 := miner3.Bc
@@ -474,7 +474,6 @@ func TestUpdateLIBN3(t *testing.T) {
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
 	assert.Equal(t, block31.Hash(), bc1.Lib().Hash(), "")
-
 }
 
 /*
@@ -484,9 +483,10 @@ miner1	miner2	miner3   miner2	miner3  miner1
 				miner1
 */
 func TestUpdateLIB3(t *testing.T) {
-	miner3 := NewDposMiner(0)
-	miner1 := NewDposMiner(1)
-	miner2 := NewDposMiner(2)
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
+	miner2 := NewDposMiner(1)
+	miner3 := NewDposMiner(2)
 	bc1 := miner1.Bc
 	bc2 := miner2.Bc
 	bc3 := miner3.Bc
@@ -570,9 +570,10 @@ N7
 */
 // At PutBlockByCoinbase SetTail call RebuildBlockHeight
 func TestRebuildBlockHeight(t *testing.T) {
-	miner3 := NewDposMiner(0)
-	miner1 := NewDposMiner(1)
-	miner2 := NewDposMiner(2)
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
+	miner2 := NewDposMiner(1)
+	miner3 := NewDposMiner(2)
 	bc1 := miner1.Bc
 	bc2 := miner2.Bc
 	bc3 := miner3.Bc
@@ -677,9 +678,10 @@ N8
 	assert.NoError(t, err)
 */
 func TestRemoveOrphanBlock(t *testing.T) {
-	miner3 := NewDposMiner(0)
-	miner1 := NewDposMiner(1)
-	miner2 := NewDposMiner(2)
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
+	miner2 := NewDposMiner(1)
+	miner3 := NewDposMiner(2)
 	bc1 := miner1.Bc
 	bc2 := miner2.Bc
 	bc3 := miner3.Bc
