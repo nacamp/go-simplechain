@@ -371,6 +371,10 @@ func (bc *BlockChain) AddFutureBlock(block *Block) error {
 		"Height": block.Header.Height,
 		"hash":   common.HashToHex(block.Hash()),
 	}).Debug("Inserted block into  future blocks")
+
+	if _, ok := bc.futureBlocks.Peek(block.Header.ParentHash); ok {
+		return nil
+	}
 	bc.futureBlocks.Add(block.Header.ParentHash, block)
 	if block.Header.Height > bc.Lib().Header.Height && block.Header.Height > uint64(1) {
 		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
