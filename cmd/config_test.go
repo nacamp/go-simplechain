@@ -21,6 +21,14 @@ func TestConfig(t *testing.T) {
 		"miner_private_key" : "0xe68fb0a479c495910c8351c3593667028b45d679f55ce22b0514c4a8a6bcbdd1",
 		"node_key_path" : "/test/nodekey",
 		"seeds" :  ["080212201afa45f64cd5a28cd40e178889ed2e9f987658bc4d48d376ef6ecb1ab1b26211"],
+		"consensus" : 
+        {
+        "name":"dpos", 
+        "period":3, 
+        "round":3, 
+		"total_miners":3,
+		"difficulty"  :1000
+        },
 		"voters" : [
 			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
 			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
@@ -60,5 +68,21 @@ func TestConfig(t *testing.T) {
 	_, err = os.Stat(filepath.Join(config.NodeKeyPath, "node_pub.id"))
 	assert.False(t, os.IsNotExist(err), "")
 
+	//check voters
 	assert.Equal(t, 6, len(cmd.MakeVoterAccountsFromConfig(config)))
+
+	//verify
+	assert.Equal(t, "dpos", config.Consensus.Name)
+	assert.NoError(t, config.VerifyConsensus())
+	config.Consensus.Period = 0
+	assert.Error(t, config.VerifyConsensus())
+	config.Consensus.Period = 3
+	config.Consensus.Round = 0
+	assert.Error(t, config.VerifyConsensus())
+	config.Consensus.Period = 3
+	config.Consensus.Round = 3
+	config.Consensus.TotalMiners = 5
+	assert.Error(t, config.VerifyConsensus())
+	config.Consensus.TotalMiners = 9
+	assert.Error(t, config.VerifyConsensus())
 }
