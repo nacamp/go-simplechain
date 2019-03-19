@@ -66,6 +66,8 @@ func (p *PeerStreamPool) addStream(streams *sync.Map, peerStream *PeerStream) {
 func (p *PeerStreamPool) GetStream(id peer.ID) (*PeerStream, error) {
 	if peerStream, err := p.getStream(p.streams, id); err != nil {
 		return p.getStream(p.lookupStreams, id)
+	} else if peerStream == nil {
+		return nil, errors.New("stream is nil")
 	} else {
 		return peerStream, err
 	}
@@ -129,6 +131,7 @@ func (p *PeerStreamPool) BroadcastMessage(message *Message) {
 		id := key.(peer.ID)
 		ps := value.(*PeerStream)
 		if !HasRecvMessage(id, crc32.ChecksumIEEE(message.Payload)) {
+			RecordRecvMessage(id, crc32.ChecksumIEEE(message.Payload))
 			ps.SendMessage(message)
 		}
 		return true

@@ -156,6 +156,7 @@ func (bcs *BlockChainService) SendMissingBlock(hash common.Hash, peerID peer.ID)
 		ps, err := bcs.streamPool.GetStream(peerID)
 		if err != nil {
 			log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
+			return
 		}
 		ps.SendMessage(&message)
 		log.CLog().WithFields(logrus.Fields{
@@ -174,6 +175,7 @@ func (bcs *BlockChainService) SendMissingBlocks(blockRange [2]uint64, peerID pee
 	ps, err := bcs.streamPool.GetStream(peerID)
 	if err != nil {
 		log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
+		return
 	}
 	for i := blockRange[0]; i <= blockRange[1]; i++ {
 		block := bc.GetBlockByHeight(i)

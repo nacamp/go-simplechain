@@ -209,13 +209,16 @@ func (d *Discovery) onMsgHello() {
 			// log.CLog().WithFields(logrus.Fields{
 			// 	"ID": message.PeerID,
 			// }).Debug("addr: ", data)
-			ps, _ := d.streamPool.GetStream(message.PeerID)
+			ps, err := d.streamPool.GetStream(message.PeerID)
 			// a := ps.stream.Conn().RemoteMultiaddr()
 			// log.CLog().WithFields(logrus.Fields{}).Warn(a)
 			// addr, err := ma.NewMultiaddr(data)
 			// if err != nil {
 			// 	continue
 			// }
+			if err != nil {
+				continue
+			}
 			d.UpdateAddr(message.PeerID, ps.stream.Conn().RemoteMultiaddr())
 		}
 	}
@@ -242,7 +245,10 @@ func (d *Discovery) onMsgNearestPeers() {
 			msg := ch.(*Message)
 			var targetID peer.ID
 			_ = rlp.DecodeBytes(msg.Payload, &targetID)
-			ps, _ := d.streamPool.GetStream(msg.PeerID)
+			ps, err := d.streamPool.GetStream(msg.PeerID)
+			if err != nil {
+				continue
+			}
 			d.SendNearestPeers(targetID, ps)
 			log.CLog().WithFields(logrus.Fields{"TargetID": targetID}).Debug("PeerID: ", msg.PeerID)
 		}
@@ -254,7 +260,10 @@ func (d *Discovery) onMsgNearestPeersAck() {
 		select {
 		case ch := <-d.MsgNearestPeersAckCh:
 			msg := ch.(*Message)
-			ps, _ := d.streamPool.GetStream(msg.PeerID)
+			ps, err := d.streamPool.GetStream(msg.PeerID)
+			if err != nil {
+				continue
+			}
 			v, ok := ps.replys.Load(msg.Code)
 			if ok {
 				payload := make([]*PeerInfo2, 0)
