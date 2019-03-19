@@ -241,7 +241,7 @@ func (cs *Poa) UpdateLIB() {
 			return
 		}
 		if turn == firstMinerSize {
-			if len(miners) == firstMinerSize*2/3+1 {
+			if len(miners) >= firstMinerSize*2/3+1 {
 				bc.SetLib(block)
 				log.CLog().WithFields(logrus.Fields{
 					"Height": block.Header.Height,
