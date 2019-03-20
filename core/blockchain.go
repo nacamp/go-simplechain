@@ -371,22 +371,42 @@ func (bc *BlockChain) AddFutureBlock(block *Block) error {
 		"Height": block.Header.Height,
 		"hash":   common.HashToHex(block.Hash()),
 	}).Debug("Inserted block into  future blocks")
-
 	if _, ok := bc.futureBlocks.Peek(block.Header.ParentHash); ok {
 		return nil
 	}
-	bc.futureBlocks.Add(block.Header.ParentHash, block)
-	if block.Header.Height > bc.Lib().Header.Height && block.Header.Height > uint64(1) {
-		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
-		if err != nil {
-			return err
+	if block.Header.Height > bc.Lib().Header.Height {
+		bc.futureBlocks.Add(block.Header.ParentHash, block)
+		if block.Header.Height > uint64(1) { //if parent hash is not genesis block
+			msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
+			if err != nil {
+				return err
+			}
+			bc.MessageToRandomNode <- &msg
+			log.CLog().WithFields(logrus.Fields{
+				"Hash": common.HashToHex(block.Header.ParentHash),
+			}).Info("Request missing block")
 		}
-		bc.MessageToRandomNode <- &msg
-		log.CLog().WithFields(logrus.Fields{
-			"Hash": common.HashToHex(block.Header.ParentHash),
-		}).Info("Request missing block")
 	}
 	return nil
+}
+
+//for test
+func (bc *BlockChain) FutureBlockSize() int {
+	return bc.futureBlocks.Len()
+}
+
+func (bc *BlockChain) RemoveFutureBlock() {
+	for _, k := range bc.futureBlocks.Keys() {
+		if v, ok := bc.futureBlocks.Get(k); ok {
+			block := v.(*Block)
+			if bc.Lib().Header.Height >= block.Header.Height {
+				bc.futureBlocks.Remove(k)
+				log.CLog().WithFields(logrus.Fields{
+					"Height": block.Header.Height,
+				}).Info("Remove old futureBlock")
+			}
+		}
+	}
 }
 
 func encodeBlockHeight(number uint64) []byte {

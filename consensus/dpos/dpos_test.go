@@ -751,3 +751,126 @@ func TestRemoveOrphanBlock(t *testing.T) {
 	// N3 same tx,  N4,N5 different tx
 	// assert.Equal(t, bc1.TxPool.Len(), 2, "")
 }
+
+/*
+	  N0
+	  |
+1  	  N1
+   /      \
+2 N2        N3
+  |         |
+3 N5        N4
+  |         |
+4 N7        N6
+  |         |
+5 N8        N9
+*/
+func TestFutureBlock(t *testing.T) {
+	_stateShuffle = noneShuffle
+	miner1 := NewDposMiner(0)
+	miner2 := NewDposMiner(1)
+	miner3 := NewDposMiner(2)
+	bc1 := miner1.Bc
+	bc2 := miner2.Bc
+	bc3 := miner3.Bc
+	var err error
+	// var b *core.Block
+
+	//make blockchain
+	block1 := miner2.MakeBlock(27 + 3*1)
+	err = bc2.PutBlock(block1)
+	assert.NoError(t, err)
+
+	block2 := miner2.MakeBlock(27 + 3*4)
+	err = bc2.PutBlock(block2)
+	assert.NoError(t, err)
+
+	err = bc3.PutBlockIfParentExist(block1)
+	block3 := miner3.MakeBlock(27 + 3*2)
+	err = bc3.PutBlock(block3)
+	assert.NoError(t, err)
+
+	block4 := miner3.MakeBlock(27 + 3*5)
+	err = bc3.PutBlock(block4)
+	assert.NoError(t, err)
+
+	block5 := miner2.MakeBlock(27 + 3*7)
+	err = bc2.PutBlock(block5)
+	assert.NoError(t, err)
+
+	block6 := miner3.MakeBlock(27 + 3*8)
+	err = bc3.PutBlock(block6)
+	assert.NoError(t, err)
+
+	block7 := miner2.MakeBlock(27 + 3*10)
+	err = bc2.PutBlock(block7)
+	assert.NoError(t, err)
+
+	block8 := miner2.MakeBlock(27 + 3*13)
+	err = bc2.PutBlock(block8)
+	assert.NoError(t, err)
+
+	block9 := miner3.MakeBlock(27 + 3*11)
+	err = bc3.PutBlock(block9)
+	assert.NoError(t, err)
+
+	//make futureBlock
+	err = bc1.PutBlockIfParentExist(block5)
+	assert.NoError(t, err)
+	<-bc1.MessageToRandomNode
+	assert.Equal(t, 1, bc1.FutureBlockSize())
+
+	err = bc1.PutBlockIfParentExist(block4)
+	assert.NoError(t, err)
+	<-bc1.MessageToRandomNode
+	assert.Equal(t, 2, bc1.FutureBlockSize())
+
+	err = bc1.PutBlockIfParentExist(block2)
+	assert.NoError(t, err)
+	<-bc1.MessageToRandomNode
+	assert.Equal(t, 3, bc1.FutureBlockSize())
+
+	err = bc1.PutBlockIfParentExist(block3)
+	assert.NoError(t, err)
+	//skip because the parent block is the same as block3
+	// <-bc1.MessageToRandomNode
+	assert.Equal(t, 3, bc1.FutureBlockSize())
+
+	err = bc1.PutBlockIfParentExist(block7)
+	assert.NoError(t, err)
+	<-bc1.MessageToRandomNode
+	assert.Equal(t, 4, bc1.FutureBlockSize())
+
+	//set LIB
+	bc1.SetLib(block7)
+
+	err = bc1.PutBlockIfParentExist(block6)
+	assert.NoError(t, err)
+	//skip because  block height is the same as lib height
+	// <-bc1.MessageToRandomNode
+	assert.Equal(t, 4, bc1.FutureBlockSize())
+
+	err = bc1.PutBlockIfParentExist(block8)
+	assert.NoError(t, err)
+	<-bc1.MessageToRandomNode
+	assert.Equal(t, 5, bc1.FutureBlockSize())
+
+	//set LIB 0
+	bc1.SetLib(bc1.GenesisBlock)
+
+	err = bc1.PutBlockIfParentExist(block6)
+	assert.NoError(t, err)
+	<-bc1.MessageToRandomNode
+	assert.Equal(t, 6, bc1.FutureBlockSize())
+
+	err = bc1.PutBlockIfParentExist(block9)
+	assert.NoError(t, err)
+	<-bc1.MessageToRandomNode
+	assert.Equal(t, 7, bc1.FutureBlockSize())
+
+	//set LIB
+	bc1.SetLib(block7)
+	bc1.RemoveFutureBlock()
+	//remain block8, 9
+	assert.Equal(t, 2, bc1.FutureBlockSize())
+}

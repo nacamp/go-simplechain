@@ -90,6 +90,7 @@ func (bcs *BlockChainService) receiveBlock(msg *net.Message, isNew bool) {
 	}
 	bc.Consensus.UpdateLIB()
 	bc.RemoveOrphanBlock()
+	bc.RemoveFutureBlock()
 	if isNew {
 		bcs.streamPool.BroadcastMessage(msg)
 	}
