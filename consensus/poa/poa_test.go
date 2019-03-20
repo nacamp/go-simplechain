@@ -39,7 +39,7 @@ func TestPoa(t *testing.T) {
 	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
 
 	//test MakeGenesisBlock in Setup
-	bc.Setup(cs, voters)
+	bc.Setup(cs, voters[:3])
 	state, _ := NewInitState(cs.bc.GenesisBlock.ConsensusState().RootHash(), 0, mstrg)
 	fmt.Println("0>>>>", common.HashToHex(cs.bc.GenesisBlock.ConsensusState().RootHash()))
 	_, err = state.Signer.Get(common.FromHex(tests.AddressHex0))
@@ -106,11 +106,18 @@ func NewPoaMiner(index int) *PoaMiner {
 
 	cs.SetupMining(common.HexToAddress(config.MinerAddress), wallet)
 	bc := core.NewBlockChain(mstrg, common.HexToAddress(config.Coinbase), uint64(config.MiningReward))
-	bc.Setup(cs, voters)
+	bc.Setup(cs, voters[:3])
 
 	tester := new(PoaMiner)
 	tester.Cs = cs
 	tester.Bc = bc
+	go func() {
+		for {
+			select {
+			case <-bc.LibCh:
+			}
+		}
+	}()
 	return tester
 }
 
@@ -128,7 +135,6 @@ func (m *PoaMiner) MakeBlock(time int) *core.Block {
 		block.SignWithSignature(sig)
 		cs.bc.PutBlockByCoinbase(block)
 		cs.bc.Consensus.UpdateLIB()
-		cs.bc.RemoveOrphanBlock()
 		return block
 	}
 	return nil
@@ -189,7 +195,7 @@ func TestVoteTransaction(t *testing.T) {
 	_ = bc2
 	_ = bc3
 
-	var candidate = common.HexToAddress("0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
+	var candidate = common.HexToAddress("0x11f75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
 	voter := []common.Address{tests.Address0, tests.Address1, tests.Address2}
 	signer := []*PoaMiner{miner1, miner2, miner3}
 	nonces := []uint64{1, 1, 1}

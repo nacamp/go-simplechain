@@ -124,6 +124,13 @@ func NewDposMiner(index int) *DposMiner {
 	tester.Cs = cs
 	tester.Bc = bc
 	tester.Turn = findTurn(cs.coinbase, 0)
+	go func() {
+		for {
+			select {
+			case <-bc.LibCh:
+			}
+		}
+	}()
 	return tester
 }
 
@@ -141,7 +148,7 @@ func (m *DposMiner) MakeBlock(time int) *core.Block {
 		block.SignWithSignature(sig)
 		cs.bc.PutBlockByCoinbase(block)
 		cs.bc.Consensus.UpdateLIB()
-		cs.bc.RemoveOrphanBlock()
+		// cs.bc.RemoveOrphanBlock()
 		return block
 	}
 	return nil
@@ -401,6 +408,7 @@ func TestUpdateLIBN1(t *testing.T) {
 	err = bc3.PutBlock(block3)
 	assert.NoError(t, err)
 	bc1.Consensus.UpdateLIB()
+
 	assert.Equal(t, block1.Hash(), bc1.Lib().Hash(), "")
 
 }
