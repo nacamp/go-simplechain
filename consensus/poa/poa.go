@@ -176,7 +176,6 @@ func (cs *Poa) loop() {
 				block.SignWithSignature(sig)
 				cs.bc.PutBlockByCoinbase(block)
 				cs.bc.Consensus.UpdateLIB()
-				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MsgNewBlock, block.BaseBlock)
 				cs.streamPool.BroadcastMessage(&message)
 			}

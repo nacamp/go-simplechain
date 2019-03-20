@@ -166,7 +166,6 @@ func (cs *Dpos) loop() {
 				block.SignWithSignature(sig)
 				cs.bc.PutBlockByCoinbase(block)
 				cs.bc.Consensus.UpdateLIB()
-				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MsgNewBlock, block.BaseBlock)
 				cs.streamPool.BroadcastMessage(&message)
 			}
@@ -239,8 +238,6 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	}
 	return nil
 }
-
-
 
 func (cs *Dpos) UpdateLIB() {
 	bc := cs.bc
