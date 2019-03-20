@@ -92,7 +92,7 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	ns.rpcServer = rpc.NewRpcServer(config.RpcAddress)
 	rpcService := &rpc.RpcService{}
 	rpcService.Setup(ns.rpcServer, config, ns.bc, ns.wallet)
-
+	ns.node.Setup(common.HashToHex(ns.bc.GenesisBlock.Hash()))
 	return &ns
 }
 
