@@ -93,4 +93,4 @@ Only Miners can vote to evict another miner or to elect a new miner and vote 1 i
 When a miner or candidate receives more than one-half (1/2) vote, he can mine or is evicted.
 
 ### Mining
-Miners can mined a block in their turn and blocks mined in order of over 1/2  become Last Irreversible Block
+Miners can mined a block in their turn and blocks mined in order of over (miners*2/3) +1  become Last Irreversible Block
