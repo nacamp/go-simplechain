@@ -59,6 +59,7 @@ func (bcs *BlockChainService) Start() {
 
 func (bcs *BlockChainService) loop() {
 	ticker := time.NewTicker(5 * time.Second)
+	bc := bcs.bc
 	for {
 		select {
 		case <-ticker.C:
@@ -69,6 +70,9 @@ func (bcs *BlockChainService) loop() {
 			bcs.streamPool.BroadcastMessage(msg)
 		case msg := <-bcs.bc.NewTXMessage:
 			bcs.BroadcastNewTXMessage(msg)
+		case <-bc.LibCh:
+			bc.RemoveOrphanBlock()
+			bc.RemoveFutureBlock()
 		}
 	}
 }
@@ -89,8 +93,6 @@ func (bcs *BlockChainService) receiveBlock(msg *net.Message, isNew bool) {
 		log.CLog().WithFields(logrus.Fields{"Code": msg.Code}).Warning(fmt.Sprintf("%+v", err))
 	}
 	bc.Consensus.UpdateLIB()
-	bc.RemoveOrphanBlock()
-	bc.RemoveFutureBlock()
 	if isNew {
 		bcs.streamPool.BroadcastMessage(msg)
 	}

@@ -36,6 +36,7 @@ type BlockChain struct {
 	MessageToRandomNode chan *net.Message
 	BroadcastMessage    chan *net.Message
 	NewTXMessage        chan *Transaction
+	LibCh               chan struct{}
 	tailGroup           *sync.Map
 	coinbase            common.Address
 	miningReward        uint64
@@ -52,6 +53,7 @@ func NewBlockChain(storage storage.Storage, coinbase common.Address, miningRewar
 		MessageToRandomNode: make(chan *net.Message, 1),
 		BroadcastMessage:    make(chan *net.Message, 1),
 		NewTXMessage:        make(chan *Transaction, 1),
+		LibCh:               make(chan struct{}, 1),
 		coinbase:            coinbase,
 		miningReward:        miningReward,
 	}
@@ -586,6 +588,7 @@ func (bc *BlockChain) SetLib(block *Block) {
 	bc.lib = block
 	bc.Storage.Put([]byte(libKey), block.Header.Hash[:])
 	bc.mu.Unlock()
+	bc.LibCh <- struct{}{}
 }
 
 func (bc *BlockChain) LoadLibFromStorage() {
