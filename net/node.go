@@ -11,6 +11,7 @@ import (
 	peer "github.com/libp2p/go-libp2p-peer"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
+	protocol "github.com/libp2p/go-libp2p-protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/nacamp/go-simplechain/log"
 	"github.com/sirupsen/logrus"
@@ -24,6 +25,7 @@ type Node struct {
 	host       host.Host
 	streamPool *PeerStreamPool
 	discovery  *Discovery
+	hash       string
 }
 
 func NewNode(port int, privKey crypto.PrivKey, streamPool *PeerStreamPool) *Node {
@@ -37,7 +39,8 @@ func NewNode(port int, privKey crypto.PrivKey, streamPool *PeerStreamPool) *Node
 	return _node
 }
 
-func (node *Node) Setup() {
+func (node *Node) Setup(hash string) {
+	node.hash = hash
 }
 
 func (node *Node) Start(seed string) {
@@ -77,7 +80,7 @@ func (node *Node) Start(seed string) {
 		}
 	}
 	go node.discovery.Start()
-	node.host.SetStreamHandler("/simplechain/0.0.1", node.HandleStream)
+	node.host.SetStreamHandler(protocol.ID(node.hash+"/0.0.1"), node.HandleStream)
 }
 
 func (node *Node) HandleStream(s libnet.Stream) {
@@ -96,7 +99,7 @@ func (node *Node) HandleStream(s libnet.Stream) {
 
 func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
 	peerStream, err := node.streamPool.GetStream(id)
-	if err == nil && peerStream.status != statusClosed {
+	if err == nil && !peerStream.IsClosed() {
 		return peerStream, nil
 	}
 	log.CLog().WithFields(logrus.Fields{
@@ -104,7 +107,7 @@ func (node *Node) Connect(id peer.ID, addr ma.Multiaddr) (*PeerStream, error) {
 	}).Warning("outbound")
 	// Always firt add id and addr at Peerstore
 	node.host.Peerstore().AddAddr(id, addr, pstore.PermanentAddrTTL)
-	s, err := node.host.NewStream(context.Background(), id, "/simplechain/0.0.1")
+	s, err := node.host.NewStream(context.Background(), id, protocol.ID(node.hash+"/0.0.1"))
 	if err != nil {
 		return nil, err
 	}

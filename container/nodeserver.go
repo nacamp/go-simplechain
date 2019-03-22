@@ -31,6 +31,11 @@ type NodeServer struct {
 }
 
 func NewNodeServer(config *cmd.Config) *NodeServer {
+	var err error
+	err = config.VerifyConsensus()
+	if err != nil {
+		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+	}
 	ns := NodeServer{config: config}
 
 	ns.streamPool = net.NewPeerStreamPool()
@@ -87,7 +92,7 @@ func NewNodeServer(config *cmd.Config) *NodeServer {
 	ns.rpcServer = rpc.NewRpcServer(config.RpcAddress)
 	rpcService := &rpc.RpcService{}
 	rpcService.Setup(ns.rpcServer, config, ns.bc, ns.wallet)
-
+	ns.node.Setup(common.HashToHex(ns.bc.GenesisBlock.Hash()))
 	return &ns
 }
 

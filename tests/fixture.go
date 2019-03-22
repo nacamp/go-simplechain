@@ -15,26 +15,45 @@ import (
 	"github.com/nacamp/go-simplechain/crypto"
 )
 
-/*
-    "voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
-                {"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
-                {"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
-}
-*/
+var AddressHex0 = string("0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9")
+var AddressHex1 = string("0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5")
+var AddressHex2 = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
+var AddressHex3 = string("0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44")
+var AddressHex4 = string("0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df")
+var AddressHex5 = string("0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
 
-var AddressHex0 = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
-var AddressHex1 = string("0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44")
-var AddressHex2 = string("0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
-
-var Keystore = map[string]string{ //0, 2, 1
-	AddressHex0: "0x8a21cd44e684dd2d8d9205b0bfb69339435c7bd016ebc21fddaddffd0d47ed63",
-	AddressHex1: "0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff",
-	AddressHex2: "0x47661aa6cccada84454842404ec0cca83760254191232f1d4cc11653d397ac2e",
+var Keystore = map[string]string{
+	AddressHex0: "0x9a84c5fb3c9136419f6408f5ccf065ef86e1b0cd09f0494c8c0aefc261b37536",
+	AddressHex1: "0xe17d66fb8ce7cabd6601a8b04d08fe14fed4720782a72524458bafba587ee1fe",
+	AddressHex2: "0x8a21cd44e684dd2d8d9205b0bfb69339435c7bd016ebc21fddaddffd0d47ed63",
+	AddressHex3: "0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff",
+	AddressHex4: "0x99cd17b1a9a303c5e6ac43d33e3fc1f86d3790f8e25564a1ad531da77a9482bc",
+	AddressHex5: "0x47661aa6cccada84454842404ec0cca83760254191232f1d4cc11653d397ac2e",
 }
+
+// var AddressHex0 = string("0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d")
+// var AddressHex1 = string("0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44")
+// var AddressHex2 = string("0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2")
+
+// var AddressHex3 = string("0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9")
+// var AddressHex4 = string("0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5")
+// var AddressHex5 = string("0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df")
+
+// var Keystore = map[string]string{ //0, 2, 1
+// 	AddressHex0: "0x8a21cd44e684dd2d8d9205b0bfb69339435c7bd016ebc21fddaddffd0d47ed63",
+// 	AddressHex1: "0xd7573bb27684e1911b5e8bfb3a553f860ce873562e64016fec0974a6163a5cff",
+// 	AddressHex2: "0x47661aa6cccada84454842404ec0cca83760254191232f1d4cc11653d397ac2e",
+// 	AddressHex3: "0x9a84c5fb3c9136419f6408f5ccf065ef86e1b0cd09f0494c8c0aefc261b37536",
+// 	AddressHex4: "0xe17d66fb8ce7cabd6601a8b04d08fe14fed4720782a72524458bafba587ee1fe",
+// 	AddressHex5: "0x99cd17b1a9a303c5e6ac43d33e3fc1f86d3790f8e25564a1ad531da77a9482bc",
+// }
 
 var Address0 = common.HexToAddress(AddressHex0)
 var Address1 = common.HexToAddress(AddressHex1)
 var Address2 = common.HexToAddress(AddressHex2)
+var Address3 = common.HexToAddress(AddressHex3)
+var Address4 = common.HexToAddress(AddressHex4)
+var Address5 = common.HexToAddress(AddressHex5)
 
 type trick int
 
@@ -45,6 +64,8 @@ const (
 )
 
 func MakeConfig() *cmd.Config {
+	saveWallet(AddressHex0, "password", "/var/tmp/simple/keystore1.dat")
+
 	configStr := `
 	{
 		"port"  : 9991,
@@ -53,9 +74,9 @@ func MakeConfig() *cmd.Config {
 		"db_path" : "/var/tmp/simple/simplechain",
 		"node_key_path" : "/var/tmp/simple/nodekey1",
 		"keystore_file" : "/var/tmp/simple/keystore1.dat",
-		"miner_address" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+		"miner_address" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
 		"miner_passphrase" : "password",
-		"coinbase" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+		"coinbase" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
 		"mining_reward" : 10,
 		"seeds" :  [""],
 		"consensus" : 
@@ -66,9 +87,14 @@ func MakeConfig() *cmd.Config {
 		"total_miners":3,
 		"difficulty"  :1000
         },
-		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
-					{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
-					{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
+		"voters" : [
+			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
+			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
+			{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":80 },
+			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":70 },
+			{"address":"0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df", "balance":60 },
+			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":50 }
+		]
 	}
 	`
 	contents := []byte(configStr)
@@ -78,6 +104,12 @@ func MakeConfig() *cmd.Config {
 }
 
 func NewConfig(turn int) *cmd.Config {
+	saveWallet(AddressHex0, "password", "/var/tmp/simple/keystore1.dat")
+	saveWallet(AddressHex1, "password", "/var/tmp/simple/keystore2.dat")
+	saveWallet(AddressHex2, "password", "/var/tmp/simple/keystore3.dat")
+	saveWallet(AddressHex3, "password", "/var/tmp/simple/keystore4.dat")
+	saveWallet(AddressHex4, "password", "/var/tmp/simple/keystore5.dat")
+	saveWallet(AddressHex5, "password", "/var/tmp/simple/keystore6.dat")
 	configStr := []string{
 		`
 	{
@@ -87,9 +119,9 @@ func NewConfig(turn int) *cmd.Config {
 		"db_path" : "/var/tmp/simple/simplechain",
 		"node_key_path" : "/var/tmp/simple/nodekey1",
 		"keystore_file" : "/var/tmp/simple/keystore1.dat",
-		"miner_address" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+		"miner_address" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
 		"miner_passphrase" : "password",
-		"coinbase" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+		"coinbase" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
 		"mining_reward" : 10,
 		"seeds" :  [""],
 		"consensus" : 
@@ -100,9 +132,14 @@ func NewConfig(turn int) *cmd.Config {
 		"total_miners":3,
 		"difficulty"  :1000
         },
-		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
-					{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
-					{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
+		"voters" : [
+			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
+			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
+			{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":80 },
+			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":70 },
+			{"address":"0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df", "balance":60 },
+			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":50 }
+		]
 	}
 	`,
 		`
@@ -113,9 +150,9 @@ func NewConfig(turn int) *cmd.Config {
 		"db_path" : "/var/tmp/simple/simplechain2",
 		"node_key_path" : "/var/tmp/simple/nodekey2",
 		"keystore_file" : "/var/tmp/simple/keystore2.dat",
-		"miner_address" : "0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44",
+		"miner_address" : "0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5",
 		"miner_passphrase" : "password",
-		"coinbase" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+		"coinbase" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
 		"mining_reward" : 10,
 		"seeds" :  ["/ip4/127.0.0.1/tcp/9991/ipfs/16Uiu2HAm7qHFiJPzG6bkKGtRuF9eaPSbp79xTdFKU3MwFmTMuGN7"],
 		"consensus" : 
@@ -126,9 +163,14 @@ func NewConfig(turn int) *cmd.Config {
 		"total_miners":3,
 		"difficulty"  :1000
         },
-		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
-			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
-			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
+		"voters" : [
+			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
+			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
+			{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":80 },
+			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":70 },
+			{"address":"0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df", "balance":60 },
+			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":50 }
+		]
 	}
 	`,
 		`
@@ -139,9 +181,9 @@ func NewConfig(turn int) *cmd.Config {
 		"db_path" : "/var/tmp/simple/simplechain3",
 		"node_key_path" : "/var/tmp/simple/nodekey3",
 		"keystore_file" : "/var/tmp/simple/keystore3.dat",
-		"miner_address" : "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2",
+		"miner_address" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
 		"miner_passphrase" : "password",
-		"coinbase" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+		"coinbase" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
 		"mining_reward" : 10,
 		"seeds" :  ["/ip4/127.0.0.1/tcp/9991/ipfs/16Uiu2HAm7qHFiJPzG6bkKGtRuF9eaPSbp79xTdFKU3MwFmTMuGN7"],
 		"consensus" : 
@@ -152,9 +194,107 @@ func NewConfig(turn int) *cmd.Config {
 		"total_miners":3,
 		"difficulty"  :1000
         },
-		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
-			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
-			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
+		"voters" : [
+			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
+			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
+			{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":80 },
+			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":70 },
+			{"address":"0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df", "balance":60 },
+			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":50 }
+		]
+	}
+	`,
+		`
+	{
+		"port"  : 9994,
+		"rpc_address" :"127.0.0.1:8084",
+		"enable_mining": true,
+		"db_path" : "/var/tmp/simple/simplechain4",
+		"node_key_path" : "/var/tmp/simple/nodekey4",
+		"keystore_file" : "/var/tmp/simple/keystore4.dat",
+		"miner_address" : "0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44",
+		"miner_passphrase" : "password",
+		"coinbase" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
+		"mining_reward" : 10,
+		"seeds" :  ["/ip4/127.0.0.1/tcp/9991/ipfs/16Uiu2HAm7qHFiJPzG6bkKGtRuF9eaPSbp79xTdFKU3MwFmTMuGN7"],
+		"consensus" : 
+        {
+        "name":"dpos", 
+        "period":3, 
+        "round":3, 
+		"total_miners":3,
+		"difficulty"  :1000
+        },
+		"voters" : [
+			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
+			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
+			{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":80 },
+			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":70 },
+			{"address":"0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df", "balance":60 },
+			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":50 }
+		]
+	}
+	`,
+		`
+	{
+		"port"  : 9995,
+		"rpc_address" :"127.0.0.1:8085",
+		"enable_mining": true,
+		"db_path" : "/var/tmp/simple/simplechain5",
+		"node_key_path" : "/var/tmp/simple/nodekey5",
+		"keystore_file" : "/var/tmp/simple/keystore4.da5",
+		"miner_address" : "0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df",
+		"miner_passphrase" : "password",
+		"coinbase" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
+		"mining_reward" : 10,
+		"seeds" :  ["/ip4/127.0.0.1/tcp/9991/ipfs/16Uiu2HAm7qHFiJPzG6bkKGtRuF9eaPSbp79xTdFKU3MwFmTMuGN7"],
+		"consensus" : 
+        {
+        "name":"dpos", 
+        "period":3, 
+        "round":3, 
+		"total_miners":3,
+		"difficulty"  :1000
+        },
+		"voters" : [
+			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
+			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
+			{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":80 },
+			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":70 },
+			{"address":"0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df", "balance":60 },
+			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":50 }
+		]
+	}
+	`,
+		`
+	{
+		"port"  : 9996,
+		"rpc_address" :"127.0.0.1:8086",
+		"enable_mining": true,
+		"db_path" : "/var/tmp/simple/simplechain6",
+		"node_key_path" : "/var/tmp/simple/nodekey6",
+		"keystore_file" : "/var/tmp/simple/keystore4.da6",
+		"miner_address" : "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2",
+		"miner_passphrase" : "password",
+		"coinbase" : "0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9",
+		"mining_reward" : 10,
+		"seeds" :  ["/ip4/127.0.0.1/tcp/9991/ipfs/16Uiu2HAm7qHFiJPzG6bkKGtRuF9eaPSbp79xTdFKU3MwFmTMuGN7"],
+		"consensus" : 
+        {
+        "name":"dpos", 
+        "period":3, 
+        "round":3, 
+		"total_miners":3,
+		"difficulty"  :1000
+        },
+		"voters" : [
+			{"address":"0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9", "balance":100 },
+			{"address":"0xba2a519022ce61342363aac00240184abfe5cb76f7ba4d1c5e419e0703881788b2c75ed5", "balance":90 },
+			{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":80 },
+			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":70 },
+			{"address":"0xd725b51583b7db7e6732d87b6fa402ee30189fa57bdb514ce1f1928dc87b02af34cfb7df", "balance":60 },
+			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":50 }
+		]
 	}
 	`,
 	}
@@ -163,6 +303,96 @@ func NewConfig(turn int) *cmd.Config {
 	json.Unmarshal([]byte(contents), config)
 	return config
 }
+
+// func NewConfig(turn int) *cmd.Config {
+// 	saveWallet(AddressHex0, "password", "/var/tmp/simple/keystore1.dat")
+// 	saveWallet(AddressHex1, "password", "/var/tmp/simple/keystore2.dat")
+// 	saveWallet(AddressHex2, "password", "/var/tmp/simple/keystore3.dat")
+// 	configStr := []string{
+// 		`
+// 	{
+// 		"port"  : 9991,
+// 		"rpc_address" :"127.0.0.1:8080",
+// 		"enable_mining": true,
+// 		"db_path" : "/var/tmp/simple/simplechain",
+// 		"node_key_path" : "/var/tmp/simple/nodekey1",
+// 		"keystore_file" : "/var/tmp/simple/keystore1.dat",
+// 		"miner_address" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+// 		"miner_passphrase" : "password",
+// 		"coinbase" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+// 		"mining_reward" : 10,
+// 		"seeds" :  [""],
+// 		"consensus" :
+//         {
+//         "name":"dpos",
+//         "period":3,
+//         "round":3,
+// 		"total_miners":3,
+// 		"difficulty"  :1000
+//         },
+// 		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
+// 					{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
+// 					{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
+// 	}
+// 	`,
+// 		`
+// 	{
+// 		"port"  : 9992,
+// 		"rpc_address" :"127.0.0.1:8082",
+// 		"enable_mining": true,
+// 		"db_path" : "/var/tmp/simple/simplechain2",
+// 		"node_key_path" : "/var/tmp/simple/nodekey2",
+// 		"keystore_file" : "/var/tmp/simple/keystore2.dat",
+// 		"miner_address" : "0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44",
+// 		"miner_passphrase" : "password",
+// 		"coinbase" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+// 		"mining_reward" : 10,
+// 		"seeds" :  ["/ip4/127.0.0.1/tcp/9991/ipfs/16Uiu2HAm7qHFiJPzG6bkKGtRuF9eaPSbp79xTdFKU3MwFmTMuGN7"],
+// 		"consensus" :
+//         {
+//         "name":"dpos",
+//         "period":3,
+//         "round":3,
+// 		"total_miners":3,
+// 		"difficulty"  :1000
+//         },
+// 		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
+// 			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
+// 			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
+// 	}
+// 	`,
+// 		`
+// 	{
+// 		"port"  : 9993,
+// 		"rpc_address" :"127.0.0.1:8083",
+// 		"enable_mining": true,
+// 		"db_path" : "/var/tmp/simple/simplechain3",
+// 		"node_key_path" : "/var/tmp/simple/nodekey3",
+// 		"keystore_file" : "/var/tmp/simple/keystore3.dat",
+// 		"miner_address" : "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2",
+// 		"miner_passphrase" : "password",
+// 		"coinbase" : "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d",
+// 		"mining_reward" : 10,
+// 		"seeds" :  ["/ip4/127.0.0.1/tcp/9991/ipfs/16Uiu2HAm7qHFiJPzG6bkKGtRuF9eaPSbp79xTdFKU3MwFmTMuGN7"],
+// 		"consensus" :
+//         {
+//         "name":"dpos",
+//         "period":3,
+//         "round":3,
+// 		"total_miners":3,
+// 		"difficulty"  :1000
+//         },
+// 		"voters" : [{"address":"0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d", "balance":100 },
+// 			{"address":"0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", "balance":20 },
+// 			{"address":"0xd182458d4f299f73f496b7025912b0688653dbef74bc98638cd73e7e9ca01f8e9d416e44", "balance":50 }]
+// 	}
+// 	`,
+// 	}
+// 	contents := []byte(configStr[turn])
+// 	config := &cmd.Config{}
+// 	json.Unmarshal([]byte(contents), config)
+// 	return config
+// }
 
 type signersAscending []common.Address
 
@@ -288,13 +518,21 @@ func MakeTransaction(from, to string, amount *big.Int, nonce uint64) *core.Trans
 	return tx
 }
 
-func MakeWallet() *account.Wallet {
-	wallet := account.NewWallet("./test_keystore.dat")
-	for _, priv := range Keystore {
-		key := new(account.Key)
-		key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
-		key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
-		wallet.StoreKey(key, "test")
-	}
-	return wallet
+// func MakeWallet() *account.Wallet {
+// 	wallet := account.NewWallet("./test_keystore.dat")
+// 	for _, priv := range keystore {
+// 		key := new(account.Key)
+// 		key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
+// 		key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
+// 		wallet.StoreKey(key, "test")
+// 	}
+// 	return wallet
+// }
+
+func saveWallet(addr, pwd, path string) {
+	key := new(account.Key)
+	key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(Keystore[addr]))
+	key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
+	w := account.NewWallet(path)
+	w.StoreKey(key, pwd)
 }

@@ -31,11 +31,12 @@ type BlockChain struct {
 	Storage             storage.Storage
 	TxPool              *TransactionPool
 	Consensus           Consensus
-	Lib                 *Block
-	Tail                *Block
+	lib                 *Block
+	tail                *Block
 	MessageToRandomNode chan *net.Message
 	BroadcastMessage    chan *net.Message
 	NewTXMessage        chan *Transaction
+	LibCh               chan struct{}
 	tailGroup           *sync.Map
 	coinbase            common.Address
 	miningReward        uint64
@@ -52,6 +53,7 @@ func NewBlockChain(storage storage.Storage, coinbase common.Address, miningRewar
 		MessageToRandomNode: make(chan *net.Message, 1),
 		BroadcastMessage:    make(chan *net.Message, 1),
 		NewTXMessage:        make(chan *Transaction, 1),
+		LibCh:               make(chan struct{}, 1),
 		coinbase:            coinbase,
 		miningReward:        miningReward,
 	}
@@ -371,18 +373,42 @@ func (bc *BlockChain) AddFutureBlock(block *Block) error {
 		"Height": block.Header.Height,
 		"hash":   common.HashToHex(block.Hash()),
 	}).Debug("Inserted block into  future blocks")
-	bc.futureBlocks.Add(block.Header.ParentHash, block)
-	if block.Header.Height > bc.Lib.Header.Height && block.Header.Height > uint64(1) {
-		msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
-		if err != nil {
-			return err
+	if _, ok := bc.futureBlocks.Peek(block.Header.ParentHash); ok {
+		return nil
+	}
+	if block.Header.Height > bc.Lib().Header.Height {
+		bc.futureBlocks.Add(block.Header.ParentHash, block)
+		if block.Header.Height > uint64(1) { //if parent hash is not genesis block
+			msg, err := net.NewRLPMessage(net.MsgMissingBlock, block.Header.ParentHash)
+			if err != nil {
+				return err
+			}
+			bc.MessageToRandomNode <- &msg
+			log.CLog().WithFields(logrus.Fields{
+				"Hash": common.HashToHex(block.Header.ParentHash),
+			}).Info("Request missing block")
 		}
-		bc.MessageToRandomNode <- &msg
-		log.CLog().WithFields(logrus.Fields{
-			"Hash": common.HashToHex(block.Header.ParentHash),
-		}).Info("Request missing block")
 	}
 	return nil
+}
+
+//for test
+func (bc *BlockChain) FutureBlockSize() int {
+	return bc.futureBlocks.Len()
+}
+
+func (bc *BlockChain) RemoveFutureBlock() {
+	for _, k := range bc.futureBlocks.Keys() {
+		if v, ok := bc.futureBlocks.Get(k); ok {
+			block := v.(*Block)
+			if bc.Lib().Header.Height >= block.Header.Height {
+				bc.futureBlocks.Remove(k)
+				log.CLog().WithFields(logrus.Fields{
+					"Height": block.Header.Height,
+				}).Info("Remove old futureBlock")
+			}
+		}
+	}
 }
 
 func encodeBlockHeight(number uint64) []byte {
@@ -392,9 +418,9 @@ func encodeBlockHeight(number uint64) []byte {
 }
 
 func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
+	parentBlock := bc.Tail()
 	bc.mu.Lock()
 	defer bc.mu.Unlock()
-	parentBlock := bc.Tail
 	h := &Header{
 		ParentHash: parentBlock.Hash(),
 		Height:     parentBlock.Header.Height + 1,
@@ -423,14 +449,12 @@ func (bc *BlockChain) NewBlockFromTail() (block *Block, err error) {
 }
 
 func (bc *BlockChain) RequestMissingBlocks() error {
-	bc.mu.RLock()
-	defer bc.mu.RUnlock()
 	maxHeight := uint64(18446744073709551615)
 	olderHeight := maxHeight
 	for _, k := range bc.futureBlocks.Keys() {
 		v, _ := bc.futureBlocks.Peek(k)
 		block := v.(*Block)
-		if bc.Tail.Header.Height < block.Header.Height && olderHeight > block.Header.Height {
+		if bc.Tail().Header.Height < block.Header.Height && olderHeight > block.Header.Height {
 			olderHeight = block.Header.Height
 		}
 	}
@@ -438,11 +462,11 @@ func (bc *BlockChain) RequestMissingBlocks() error {
 		return nil
 	}
 	var blockRange [2]uint64
-	blockRange[0] = bc.Tail.Header.Height + 1
+	blockRange[0] = bc.Tail().Header.Height + 1
 	blockRange[1] = olderHeight
 	//request max 100 blocks
-	if olderHeight-bc.Tail.Header.Height > 100 {
-		blockRange[1] = bc.Tail.Header.Height + 100
+	if olderHeight-bc.Tail().Header.Height > 100 {
+		blockRange[1] = bc.Tail().Header.Height + 100
 	}
 
 	msg, err := net.NewRLPMessage(net.MsgMissingBlocks, blockRange)
@@ -492,13 +516,11 @@ func (bc *BlockChain) RequestMissingBlocks() error {
 // }
 
 func (bc *BlockChain) RemoveOrphanBlock() {
-	bc.mu.RLock()
-	TailTxs := bc.Tail.TransactionState
-	bc.mu.RUnlock()
+	TailTxs := bc.Tail().TransactionState
 	bc.tailGroup.Range(func(key, value interface{}) bool {
 		tail := value.(*Block)
 		// var err error
-		if bc.Lib.Header.Height >= tail.Header.Height {
+		if bc.Lib().Header.Height >= tail.Header.Height {
 			validBlock := bc.GetBlockByHeight(tail.Header.Height)
 			if validBlock == nil {
 				return true
@@ -528,12 +550,12 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 }
 
 func (bc *BlockChain) RebuildBlockHeight() error {
-	block := bc.Tail
+	block := bc.Tail()
 	if block.Header.Height == 0 {
 		return nil
 	}
 	for {
-		if bc.Lib.Header.Height+1 == block.Header.Height { //block.Hash() == bc.Lib.Hash()
+		if bc.Lib().Header.Height+1 == block.Header.Height { //block.Hash() == bc.Lib.Hash()
 			break
 		}
 		block = bc.GetBlockByHash(block.Header.ParentHash)
@@ -555,9 +577,18 @@ func (bc *BlockChain) putBlockToStorage(block *Block) error {
 	return nil
 }
 
+func (bc *BlockChain) Lib() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+	return bc.lib
+}
+
 func (bc *BlockChain) SetLib(block *Block) {
-	bc.Lib = block
+	bc.mu.Lock()
+	bc.lib = block
 	bc.Storage.Put([]byte(libKey), block.Header.Hash[:])
+	bc.mu.Unlock()
+	bc.LibCh <- struct{}{}
 }
 
 func (bc *BlockChain) LoadLibFromStorage() {
@@ -583,22 +614,32 @@ func (bc *BlockChain) LoadLibFromStorage() {
 	}
 	block.SetConsensusState(consensusState)
 
-	bc.Lib = block
+	bc.SetLib(block)
+}
+
+func (bc *BlockChain) Tail() *Block {
+	bc.mu.RLock()
+	defer bc.mu.RUnlock()
+	return bc.tail
+
 }
 
 func (bc *BlockChain) SetTail(block *Block) {
-	if bc.Tail == nil {
-		bc.Tail = block
-		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
-	}
-	if block.Header.Height >= bc.Tail.Header.Height {
+	if bc.tail == nil {
 		bc.mu.Lock()
-		bc.Tail = block
+		bc.tail = block
+		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
 		bc.mu.Unlock()
+	}
+	if block.Header.Height >= bc.tail.Header.Height {
+		bc.mu.Lock()
+		bc.tail = block
 		bc.Storage.Put([]byte(tailKey), block.Header.Hash[:])
 		log.CLog().WithFields(logrus.Fields{
 			"Height": block.Header.Height,
 		}).Debug("Tail")
+		bc.mu.Unlock()
+		//TODO: tow to call by channel
 		bc.RebuildBlockHeight()
 	}
 }
@@ -627,7 +668,7 @@ func (bc *BlockChain) LoadTailFromStorage() {
 	}
 	block.SetConsensusState(consensusState)
 
-	bc.Tail = block
+	bc.SetTail(block)
 }
 
 func (bc *BlockChain) RemoveTxInPool(block *Block) {

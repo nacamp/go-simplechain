@@ -63,12 +63,12 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		}
 	}
 	if electedTime == now || minerGroup[turn] == cs.coinbase {
-		parent := bc.GetBlockByHash(bc.Tail.Header.ParentHash)
-
+		//parent := bc.GetBlockByHash(bc.Tail().Header.ParentHash)
+		parent := bc.Tail()
 		if (parent != nil) && (now-parent.Header.Time < cs.period) { //(3 * 3)
 			log.CLog().WithFields(logrus.Fields{
 				"address": common.AddressToHex(cs.coinbase),
-			}).Warning("Interval is short")
+			}).Debug("Interval is short")
 			return nil
 		}
 
@@ -152,14 +152,8 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 	}
 }
 
-func (dpos *Dpos) Start() {
-	if dpos.enableMining {
-		go dpos.loop()
-	}
-}
-
 func (cs *Dpos) loop() {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	for {
 		select {
 		case now := <-ticker.C:
@@ -172,11 +166,18 @@ func (cs *Dpos) loop() {
 				block.SignWithSignature(sig)
 				cs.bc.PutBlockByCoinbase(block)
 				cs.bc.Consensus.UpdateLIB()
-				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MsgNewBlock, block.BaseBlock)
 				cs.streamPool.BroadcastMessage(&message)
 			}
 		}
+	}
+}
+
+//----------    Consensus  ----------------//
+
+func (dpos *Dpos) Start() {
+	if dpos.enableMining {
+		go dpos.loop()
 	}
 }
 
@@ -238,15 +239,13 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 	return nil
 }
 
-//----------    Consensus  ----------------//
-
 func (cs *Dpos) UpdateLIB() {
 	bc := cs.bc
-	block := bc.Tail
+	block := bc.Tail()
 	//FIXME: consider timestamp, changed minerGroup
 	miners := make(map[common.Address]bool)
 	turn := 1
-	for bc.Lib.Hash() != block.Hash() {
+	for bc.Lib().Hash() != block.Hash() {
 		miners[block.Header.Coinbase] = true
 		if turn == int(cs.totalMiners) {
 			if len(miners) == int(cs.totalMiners) {

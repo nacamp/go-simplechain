@@ -15,6 +15,7 @@ import (
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/nacamp/go-simplechain/log"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -49,12 +50,12 @@ type Config struct {
 }
 
 func MakeVoterAccountsFromConfig(config *Config) (voters []*core.Account) {
-	voters = make([]*core.Account, 3)
-	for i, voter := range config.Voters {
+	voters = make([]*core.Account, 0)
+	for _, voter := range config.Voters {
 		account := core.NewAccount()
 		copy(account.Address[:], common.FromHex(voter.Address))
 		account.Balance = voter.Balance
-		voters[i] = account
+		voters = append(voters, account)
 	}
 	return voters
 }
@@ -129,4 +130,23 @@ func (c *Config) NodePrivateKey() (key crypto.PrivKey, err error) {
 		}
 		return nil, nil
 	}
+}
+
+func (c *Config) VerifyConsensus() (err error) {
+	if c.Consensus.Name == "dpos" {
+		if c.Consensus.Period <= 0 {
+			return errors.New("Period must be greater than 0")
+		}
+		if c.Consensus.Round <= 0 {
+			return errors.New("Round must be greater than 0")
+		}
+		if c.Consensus.TotalMiners <= 0 || c.Consensus.TotalMiners%3 != 0 {
+			return errors.New("TotalMiners must be a multiple of three")
+		}
+		if c.Consensus.TotalMiners > uint64(len(c.Voters)) {
+			return errors.New("The number of voters  must be  equal to or greater than TotalMiners")
+		}
+
+	}
+	return nil
 }

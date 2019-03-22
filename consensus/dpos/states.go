@@ -24,6 +24,8 @@ type Candidate struct {
 	Balance *big.Int
 }
 
+var _stateShuffle func() //debugging
+
 type DposState struct {
 	mu          sync.RWMutex
 	Candidate   *trie.Trie
@@ -151,7 +153,11 @@ func (ds *DposState) GetNewRoundMiners(electedTime uint64, totalMiners uint64) (
 	for _, v := range candidates {
 		candidateAddrs = append(candidateAddrs, v.Address)
 	}
-	shuffle(candidateAddrs, int64(electedTime))
+	if _stateShuffle == nil {
+		randomShuffle(candidateAddrs, int64(electedTime))
+	} else {
+		_stateShuffle()
+	}
 	return candidateAddrs, nil
 }
 
@@ -318,7 +324,7 @@ func NewInitState(rootHash common.Hash, blockNumber uint64, storage storage.Stor
 	return state, nil
 }
 
-func shuffle(slice []common.Address, seed int64) {
+func randomShuffle(slice []common.Address, seed int64) {
 	r := rand.New(rand.NewSource(seed))
 	for len(slice) > 0 {
 		n := len(slice)
@@ -326,4 +332,7 @@ func shuffle(slice []common.Address, seed int64) {
 		slice[n-1], slice[randIndex] = slice[randIndex], slice[n-1]
 		slice = slice[:n-1]
 	}
+}
+
+func noneShuffle() {
 }

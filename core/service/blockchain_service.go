@@ -59,6 +59,7 @@ func (bcs *BlockChainService) Start() {
 
 func (bcs *BlockChainService) loop() {
 	ticker := time.NewTicker(5 * time.Second)
+	bc := bcs.bc
 	for {
 		select {
 		case <-ticker.C:
@@ -69,6 +70,9 @@ func (bcs *BlockChainService) loop() {
 			bcs.streamPool.BroadcastMessage(msg)
 		case msg := <-bcs.bc.NewTXMessage:
 			bcs.BroadcastNewTXMessage(msg)
+		case <-bc.LibCh:
+			bc.RemoveOrphanBlock()
+			bc.RemoveFutureBlock()
 		}
 	}
 }
@@ -89,7 +93,6 @@ func (bcs *BlockChainService) receiveBlock(msg *net.Message, isNew bool) {
 		log.CLog().WithFields(logrus.Fields{"Code": msg.Code}).Warning(fmt.Sprintf("%+v", err))
 	}
 	bc.Consensus.UpdateLIB()
-	bc.RemoveOrphanBlock()
 	if isNew {
 		bcs.streamPool.BroadcastMessage(msg)
 	}
@@ -156,6 +159,7 @@ func (bcs *BlockChainService) SendMissingBlock(hash common.Hash, peerID peer.ID)
 		ps, err := bcs.streamPool.GetStream(peerID)
 		if err != nil {
 			log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
+			return
 		}
 		ps.SendMessage(&message)
 		log.CLog().WithFields(logrus.Fields{
@@ -174,6 +178,7 @@ func (bcs *BlockChainService) SendMissingBlocks(blockRange [2]uint64, peerID pee
 	ps, err := bcs.streamPool.GetStream(peerID)
 	if err != nil {
 		log.CLog().WithFields(logrus.Fields{}).Warning(fmt.Sprintf("%+v", err))
+		return
 	}
 	for i := blockRange[0]; i <= blockRange[1]; i++ {
 		block := bc.GetBlockByHeight(i)
@@ -186,7 +191,7 @@ func (bcs *BlockChainService) SendMissingBlocks(blockRange [2]uint64, peerID pee
 			}).Info("Send missing block")
 		} else {
 			log.CLog().WithFields(logrus.Fields{
-				"Hash": common.HashToHex(block.Hash()),
+				"Height": i,
 			}).Info("We don't have missing block")
 		}
 	}

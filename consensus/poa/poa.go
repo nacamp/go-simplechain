@@ -60,7 +60,8 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	}
 	turn := (now % (uint64(len(miners)) * cs.period)) / cs.period
 	if miners[turn] == cs.coinbase {
-		parent := bc.GetBlockByHash(block.Header.ParentHash)
+		//parent := bc.GetBlockByHash(block.Header.ParentHash)
+		parent := bc.Tail()
 
 		//if (parent != nil) && (now-parent.Header.Time < ((uint64(len(miners)) * cs.Period) - 1)) { //(3 * 3)
 		if (parent != nil) && (now-parent.Header.Time < cs.period) { //(3 * 3)
@@ -161,12 +162,6 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 	}
 }
 
-func (cs *Poa) Start() {
-	if cs.enableMining {
-		go cs.loop()
-	}
-}
-
 func (cs *Poa) loop() {
 	ticker := time.NewTicker(1 * time.Second)
 	for {
@@ -181,7 +176,6 @@ func (cs *Poa) loop() {
 				block.SignWithSignature(sig)
 				cs.bc.PutBlockByCoinbase(block)
 				cs.bc.Consensus.UpdateLIB()
-				cs.bc.RemoveOrphanBlock()
 				message, _ := net.NewRLPMessage(net.MsgNewBlock, block.BaseBlock)
 				cs.streamPool.BroadcastMessage(&message)
 			}
@@ -208,9 +202,16 @@ func (cs *Poa) getMinerSize(block *core.Block) (minerSize int, err error) {
 }
 
 //----------    Consensus  ----------------//
+
+func (cs *Poa) Start() {
+	if cs.enableMining {
+		go cs.loop()
+	}
+}
+
 func (cs *Poa) UpdateLIB() {
 	bc := cs.bc
-	block := bc.Tail
+	block := bc.Tail()
 	//FIXME: consider timestamp
 	miners := make(map[common.Address]bool)
 	turn := 1
@@ -228,7 +229,7 @@ func (cs *Poa) UpdateLIB() {
 		}).Debug("At least 3 node are needed")
 		return
 	}
-	for bc.Lib.Hash() != block.Hash() {
+	for bc.Lib().Hash() != block.Hash() {
 		miners[block.Header.Coinbase] = true
 		size, err := cs.getMinerSize(block)
 		if err != nil {
@@ -239,7 +240,7 @@ func (cs *Poa) UpdateLIB() {
 			return
 		}
 		if turn == firstMinerSize {
-			if len(miners) == firstMinerSize*2/3+1 {
+			if len(miners) >= firstMinerSize*2/3+1 {
 				bc.SetLib(block)
 				log.CLog().WithFields(logrus.Fields{
 					"Height": block.Header.Height,

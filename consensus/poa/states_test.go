@@ -48,7 +48,7 @@ func TestState(t *testing.T) {
 	assert.Equal(t, common.FromHex(tests.AddressHex2), addresses[2][:])
 
 	//test ValidVote
-	var newAddr = "0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2"
+	var newAddr = "0x11f75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2"
 	assert.False(t, state.ValidVote(common.HexToAddress(newAddr), false))
 	assert.False(t, state.ValidVote(common.HexToAddress(tests.AddressHex0), true))
 	assert.True(t, state.ValidVote(common.HexToAddress(newAddr), true))
@@ -88,7 +88,7 @@ func TestState(t *testing.T) {
 
 	//test sort and size in GetMiners
 	signers, err := state.GetMiners()
-	assert.Equal(t, "0x1df75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", common.AddressToHex(signers[0]))
+	assert.Equal(t, "0x11f75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2", common.AddressToHex(signers[0]))
 	assert.Equal(t, tests.AddressHex0, common.AddressToHex(signers[1]))
 	assert.Equal(t, tests.AddressHex1, common.AddressToHex(signers[2]))
 	assert.Equal(t, tests.AddressHex2, common.AddressToHex(signers[3]))

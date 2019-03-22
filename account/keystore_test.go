@@ -69,3 +69,16 @@ func TestUnlock(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	assert.Equal(t, 0, len(w.unlockKeys))
 }
+
+func TestGet(t *testing.T) {
+	/*
+		// ./simple account new -config ../../conf/node6.json
+		var AddressHex = string("0x1a8dd828a43acdcd9f1286ab437b91e43482bd5dd7a92a2631671554f5179b40d21e46a9")
+
+		path := "/Users/jimmy/go/src/github.com/nacamp/data/keystore4.dat"
+		w := NewWallet(path)
+		key, err := w.GetKey(common.HexToAddress(AddressHex), "password")
+		fmt.Println(err)
+		fmt.Println(common.BytesToHex(crypto.PrivateKeyToByte(key.PrivateKey)))
+	*/
+}
