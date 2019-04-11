@@ -208,12 +208,9 @@ func (accs *AccountState) RootHash() (hash common.Hash) {
 
 //-------------------- TransactionState
 func NewTransactionState(storage storage.Storage) (*TransactionState, error) {
-	//TODO: how to do
-	//return NewTransactionStateRootHash(nil, storage)
 	tr, err := trie.NewTrie(nil, storage, false)
 	return &TransactionState{
 		Trie: tr,
-		// Storage: storage,
 	}, err
 }
 
@@ -221,12 +218,10 @@ func NewTransactionStateRootHash(rootHash common.Hash, storage storage.Storage) 
 	tr, err := trie.NewTrie(rootHash[:], storage, false)
 	return &TransactionState{
 		Trie: tr,
-		// Storage: storage,
 	}, err
 }
 
 func (txs *TransactionState) Clone() (*TransactionState, error) {
-	// storage, _ := storage.NewMemoryStorage()
 	tr, err := txs.Trie.Clone()
 	return &TransactionState{
 		Trie: tr,

@@ -203,7 +203,7 @@ func (d *Discovery) onMsgHello() {
 		select {
 		case ch := <-d.HandshakeSucceedCh:
 			message := ch.(*Message)
-			//TODO: check whhether port is dynamic port or
+			//TODO: check whether port is dynamic port or
 			// data := string("")
 			// rlp.DecodeBytes(message.Payload, &data)
 			// log.CLog().WithFields(logrus.Fields{
@@ -354,7 +354,6 @@ func (d *Discovery) lookup(peerID peer.ID) error {
 }
 
 func (d *Discovery) randomLookup() error {
-	//TODO: rlock
 	peers := d.routingTable.ListPeers()
 	size := len(peers)
 	if size == 0 {
