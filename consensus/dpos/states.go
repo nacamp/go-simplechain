@@ -35,7 +35,6 @@ type DposState struct {
 	ElectedTime uint64
 }
 
-//TODO:prefix for candidate address
 func (cs *DposState) Stake(voter, candidate common.Address, amount *big.Int) (err error) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
@@ -208,7 +207,6 @@ func (ds *DposState) Get(blockNumber uint64) (stateHash *StateHash, err error) {
 	if err != nil {
 		return nil, err
 	}
-	//TODO: check minimum key size
 	encbytes, err := ds.Miner.Get(crypto.Sha3b256(keyEncodedBytes))
 	if err != nil {
 		return nil, err

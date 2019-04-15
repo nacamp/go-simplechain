@@ -26,12 +26,11 @@ type Header struct {
 	//not need signature at pow
 	//need signature, to prevent malicious behavior like to skip deliberately block in the previous turn
 	Signature  common.Signature
-	Difficulty *big.Int
 	Nonce      uint64
+	Difficulty *big.Int
 }
 
 // Simple Block
-//TODO: refactor BaseBlock, Block
 type BaseBlock struct {
 	Header       *Header
 	Transactions []*Transaction
@@ -69,7 +68,6 @@ func (b *Block) MakeHash() {
 
 func (b *Block) CalcHash() (hash common.Hash) {
 	hasher := sha3.New256()
-	//TODO: add Difficulty  *big.Int
 	rlp.Encode(hasher, []interface{}{
 		b.Header.ParentHash,
 		b.Header.Coinbase,
@@ -78,6 +76,7 @@ func (b *Block) CalcHash() (hash common.Hash) {
 		b.Header.AccountHash,
 		b.Header.TransactionHash,
 		b.Header.ConsensusHash,
+		b.Header.Difficulty,
 	})
 	hasher.Sum(hash[:0])
 	return hash

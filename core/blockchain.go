@@ -198,7 +198,6 @@ func (bc *BlockChain) PutState(block *Block) error {
 
 	bc.RewardForCoinbase(block)
 
-	//TODO: check double spending ?
 	if err := bc.ExecuteTransaction(block); err != nil {
 		return err
 	}
@@ -223,7 +222,7 @@ func (bc *BlockChain) PutState(block *Block) error {
 }
 
 func (bc *BlockChain) RewardForCoinbase(block *Block) {
-	//FIXME: return nil when using Clone
+	//return nil when using Clone ?
 	accs := block.AccountState //NewAccountStateRootHash(parentBlock.Header.AccountHash, bc.Storage)
 	account := accs.GetAccount(block.Header.Coinbase)
 	if account == nil { // At first, genesisblock
@@ -482,39 +481,6 @@ func (bc *BlockChain) RequestMissingBlocks() error {
 	return nil
 }
 
-//TODO: change to request block chunk
-// func (bc *BlockChain) RequestMissingBlock() error {
-// 	//comment
-// 	// missigBlock := make(map[uint64]bool)
-// 	// for _, k := range bc.futureBlocks.Keys() {
-// 	// 	v, _ := bc.futureBlocks.Peek(k)
-// 	// 	block := v.(*Block)
-// 	// 	missigBlock[block.Header.Height] = true
-// 	// }
-// 	// var keys []int
-// 	// for k := range missigBlock {
-// 	// 	keys = append(keys, int(k))
-// 	// }
-// 	// sort.Ints(keys)
-// 	// if len(keys) == 0 {
-// 	// 	return nil
-// 	// }
-// 	// bc.mu.RLock()
-// 	// defer bc.mu.RUnlock()
-// 	// //TODO: request chunk blocks
-// 	// for i := bc.Tail.Header.Height + 1; i < uint64(keys[0]); i++ {
-// 	// 	msg, err := net.NewRLPMessage(net.MsgMissingBlock, uint64(i))
-// 	// 	if err != nil {
-// 	// 		return err
-// 	// 	}
-// 	// 	bc.MessageToRandomNode <- &msg
-// 	// 	log.CLog().WithFields(logrus.Fields{
-// 	// 		"Height": i,
-// 	// 	}).Info("Request missing block")
-// 	// }
-// 	return nil
-// }
-
 func (bc *BlockChain) RemoveOrphanBlock() {
 	TailTxs := bc.Tail().TransactionState
 	bc.tailGroup.Range(func(key, value interface{}) bool {
@@ -639,7 +605,6 @@ func (bc *BlockChain) SetTail(block *Block) {
 			"Height": block.Header.Height,
 		}).Debug("Tail")
 		bc.mu.Unlock()
-		//TODO: tow to call by channel
 		bc.RebuildBlockHeight()
 	}
 }

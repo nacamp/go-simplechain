@@ -119,7 +119,6 @@ func (cs *Pow) MakeBlock(now uint64) *core.Block {
 	block.Header.Difficulty = calcDifficulty(now, bc.Tail().Header)
 	block.Header.Coinbase = cs.coinbase
 
-	//TODO: check double spending ?
 	block.Transactions = make([]*core.Transaction, 0)
 	accs := block.AccountState
 	noncePool := make(map[common.Address][]*core.Transaction)
@@ -128,9 +127,7 @@ func (cs *Pow) MakeBlock(now uint64) *core.Block {
 		if tx == nil {
 			break
 		}
-		//TODO: remove code duplicattion in ExecuteTransaction
 		fromAccount := accs.GetAccount(tx.From)
-		//TODO: check at txpool
 		if fromAccount == nil {
 			log.CLog().WithFields(logrus.Fields{
 				"Address": common.AddressToHex(tx.From),
@@ -251,12 +248,10 @@ func (cs *Pow) Verify(block *core.Block) (err error) {
 	return errors.New("not solved")
 }
 
-//TODO: How to use lib
 func (cs *Pow) UpdateLIB() {
 	return
 }
 
-// not use this at GenesisBlock
 func (cs *Pow) SaveState(block *core.Block) (err error) {
 	return nil
 }
@@ -265,7 +260,6 @@ func (c *Pow) ConsensusType() string {
 	return "POW"
 }
 
-//TODO: What result to return
 func (cs *Pow) LoadState(block *core.Block) (state core.ConsensusState, err error) {
 	return &PowState{}, nil
 }
