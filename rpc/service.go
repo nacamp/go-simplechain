@@ -10,6 +10,8 @@ import (
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/rlp"
 
+	// "github.com/nacamp/go-simplechain/rlp"
+
 	"github.com/intel-go/fastjson"
 
 	"github.com/nacamp/go-simplechain/common"
@@ -17,43 +19,35 @@ import (
 	"github.com/osamingo/jsonrpc"
 )
 
-//FIXME: temporary service
+type JsonTx struct {
+	From    string       `json:"from"`
+	To      string       `json:"to"`
+	Amount  string       `json:"amount"`
+	Nonce   string       `json:"nonce"`
+	Payload *JsonPayload `json:"payload"`
+}
 
-// accounts >>>>>>>>>>>
+type JsonPayload struct {
+	Code string `json:"code"`
+	Data string `json:"data"`
+}
+
+type JsonAccount struct {
+	Address  string `json:"address"`
+	Password string `json:"password"`
+	Timeout  int    `json:"timeout"`
+}
+
 type AccountsHandler struct {
 	config *cmd.Config
 }
 
-func NewAccountsHandler(config *cmd.Config) *AccountsHandler {
-	return &AccountsHandler{config: config}
-}
-func (h *AccountsHandler) Name() string {
-	return "accounts"
-}
 func (h *AccountsHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
 	return []string{h.config.MinerAddress}, nil
 }
-func (h *AccountsHandler) Params() interface{} {
-	return []string{}
-}
-func (h *AccountsHandler) Result() interface{} {
-	return []string{}
-}
 
-// accounts <<<<<<<<<<
-
-// getBalance >>>>>>>>>>>
 type GetBalanceHandler struct {
 	bc *core.BlockChain
-}
-
-func NewGetBalanceHandler(bc *core.BlockChain) *GetBalanceHandler {
-
-	return &GetBalanceHandler{bc: bc}
-}
-
-func (h *GetBalanceHandler) Name() string {
-	return "getBalance"
 }
 
 func (h *GetBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
@@ -65,27 +59,8 @@ func (h *GetBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.Raw
 	return account.Balance.String(), nil
 }
 
-func (h *GetBalanceHandler) Params() interface{} {
-	return []string{}
-}
-func (h *GetBalanceHandler) Result() interface{} {
-	return ""
-}
-
-// getBalance <<<<<<<<<<
-
-// getTransactionCount >>>>>>>>>>>
 type GetTransactionCountHandler struct {
 	bc *core.BlockChain
-}
-
-func NewGetTransactionCountHandler(bc *core.BlockChain) *GetTransactionCountHandler {
-
-	return &GetTransactionCountHandler{bc: bc}
-}
-
-func (h *GetTransactionCountHandler) Name() string {
-	return "getTransactionCount"
 }
 
 func (h *GetTransactionCountHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
@@ -97,45 +72,13 @@ func (h *GetTransactionCountHandler) ServeJSONRPC(c context.Context, params *fas
 	return strconv.FormatUint(account.Nonce, 10), nil
 }
 
-func (h *GetTransactionCountHandler) Params() interface{} {
-	return []string{}
-}
-func (h *GetTransactionCountHandler) Result() interface{} {
-	return ""
-}
-
-// getTransactionCount <<<<<<<<<<
-
-// sendTransaction >>>>>>>>>>>
-type TempTx struct {
-	From    string       `json:"from"`
-	To      string       `json:"to"`
-	Amount  string       `json:"amount"`
-	Nonce   string       `json:"nonce"`
-	Payload *TempPayload `json:"payload"`
-}
-
-type TempPayload struct {
-	Code string `json:"code"`
-	Data string `json:"data"`
-}
-
 type SendTransactionHandler struct {
 	bc *core.BlockChain
 	w  *account.Wallet
 }
 
-func NewSendTransactionHandler(bc *core.BlockChain, w *account.Wallet) *SendTransactionHandler {
-
-	return &SendTransactionHandler{bc: bc, w: w}
-}
-
-func (h *SendTransactionHandler) Name() string {
-	return "sendTransaction"
-}
-
 func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-	var p TempTx
+	var p JsonTx
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
@@ -164,27 +107,8 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	return common.HashToHex(tx.Hash), nil
 }
 
-func (h *SendTransactionHandler) Params() interface{} {
-	return TempTx{}
-}
-func (h *SendTransactionHandler) Result() interface{} {
-	return ""
-}
-
-// sendTransaction <<<<<<<<<<
-
-// getTransactionByHash >>>>>>>>>>>
 type GetTransactionByHashHandler struct {
 	bc *core.BlockChain
-}
-
-func NewGetTransactionByHashHandler(bc *core.BlockChain) *GetTransactionByHashHandler {
-
-	return &GetTransactionByHashHandler{bc: bc}
-}
-
-func (h *GetTransactionByHashHandler) Name() string {
-	return "getTransactionByHash"
 }
 
 func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
@@ -194,7 +118,7 @@ func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fa
 	}
 	tx := h.bc.Tail().TransactionState.GetTransaction(common.HexToHash(p[0]))
 
-	rtx := &TempTx{}
+	rtx := &JsonTx{}
 	rtx.From = common.AddressToHex(tx.From)
 	rtx.To = common.AddressToHex(tx.To)
 	rtx.Nonce = strconv.FormatUint(tx.Nonce, 10)
@@ -202,31 +126,8 @@ func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fa
 	return rtx, nil
 }
 
-func (h *GetTransactionByHashHandler) Params() interface{} {
-	return []string{}
-}
-func (h *GetTransactionByHashHandler) Result() interface{} {
-	return TempTx{}
-}
-
-// getTransactionByHash <<<<<<<<<<
-
-// newAccount >>>>>>>>>>>
-// type TempAccount struct {
-// 	Address  string `json:"address"`
-// 	Password string `json:"password"`
-// }
 type NewAccountHandler struct {
 	w *account.Wallet
-}
-
-func NewNewAccountHandler(w *account.Wallet) *NewAccountHandler {
-
-	return &NewAccountHandler{w: w}
-}
-
-func (h *NewAccountHandler) Name() string {
-	return "newAccount"
 }
 
 func (h *NewAccountHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
@@ -241,35 +142,12 @@ func (h *NewAccountHandler) ServeJSONRPC(c context.Context, params *fastjson.Raw
 	return common.AddressToHex(key.Address), nil
 }
 
-func (h *NewAccountHandler) Params() interface{} {
-	return []string{}
-}
-func (h *NewAccountHandler) Result() interface{} {
-	return ""
-}
-
-// newAccount <<<<<<<<<<
-
-// unlock >>>>>>>>>>>
-type TempAccount struct {
-	Address  string `json:"address"`
-	Password string `json:"password"`
-	Timeout  int    `json:"timeout"`
-}
 type UnlockHandler struct {
 	w *account.Wallet
 }
 
-func NewUnlockHandler(w *account.Wallet) *UnlockHandler {
-	return &UnlockHandler{w: w}
-}
-
-func (h *UnlockHandler) Name() string {
-	return "unlock"
-}
-
 func (h *UnlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-	var p TempAccount
+	var p JsonAccount
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
@@ -280,28 +158,19 @@ func (h *UnlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMess
 	return "", nil
 }
 
-func (h *UnlockHandler) Params() interface{} {
-	return TempAccount{}
-}
-func (h *UnlockHandler) Result() interface{} {
-	return ""
-}
-
-// unlock <<<<<<<<<<
-
 type RpcService struct {
 	server *RpcServer
 }
 
 func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.BlockChain, w *account.Wallet) {
 	rs.server = server
-	rs.server.RegisterHandler(NewAccountsHandler(config))
-	rs.server.RegisterHandler(NewGetBalanceHandler(bc))
-	rs.server.RegisterHandler(NewGetTransactionCountHandler(bc))
-	rs.server.RegisterHandler(NewSendTransactionHandler(bc, w))
-	rs.server.RegisterHandler(NewGetTransactionByHashHandler(bc))
-	rs.server.RegisterHandler(NewNewAccountHandler(w))
-	rs.server.RegisterHandler(NewUnlockHandler(w))
+	rs.server.RegisterHandler("accounts", &AccountsHandler{config: config}, []string{}, []string{})
+	rs.server.RegisterHandler("getBalance", &GetBalanceHandler{bc: bc}, []string{}, "")
+	rs.server.RegisterHandler("getTransactionCount", &GetTransactionCountHandler{bc: bc}, []string{}, "")
+	rs.server.RegisterHandler("sendTransaction", &SendTransactionHandler{bc: bc, w: w}, JsonTx{}, "")
+	rs.server.RegisterHandler("getTransactionByHash", &GetTransactionByHashHandler{bc: bc}, []string{}, JsonTx{})
+	rs.server.RegisterHandler("newAccount", &NewAccountHandler{w: w}, []string{}, "")
+	rs.server.RegisterHandler("unlock", &UnlockHandler{w: w}, JsonAccount{}, "")
 }
 
 /*
@@ -381,3 +250,290 @@ curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "metho
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0x3068c6c17a079f67b3f29a9844cbf6137a2bd7a3a58f0d0eac11b8afcd4564b8e4173af7","to": "0x03e864b08b08f632c61c6727cde0e23d125f7784b5a5a188446fc5c91ffa51faa1","amount": "1", "nonce": "1"}}' http://localhost:8080/jrpc
 
 */
+
+// /FIXME: temporary service
+
+// // accounts >>>>>>>>>>>
+// type AccountsHandler struct {
+// 	config *cmd.Config
+// }
+
+// func NewAccountsHandler(config *cmd.Config) *AccountsHandler {
+// 	return &AccountsHandler{config: config}
+// }
+// func (h *AccountsHandler) Name() string {
+// 	return "accounts"
+// }
+// func (h *AccountsHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+// 	return []string{h.config.MinerAddress}, nil
+// }
+// func (h *AccountsHandler) Params() interface{} {
+// 	return []string{}
+// }
+// func (h *AccountsHandler) Result() interface{} {
+// 	return []string{}
+// }
+
+// // accounts <<<<<<<<<<
+
+// // getBalance >>>>>>>>>>>
+// type GetBalanceHandler struct {
+// 	bc *core.BlockChain
+// }
+
+// func NewGetBalanceHandler(bc *core.BlockChain) *GetBalanceHandler {
+
+// 	return &GetBalanceHandler{bc: bc}
+// }
+
+// func (h *GetBalanceHandler) Name() string {
+// 	return "getBalance"
+// }
+
+// func (h *GetBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+// 	p := []string{}
+// 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+// 		return nil, err
+// 	}
+// 	account := h.bc.Tail().AccountState.GetAccount(common.HexToAddress(p[0]))
+// 	return account.Balance.String(), nil
+// }
+
+// func (h *GetBalanceHandler) Params() interface{} {
+// 	return []string{}
+// }
+// func (h *GetBalanceHandler) Result() interface{} {
+// 	return ""
+// }
+
+// // getBalance <<<<<<<<<<
+
+// // getTransactionCount >>>>>>>>>>>
+// type GetTransactionCountHandler struct {
+// 	bc *core.BlockChain
+// }
+
+// func NewGetTransactionCountHandler(bc *core.BlockChain) *GetTransactionCountHandler {
+
+// 	return &GetTransactionCountHandler{bc: bc}
+// }
+
+// func (h *GetTransactionCountHandler) Name() string {
+// 	return "getTransactionCount"
+// }
+
+// func (h *GetTransactionCountHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+// 	p := []string{}
+// 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+// 		return nil, err
+// 	}
+// 	account := h.bc.Tail().AccountState.GetAccount(common.HexToAddress(p[0]))
+// 	return strconv.FormatUint(account.Nonce, 10), nil
+// }
+
+// func (h *GetTransactionCountHandler) Params() interface{} {
+// 	return []string{}
+// }
+// func (h *GetTransactionCountHandler) Result() interface{} {
+// 	return ""
+// }
+
+// // getTransactionCount <<<<<<<<<<
+
+// // sendTransaction >>>>>>>>>>>
+// type TempTx struct {
+// 	From    string       `json:"from"`
+// 	To      string       `json:"to"`
+// 	Amount  string       `json:"amount"`
+// 	Nonce   string       `json:"nonce"`
+// 	Payload *TempPayload `json:"payload"`
+// }
+
+// type TempPayload struct {
+// 	Code string `json:"code"`
+// 	Data string `json:"data"`
+// }
+
+// type SendTransactionHandler struct {
+// 	bc *core.BlockChain
+// 	w  *account.Wallet
+// }
+
+// func NewSendTransactionHandler(bc *core.BlockChain, w *account.Wallet) *SendTransactionHandler {
+
+// 	return &SendTransactionHandler{bc: bc, w: w}
+// }
+
+// func (h *SendTransactionHandler) Name() string {
+// 	return "sendTransaction"
+// }
+
+// func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+// 	var p TempTx
+// 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+// 		return nil, err
+// 	}
+// 	amount, _ := new(big.Int).SetString(p.Amount, 10)
+// 	nonce, _ := strconv.ParseUint(p.Nonce, 10, 64)
+// 	var tx *core.Transaction
+// 	if p.Payload == nil {
+// 		tx = core.NewTransaction(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce)
+// 	} else {
+// 		code, _ := strconv.ParseUint(p.Payload.Code, 10, 64)
+// 		data, _ := strconv.ParseUint(p.Payload.Data, 10, 64)
+// 		bytePayload, _ := rlp.EncodeToBytes(data)
+// 		txPayload := new(core.Payload)
+// 		txPayload.Code = code
+// 		txPayload.Data = bytePayload
+// 		tx = core.NewTransactionPayload(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce, txPayload)
+// 	}
+// 	tx.MakeHash()
+// 	sig, err := h.w.SignHash(common.HexToAddress(p.From), tx.Hash[:])
+// 	if err != nil {
+// 		return "", nil
+// 	}
+// 	tx.SignWithSignature(sig)
+// 	h.bc.TxPool.Put(tx)
+// 	h.bc.NewTXMessage <- tx
+// 	return common.HashToHex(tx.Hash), nil
+// }
+
+// func (h *SendTransactionHandler) Params() interface{} {
+// 	return TempTx{}
+// }
+// func (h *SendTransactionHandler) Result() interface{} {
+// 	return ""
+// }
+
+// // sendTransaction <<<<<<<<<<
+
+// // getTransactionByHash >>>>>>>>>>>
+// type GetTransactionByHashHandler struct {
+// 	bc *core.BlockChain
+// }
+
+// func NewGetTransactionByHashHandler(bc *core.BlockChain) *GetTransactionByHashHandler {
+
+// 	return &GetTransactionByHashHandler{bc: bc}
+// }
+
+// func (h *GetTransactionByHashHandler) Name() string {
+// 	return "getTransactionByHash"
+// }
+
+// func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+// 	p := []string{}
+// 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+// 		return nil, err
+// 	}
+// 	tx := h.bc.Tail().TransactionState.GetTransaction(common.HexToHash(p[0]))
+
+// 	rtx := &TempTx{}
+// 	rtx.From = common.AddressToHex(tx.From)
+// 	rtx.To = common.AddressToHex(tx.To)
+// 	rtx.Nonce = strconv.FormatUint(tx.Nonce, 10)
+// 	rtx.Amount = tx.Amount.String()
+// 	return rtx, nil
+// }
+
+// func (h *GetTransactionByHashHandler) Params() interface{} {
+// 	return []string{}
+// }
+// func (h *GetTransactionByHashHandler) Result() interface{} {
+// 	return TempTx{}
+// }
+
+// // getTransactionByHash <<<<<<<<<<
+
+// // newAccount >>>>>>>>>>>
+// // type TempAccount struct {
+// // 	Address  string `json:"address"`
+// // 	Password string `json:"password"`
+// // }
+// type NewAccountHandler struct {
+// 	w *account.Wallet
+// }
+
+// func NewNewAccountHandler(w *account.Wallet) *NewAccountHandler {
+
+// 	return &NewAccountHandler{w: w}
+// }
+
+// func (h *NewAccountHandler) Name() string {
+// 	return "newAccount"
+// }
+
+// func (h *NewAccountHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+// 	p := []string{}
+// 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+// 		return nil, err
+// 	}
+
+// 	key := account.NewKey()
+// 	h.w.StoreKey(key, p[0])
+
+// 	return common.AddressToHex(key.Address), nil
+// }
+
+// func (h *NewAccountHandler) Params() interface{} {
+// 	return []string{}
+// }
+// func (h *NewAccountHandler) Result() interface{} {
+// 	return ""
+// }
+
+// // newAccount <<<<<<<<<<
+
+// // unlock >>>>>>>>>>>
+// type TempAccount struct {
+// 	Address  string `json:"address"`
+// 	Password string `json:"password"`
+// 	Timeout  int    `json:"timeout"`
+// }
+// type UnlockHandler struct {
+// 	w *account.Wallet
+// }
+
+// func NewUnlockHandler(w *account.Wallet) *UnlockHandler {
+// 	return &UnlockHandler{w: w}
+// }
+
+// func (h *UnlockHandler) Name() string {
+// 	return "unlock"
+// }
+
+// func (h *UnlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
+// 	var p TempAccount
+// 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
+// 		return nil, err
+// 	}
+// 	err := h.w.TimedUnlock(common.HexToAddress(p.Address), p.Password, time.Duration(p.Timeout)*time.Second)
+// 	if err != nil {
+// 		return err.Error(), nil
+// 	}
+// 	return "", nil
+// }
+
+// func (h *UnlockHandler) Params() interface{} {
+// 	return TempAccount{}
+// }
+// func (h *UnlockHandler) Result() interface{} {
+// 	return ""
+// }
+
+// // unlock <<<<<<<<<<
+
+// type RpcService struct {
+// 	server *RpcServer
+// }
+
+// func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.BlockChain, w *account.Wallet) {
+// 	rs.server = server
+// 	rs.server.RegisterHandler(NewAccountsHandler(config))
+// 	rs.server.RegisterHandler(NewGetBalanceHandler(bc))
+// 	rs.server.RegisterHandler(NewGetTransactionCountHandler(bc))
+// 	rs.server.RegisterHandler(NewSendTransactionHandler(bc, w))
+// 	rs.server.RegisterHandler(NewGetTransactionByHashHandler(bc))
+// 	rs.server.RegisterHandler(NewNewAccountHandler(w))
+// 	rs.server.RegisterHandler(NewUnlockHandler(w))
+// }
