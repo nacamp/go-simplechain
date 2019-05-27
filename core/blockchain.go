@@ -243,7 +243,8 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 			return ErrTransactionNonce
 		}
 		fromAccount.Nonce += uint64(1)
-		if tx.Payload == nil {
+		if tx.Payload.Code == uint64(0) {
+		//if tx.Payload == nil {
 			toAccount := accs.GetAccount(tx.To)
 			if err := fromAccount.SubBalance(tx.Amount); err != nil {
 				return err
