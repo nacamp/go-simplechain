@@ -84,6 +84,14 @@ func (w *Wallet) GetKey(address common.Address, auth string) (key *Key, err erro
 	return nil, errors.New("not founded")
 }
 
+func (w *Wallet) Addresses() (addresses []common.Address) {
+	addresses = []common.Address{}
+	for k, _ := range w.keys {
+		addresses = append(addresses, k)
+	}
+	return addresses
+}
+
 func (w *Wallet) Load() error {
 	file, err := os.Open(w.filePath)
 	keys := make(map[common.Address]*keyByte)
