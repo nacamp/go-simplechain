@@ -39,11 +39,15 @@ type JsonAccount struct {
 }
 
 type AccountsHandler struct {
-	config *cmd.Config
+	w *account.Wallet
 }
 
 func (h *AccountsHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
-	return []string{h.config.MinerAddress}, nil
+	addresses := []string{}
+	for _, address := range h.w.Addresses() {
+		addresses = append(addresses, common.AddressToHex(address))
+	}
+	return addresses, nil
 }
 
 type GetBalanceHandler struct {
@@ -164,7 +168,7 @@ type RpcService struct {
 
 func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.BlockChain, w *account.Wallet) {
 	rs.server = server
-	rs.server.RegisterHandler("accounts", &AccountsHandler{config: config}, []string{}, []string{})
+	rs.server.RegisterHandler("accounts", &AccountsHandler{w: w}, []string{}, []string{})
 	rs.server.RegisterHandler("getBalance", &GetBalanceHandler{bc: bc}, []string{}, "")
 	rs.server.RegisterHandler("getTransactionCount", &GetTransactionCountHandler{bc: bc}, []string{}, "")
 	rs.server.RegisterHandler("sendTransaction", &SendTransactionHandler{bc: bc, w: w}, JsonTx{}, "")
