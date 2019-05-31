@@ -91,17 +91,35 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
+
+	var from common.Address
+	for _, address := range h.w.Addresses() {
+		if common.HexToAddress(p.From) == address {
+			from = common.HexToAddress(p.From)
+			break
+		}
+	}
+	if from == (common.Address{}) {
+		return "", &jsonrpc.Error{Code: 0, Message: "The from is not our address"}
+	}
+
+	if !h.w.IsUnlockedAddress(from) {
+		return "", &jsonrpc.Error{Code: 0, Message: "The from is locked"}
+	}
+
 	amount, _ := new(big.Int).SetString(p.Amount, 10)
 	nonce, _ := strconv.ParseUint(p.Nonce, 10, 64)
-
-	account := h.bc.Tail().AccountState.GetAccount(common.HexToAddress(p.From))
+	account := h.bc.Tail().AccountState.GetAccount(from)
 	if nonce <= account.Nonce {
 		return "", &jsonrpc.Error{Code: 0, Message: "This transaction have wrong nonce"}
+	}
+	if amount.Cmp(account.AvailableBalance()) > 0 {
+		return "", &jsonrpc.Error{Code: 0, Message: "There is insufficient amount."}
 	}
 
 	var tx *core.Transaction
 	if p.Payload == nil {
-		tx = core.NewTransaction(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce)
+		tx = core.NewTransaction(from, common.HexToAddress(p.To), amount, nonce)
 	} else {
 		code, _ := strconv.ParseUint(p.Payload.Code, 10, 64)
 		data, _ := strconv.ParseUint(p.Payload.Data, 10, 64)
@@ -109,10 +127,10 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 		txPayload := new(core.Payload)
 		txPayload.Code = code
 		txPayload.Data = bytePayload
-		tx = core.NewTransactionPayload(common.HexToAddress(p.From), common.HexToAddress(p.To), amount, nonce, txPayload)
+		tx = core.NewTransactionPayload(from, common.HexToAddress(p.To), amount, nonce, txPayload)
 	}
 	tx.MakeHash()
-	sig, err := h.w.SignHash(common.HexToAddress(p.From), tx.Hash[:])
+	sig, err := h.w.SignHash(from, tx.Hash[:])
 	if err != nil {
 		return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
 	}
