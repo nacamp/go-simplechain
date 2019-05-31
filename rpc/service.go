@@ -168,9 +168,9 @@ func (h *UnlockHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMess
 	}
 	err := h.w.TimedUnlock(common.HexToAddress(p.Address), p.Password, time.Duration(p.Timeout)*time.Second)
 	if err != nil {
-		return JsonStatus{Status: false, Message: err.Error()}, nil
+		return "error", &jsonrpc.Error{Code: 0, Message: err.Error()}
 	}
-	return JsonStatus{Status: true, Message: ""}, nil
+	return "success", nil
 }
 
 type RpcService struct {
@@ -181,11 +181,11 @@ func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.Bloc
 	rs.server = server
 	rs.server.RegisterHandler("accounts", &AccountsHandler{w: w}, []string{}, []string{})
 	rs.server.RegisterHandler("getBalance", &GetBalanceHandler{bc: bc}, []string{}, *new(string))
-	rs.server.RegisterHandler("getTransactionCount", &GetTransactionCountHandler{bc: bc}, []string{}, "")
-	rs.server.RegisterHandler("sendTransaction", &SendTransactionHandler{bc: bc, w: w}, JsonTx{}, "")
+	rs.server.RegisterHandler("getTransactionCount", &GetTransactionCountHandler{bc: bc}, []string{}, "") //same *new(string)
+	rs.server.RegisterHandler("sendTransaction", &SendTransactionHandler{bc: bc, w: w}, JsonTx{}, "")     //same *new(string)
 	rs.server.RegisterHandler("getTransactionByHash", &GetTransactionByHashHandler{bc: bc}, []string{}, JsonTx{})
-	rs.server.RegisterHandler("newAccount", &NewAccountHandler{w: w}, []string{}, "")
-	rs.server.RegisterHandler("unlock", &UnlockHandler{w: w}, JsonAccount{}, JsonStatus{})
+	rs.server.RegisterHandler("newAccount", &NewAccountHandler{w: w}, []string{}, "") //same *new(string)
+	rs.server.RegisterHandler("unlock", &UnlockHandler{w: w}, JsonAccount{}, "")      //same *new(string)
 }
 
 /*
