@@ -148,3 +148,8 @@ func (w *Wallet) SignHash(addr common.Address, hash []byte) ([]byte, error) {
 	// Sign the hash using plain ECDSA operations
 	return crypto.Sign(hash, unlockedKey.PrivateKey)
 }
+
+func (w *Wallet) IsUnlockedAddress(address common.Address) bool {
+	_, ok := w.unlockKeys[address]
+	return ok
+}
