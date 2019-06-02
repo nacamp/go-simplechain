@@ -63,6 +63,16 @@ func (pool *TransactionPool) Len() int {
 	return len(pool.txMap)
 }
 
+func (pool *TransactionPool) FromTransactions(from common.Address) (txs []*Transaction) {
+	txs = make([]*Transaction, 0)
+	for _, v := range pool.txMap {
+		if v.From == from {
+			txs = append(txs, v)
+		}
+	}
+	return txs
+}
+
 func (pool *TransactionPool) Refresh() {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
