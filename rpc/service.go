@@ -110,8 +110,14 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	amount, _ := new(big.Int).SetString(p.Amount, 10)
 	nonce, _ := strconv.ParseUint(p.Nonce, 10, 64)
 	account := h.bc.Tail().AccountState.GetAccount(from)
+
 	if nonce <= account.Nonce {
 		return "", &jsonrpc.Error{Code: 0, Message: "This transaction have wrong nonce"}
+	}
+
+	txs := h.bc.TxPool.FromTransactions(from)
+	for _, tx := range txs {
+		amount = amount.Add(amount, tx.Amount)
 	}
 	if amount.Cmp(account.AvailableBalance()) > 0 {
 		return "", &jsonrpc.Error{Code: 0, Message: "There is insufficient amount."}
