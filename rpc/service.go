@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"bytes"
 	"context"
 	"math/big"
 	"strconv"
@@ -65,7 +66,7 @@ func (h *GetBalanceHandler) ServeJSONRPC(c context.Context, params *fastjson.Raw
 		return nil, err
 	}
 	account := h.bc.Tail().AccountState.GetAccount(common.HexToAddress(p[0]))
-	return account.Balance.String(), nil
+	return account.AvailableBalance().String(), nil
 }
 
 type GetTransactionCountHandler struct {
@@ -82,8 +83,9 @@ func (h *GetTransactionCountHandler) ServeJSONRPC(c context.Context, params *fas
 }
 
 type SendTransactionHandler struct {
-	bc *core.BlockChain
-	w  *account.Wallet
+	bc        *core.BlockChain
+	w         *account.Wallet
+	consensus string
 }
 
 func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjson.RawMessage) (interface{}, *jsonrpc.Error) {
@@ -108,6 +110,13 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	}
 
 	amount, _ := new(big.Int).SetString(p.Amount, 10)
+	usedAmount := new(big.Int)
+	if p.Payload == nil {
+		usedAmount = usedAmount.Add(usedAmount, amount)
+	} else if h.consensus == "dpos" && p.Payload.Code == "1" {
+		_amount, _ := new(big.Int).SetString(p.Payload.Data, 10)
+		usedAmount = usedAmount.Add(usedAmount, _amount)
+	}
 	nonce, _ := strconv.ParseUint(p.Nonce, 10, 64)
 	account := h.bc.Tail().AccountState.GetAccount(from)
 
@@ -117,9 +126,19 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 
 	txs := h.bc.TxPool.FromTransactions(from)
 	for _, tx := range txs {
-		amount = amount.Add(amount, tx.Amount)
+		if tx.Payload.Code == uint64(0) {
+			usedAmount = usedAmount.Add(usedAmount, tx.Amount)
+		} else if h.consensus == "dpos" && tx.Payload.Code == uint64(1) {
+			_amount := new(big.Int)
+			err := rlp.Decode(bytes.NewReader(tx.Payload.Data), _amount)
+			if err != nil {
+				return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
+			}
+			usedAmount = usedAmount.Add(usedAmount, _amount)
+		}
 	}
-	if amount.Cmp(account.AvailableBalance()) > 0 {
+
+	if usedAmount.Cmp(account.AvailableBalance()) > 0 {
 		return "", &jsonrpc.Error{Code: 0, Message: "There is insufficient amount."}
 	}
 
@@ -205,8 +224,8 @@ func (rs *RpcService) Setup(server *RpcServer, config *cmd.Config, bc *core.Bloc
 	rs.server = server
 	rs.server.RegisterHandler("accounts", &AccountsHandler{w: w}, []string{}, []string{})
 	rs.server.RegisterHandler("getBalance", &GetBalanceHandler{bc: bc}, []string{}, *new(string))
-	rs.server.RegisterHandler("getTransactionCount", &GetTransactionCountHandler{bc: bc}, []string{}, "") //same *new(string)
-	rs.server.RegisterHandler("sendTransaction", &SendTransactionHandler{bc: bc, w: w}, JsonTx{}, "")     //same *new(string)
+	rs.server.RegisterHandler("getTransactionCount", &GetTransactionCountHandler{bc: bc}, []string{}, "")                               //same *new(string)
+	rs.server.RegisterHandler("sendTransaction", &SendTransactionHandler{bc: bc, w: w, consensus: config.Consensus.Name}, JsonTx{}, "") //same *new(string)
 	rs.server.RegisterHandler("getTransactionByHash", &GetTransactionByHashHandler{bc: bc}, []string{}, JsonTx{})
 	rs.server.RegisterHandler("newAccount", &NewAccountHandler{w: w}, []string{}, "") //same *new(string)
 	rs.server.RegisterHandler("unlock", &UnlockHandler{w: w}, JsonAccount{}, "")      //same *new(string)
