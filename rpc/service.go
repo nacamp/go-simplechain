@@ -174,7 +174,10 @@ func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fa
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
-	tx := h.bc.Tail().TransactionState.GetTransaction(common.HexToHash(p[0]))
+	tx, err := h.bc.Tail().TransactionState.GetTransaction(common.HexToHash(p[0]))
+	if err != nil {
+		return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
+	}
 
 	rtx := &JsonTx{}
 	rtx.From = common.AddressToHex(tx.From)

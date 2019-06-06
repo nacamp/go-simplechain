@@ -244,7 +244,7 @@ func (bc *BlockChain) ExecuteTransaction(block *Block) error {
 		}
 		fromAccount.Nonce += uint64(1)
 		if tx.Payload.Code == uint64(0) {
-		//if tx.Payload == nil {
+			//if tx.Payload == nil {
 			toAccount := accs.GetAccount(tx.To)
 			if err := fromAccount.SubBalance(tx.Amount); err != nil {
 				return err
@@ -497,7 +497,8 @@ func (bc *BlockChain) RemoveOrphanBlock() {
 				validBlock = bc.GetBlockByHash(validBlock.Header.ParentHash)
 				tail = bc.GetBlockByHash(tail.Header.ParentHash)
 				for _, tx := range removableBlock.Transactions {
-					_tx := TailTxs.GetTransaction(tx.Hash)
+					//TODO: exist when _tx is nil ?
+					_tx, _ := TailTxs.GetTransaction(tx.Hash)
 					if _tx == nil {
 						bc.TxPool.Put(tx)
 					}

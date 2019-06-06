@@ -238,14 +238,18 @@ func (txs *TransactionState) PutTransaction(tx *Transaction) (hash common.Hash) 
 	return hash
 }
 
-func (txs *TransactionState) GetTransaction(hash common.Hash) (tx *Transaction) {
+func (txs *TransactionState) GetTransaction(hash common.Hash) (tx *Transaction, err error) {
 	tx = new(Transaction)
 	encodedBytes, err := txs.Trie.Get(hash[:])
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+		if err == trie.ErrNotFound {
+			return nil, err
+		}else{
+			log.CLog().WithFields(logrus.Fields{}).Panic(err)
+		}
 	}
 	rlp.NewStream(bytes.NewReader(encodedBytes), 0).Decode(&tx)
-	return tx
+	return tx, nil
 }
 
 func (txs *TransactionState) RootHash() (hash common.Hash) {
