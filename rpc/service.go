@@ -11,10 +11,7 @@ import (
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/rlp"
 
-	// "github.com/nacamp/go-simplechain/rlp"
-
 	"github.com/intel-go/fastjson"
-
 	"github.com/nacamp/go-simplechain/common"
 	"github.com/nacamp/go-simplechain/core"
 	"github.com/osamingo/jsonrpc"
@@ -184,6 +181,14 @@ func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fa
 	rtx.To = common.AddressToHex(tx.To)
 	rtx.Nonce = strconv.FormatUint(tx.Nonce, 10)
 	rtx.Amount = tx.Amount.String()
+	rtx.Payload = &JsonPayload{}
+	rtx.Payload.Code = strconv.FormatUint(tx.Payload.Code, 10)
+	data := new(uint64)
+	err = rlp.Decode(bytes.NewReader(tx.Payload.Data), data)
+	if err != nil {
+		return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
+	}
+	rtx.Payload.Data = strconv.FormatUint(*data, 10)
 	return rtx, nil
 }
 
