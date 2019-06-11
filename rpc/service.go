@@ -143,12 +143,16 @@ func (h *SendTransactionHandler) ServeJSONRPC(c context.Context, params *fastjso
 	if p.Payload == nil {
 		tx = core.NewTransaction(from, common.HexToAddress(p.To), amount, nonce)
 	} else {
-		code, _ := strconv.ParseUint(p.Payload.Code, 10, 64)
-		data, _ := strconv.ParseUint(p.Payload.Data, 10, 64)
-		bytePayload, _ := rlp.EncodeToBytes(data)
 		txPayload := new(core.Payload)
+
+		code, _ := strconv.ParseUint(p.Payload.Code, 10, 64)
 		txPayload.Code = code
-		txPayload.Data = bytePayload
+		if p.Payload.Data == "" {
+			data, _ := strconv.ParseUint(p.Payload.Data, 10, 64)
+			bytePayload, _ := rlp.EncodeToBytes(data)
+			txPayload.Data = bytePayload
+		}
+
 		tx = core.NewTransactionPayload(from, common.HexToAddress(p.To), amount, nonce, txPayload)
 	}
 	tx.MakeHash()
@@ -183,12 +187,14 @@ func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fa
 	rtx.Amount = tx.Amount.String()
 	rtx.Payload = &JsonPayload{}
 	rtx.Payload.Code = strconv.FormatUint(tx.Payload.Code, 10)
-	data := new(uint64)
-	err = rlp.Decode(bytes.NewReader(tx.Payload.Data), data)
-	if err != nil {
-		return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
+	if len(tx.Payload.Data) != 0 {
+		data := new(uint64)
+		err = rlp.Decode(bytes.NewReader(tx.Payload.Data), data)
+		if err != nil {
+			return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
+		}
+		rtx.Payload.Data = strconv.FormatUint(*data, 10)
 	}
-	rtx.Payload.Data = strconv.FormatUint(*data, 10)
 	return rtx, nil
 }
 
