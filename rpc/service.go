@@ -10,6 +10,7 @@ import (
 	"github.com/nacamp/go-simplechain/account"
 	"github.com/nacamp/go-simplechain/cmd"
 	"github.com/nacamp/go-simplechain/rlp"
+	"github.com/nacamp/go-simplechain/storage"
 
 	"github.com/intel-go/fastjson"
 	"github.com/nacamp/go-simplechain/common"
@@ -21,6 +22,7 @@ type JsonTx struct {
 	From    string       `json:"from"`
 	To      string       `json:"to"`
 	Amount  string       `json:"amount"`
+	Height  string       `json:"height"`
 	Nonce   string       `json:"nonce"`
 	Payload *JsonPayload `json:"payload"`
 }
@@ -175,12 +177,22 @@ func (h *GetTransactionByHashHandler) ServeJSONRPC(c context.Context, params *fa
 	if err := jsonrpc.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
-	tx, err := h.bc.Tail().TransactionState.GetTransaction(common.HexToHash(p[0]))
-	if err != nil {
-		return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
-	}
-
+	txHash := common.HexToHash(p[0])
+	tx, err := h.bc.Tail().TransactionState.GetTransaction(txHash)
 	rtx := &JsonTx{}
+	if err != nil {
+		if err == storage.ErrKeyNotFound {
+			tx = h.bc.TxPool.Get(txHash)
+			if tx == nil {
+				return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
+			}
+			rtx.Height = ""
+		} else {
+			return "", &jsonrpc.Error{Code: 0, Message: err.Error()}
+		}
+	} else {
+		rtx.Height = strconv.FormatUint(tx.Height, 10)
+	}
 	rtx.From = common.AddressToHex(tx.From)
 	rtx.To = common.AddressToHex(tx.To)
 	rtx.Nonce = strconv.FormatUint(tx.Nonce, 10)
