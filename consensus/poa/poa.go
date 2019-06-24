@@ -85,9 +85,7 @@ func (cs *Poa) MakeBlock(now uint64) *core.Block {
 			if tx == nil {
 				break
 			}
-			//TODO: remove code duplicattion in ExecuteTransaction
 			fromAccount := accs.GetAccount(tx.From)
-			//TODO: check at txpool
 			if fromAccount == nil {
 				log.CLog().WithFields(logrus.Fields{
 					"Address": common.AddressToHex(tx.From),
@@ -212,7 +210,6 @@ func (cs *Poa) Start() {
 func (cs *Poa) UpdateLIB() {
 	bc := cs.bc
 	block := bc.Tail()
-	//FIXME: consider timestamp
 	miners := make(map[common.Address]bool)
 	turn := 1
 	if block.Header.Height == 0 {

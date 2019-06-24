@@ -211,7 +211,8 @@ func TestSendMoneyTransaction(t *testing.T) {
 	assert.Equal(t, new(big.Int).SetUint64(15), account2.Balance)
 
 	//check transaction's height
-	assert.Equal(t, uint64(2), block2.TransactionState.GetTransaction(txHash).Height)
+	_tx, _ := block2.TransactionState.GetTransaction(txHash)
+	assert.Equal(t, uint64(2), _tx.Height)
 }
 
 func TestVoteTransaction(t *testing.T) {

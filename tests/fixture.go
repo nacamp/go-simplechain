@@ -447,7 +447,6 @@ func SignerSlice(signers []common.Address) []common.Address {
 // 		// block.MinerState, _ = parentBlock.MinerState.Clone()
 // 		// minerGroup, voterBlock, _ := block.MinerState.GetMinerGroup(bc, block)
 
-// 		// //TODO: we need to test  when voter transaction make
 // 		// if voterBlock.Header.Height == block.Header.Height {
 // 		// 	block.MinerState.Put(minerGroup, block.Header.VoterHash)
 // 		// 	fmt.Printf("VoterHash(put), height, time, >>>%v, %v, %v\n", block.Header.Height, block.Header.Time, block.Header.VoterHash)
@@ -499,7 +498,6 @@ func SignerSlice(signers []common.Address) []common.Address {
 // 	}
 
 // 	if bc.Consensus.ConsensusType() == "POA" {
-// 		// //TODO: fix temp hash
 // 		// block.Header.SnapshotHash = bc.GenesisBlock.Header.SnapshotHash
 // 		// // cannot use below code for cycling reference
 // 		// // 	snapshot, _ := bc.Consensus.(*consensus.Poa).Snapshot(block.Header.ParentHash)

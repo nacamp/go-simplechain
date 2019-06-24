@@ -85,7 +85,6 @@ func (cs *PoaState) Get(blockNumber uint64) (common.Hash, common.Hash, error) {
 	if err != nil {
 		return common.Hash{}, common.Hash{}, err
 	}
-	//TODO: check minimum key size
 	encbytes, err := cs.Snapshot.Get(crypto.Sha3b256(keyEncodedBytes))
 	if err != nil {
 		return common.Hash{}, common.Hash{}, err

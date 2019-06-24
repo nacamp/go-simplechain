@@ -26,8 +26,9 @@ type Transaction struct {
 }
 
 const (
-	TxCVoteUnStake = uint64(0x00)
+	//Empty payload is 0x00
 	TxCVoteStake   = uint64(0x01)
+	TxCVoteUnStake = uint64(0x02)
 )
 
 type Payload struct {
@@ -37,11 +38,12 @@ type Payload struct {
 
 func NewTransaction(from, to common.Address, amount *big.Int, nonce uint64) *Transaction {
 	tx := &Transaction{
-		From:   from,
-		To:     to,
-		Amount: amount,
-		Time:   uint64(time.Now().Unix()),
-		Nonce:  nonce,
+		From:    from,
+		To:      to,
+		Amount:  amount,
+		Time:    uint64(time.Now().Unix()),
+		Nonce:   nonce,
+		Payload: new(Payload), // if payload is not include, tx is not include in block after rlp
 	}
 	return tx
 }

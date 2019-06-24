@@ -44,8 +44,6 @@ func (cs *Dpos) SetupMining(address common.Address, wallet *account.Wallet) {
 
 func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 	bc := cs.bc
-	//TODO: check after 3 seconds(block creation) and 3 seconds(mining order)
-	//Fix: when ticker is 1 second, server mining...
 	turn := (now % (cs.totalMiners * cs.period)) / cs.period
 	block, err := bc.NewBlockFromTail()
 	if err != nil {
@@ -77,7 +75,6 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 		}).Debug("my turn")
 		block.Header.Coinbase = cs.coinbase
 
-		//TODO: check double spending ?
 		block.Transactions = make([]*core.Transaction, 0)
 		accs := block.AccountState
 		noncePool := make(map[common.Address][]*core.Transaction)
@@ -86,9 +83,7 @@ func (cs *Dpos) MakeBlock(now uint64) *core.Block {
 			if tx == nil {
 				break
 			}
-			//TODO: remove code duplicattion in ExecuteTransaction
 			fromAccount := accs.GetAccount(tx.From)
-			//TODO: check at txpool
 			if fromAccount == nil {
 				log.CLog().WithFields(logrus.Fields{
 					"Address": common.AddressToHex(tx.From),
@@ -242,7 +237,6 @@ func (cs *Dpos) SaveState(block *core.Block) (err error) {
 func (cs *Dpos) UpdateLIB() {
 	bc := cs.bc
 	block := bc.Tail()
-	//FIXME: consider timestamp, changed minerGroup
 	miners := make(map[common.Address]bool)
 	turn := 1
 	for bc.Lib().Hash() != block.Hash() {
@@ -288,7 +282,6 @@ func (cs *Dpos) MakeGenesisBlock(block *core.Block, voters []*core.Account) (err
 		return err
 	}
 
-	//TODO: who voter?
 	for _, v := range voters {
 		state.Stake(v.Address, v.Address, v.Balance)
 	}

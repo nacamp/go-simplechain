@@ -45,7 +45,6 @@ func AccountImportAction(c *cli.Context) {
 }
 
 func accountImportAction(path string, priv string, passphrase string) {
-	//TODO: priv validate
 	key := new(account.Key)
 	key.PrivateKey = crypto.ByteToPrivateKey(common.FromHex(priv))
 	key.Address = crypto.CreateAddressFromPrivateKey(key.PrivateKey)
@@ -66,7 +65,6 @@ func AccountNewAction(c *cli.Context) {
 }
 
 func accountNewAction(path string, passphrase string) {
-	//TODO: priv validate
 	priv, address := crypto.CreateAddress()
 	key := new(account.Key)
 	key.PrivateKey = priv

@@ -57,7 +57,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "metho
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d","to": "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2","amount": "0", "nonce": "3", "payload":{"code":"0", "data":"10"}}}' http://localhost:8080/jrpc
 
 payload.code==1  : stake
-payload.code==0  : unstake
+payload.code==2  : unstake
 payload.data : amount
 
 
@@ -65,7 +65,7 @@ payload.data : amount
 curl -X POST -H "Content-Type: application/json" -d '{"jsonrpc": "2.0",   "method": "sendTransaction", "params": {"from": "0xc6d40a9bf9fe9d90019511a2147dc0958657da97463ca59d2594d5536dcdfd30ed93707d","to": "0xfdf75c884f7f1d1537177a3a35e783236739a426ee649fa3e2d8aed598b4f29e838170e2","amount": "0", "nonce": "2", "payload":{"code":"1"}}}' http://localhost:8080/jrpc
 
 payload.code==1  : joinning  
-payload.code==0  : evicting 
+payload.code==2  : evicting 
 
 
 

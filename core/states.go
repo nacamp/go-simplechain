@@ -208,12 +208,9 @@ func (accs *AccountState) RootHash() (hash common.Hash) {
 
 //-------------------- TransactionState
 func NewTransactionState(storage storage.Storage) (*TransactionState, error) {
-	//TODO: how to do
-	//return NewTransactionStateRootHash(nil, storage)
 	tr, err := trie.NewTrie(nil, storage, false)
 	return &TransactionState{
 		Trie: tr,
-		// Storage: storage,
 	}, err
 }
 
@@ -221,12 +218,10 @@ func NewTransactionStateRootHash(rootHash common.Hash, storage storage.Storage) 
 	tr, err := trie.NewTrie(rootHash[:], storage, false)
 	return &TransactionState{
 		Trie: tr,
-		// Storage: storage,
 	}, err
 }
 
 func (txs *TransactionState) Clone() (*TransactionState, error) {
-	// storage, _ := storage.NewMemoryStorage()
 	tr, err := txs.Trie.Clone()
 	return &TransactionState{
 		Trie: tr,
@@ -243,14 +238,18 @@ func (txs *TransactionState) PutTransaction(tx *Transaction) (hash common.Hash) 
 	return hash
 }
 
-func (txs *TransactionState) GetTransaction(hash common.Hash) (tx *Transaction) {
+func (txs *TransactionState) GetTransaction(hash common.Hash) (tx *Transaction, err error) {
 	tx = new(Transaction)
 	encodedBytes, err := txs.Trie.Get(hash[:])
 	if err != nil {
-		log.CLog().WithFields(logrus.Fields{}).Panic(err)
+		if err == trie.ErrNotFound {
+			return nil, err
+		}else{
+			log.CLog().WithFields(logrus.Fields{}).Panic(err)
+		}
 	}
 	rlp.NewStream(bytes.NewReader(encodedBytes), 0).Decode(&tx)
-	return tx
+	return tx, nil
 }
 
 func (txs *TransactionState) RootHash() (hash common.Hash) {
